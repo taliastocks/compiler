@@ -7,5 +7,5 @@ python:
   - "pypy3"
   - "nightly"
 install:
-  - pipenv install
+  - pipenv install --dev
 script: pytest
