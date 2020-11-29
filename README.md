@@ -1,1 +1,1 @@
-# compiler [![Build Status](https://api.travis-ci.org/Sibilance/compiler.svg?branch=main)]
+# compiler ![Build Status](https://api.travis-ci.org/Sibilance/compiler.svg?branch=main)
