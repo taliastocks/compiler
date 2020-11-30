@@ -1,0 +1,15 @@
+language: python
+cache: pip
+python:
+  - "3.7"
+  - "3.8"
+  - "3.9"
+  - "nightly"
+install:
+  - pipenv install --dev
+script: pytest
+addons:
+  apt:
+    update: true
+    packages:
+      - clang
