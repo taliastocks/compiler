@@ -17,7 +17,7 @@ class Namespace:
         validator=attr.validators.optional(attr.validators.instance_of(str))
     )
     _parent: typing.Optional[Namespace] = attr.ib(default=None, init=False)
-    _construct: ConstructBase = attr.ib(default=None, init=False)
+    _declaration: DeclarationBase = attr.ib(default=None, init=False)
     _lock: threading.RLock = attr.ib(factory=threading.RLock, init=False)
     _members: typing.MutableMapping[str, Namespace] = attr.ib(factory=dict, init=False)
 
@@ -49,23 +49,23 @@ class Namespace:
         yield from self._members.values()
 
     @property
-    def construct(self) -> typing.Optional[ConstructBase]:
-        """Get the construct defined at this path, if any.
+    def declaration(self) -> typing.Optional[DeclarationBase]:
+        """Get the declaration at this path, if any.
         """
-        return self._construct
+        return self._declaration
 
-    @construct.setter
-    def construct(self, construct: ConstructBase) -> None:
-        """Declare a construct to exist at this namespace path.
+    @declaration.setter
+    def declaration(self, declaration: DeclarationBase) -> None:
+        """Assign a declaration to exist at this namespace path.
         """
         with self._lock:
-            if self._construct is not None:
+            if self._declaration is not None:
                 raise ValueError('{} already declared'.format(list(self.path)))
-            if construct.namespace is not self._parent:
-                raise ValueError('construct.namespace must be the parent namespace')
-            if construct.name != self._name:
-                raise ValueError('construct.name must match this namespace')
-            self._construct = construct
+            if declaration.namespace is not self._parent:
+                raise ValueError('declaration.namespace must be the parent namespace')
+            if declaration.name != self._name:
+                raise ValueError('declaration.name must match this namespace')
+            self._declaration = declaration
 
     def resolve(self, name: str) -> Namespace:
         """Resolve a namespace by name. The namespace is either a child of the
@@ -91,27 +91,35 @@ class Namespace:
 
 
 @attr.s(frozen=True, slots=True)
-class ConstructBase(metaclass=abc.ABCMeta):
+class DeclarationBase(metaclass=abc.ABCMeta):
     name: str = attr.ib(validator=attr.validators.instance_of(str))
     namespace: Namespace = attr.ib(
         validator=lambda inst, attr_, value: attr.validators.instance_of(Namespace)(inst, attr_, value)
     )
 
     @namespace.validator
-    def _declare_with_namespace(self, _, namespace):
-        """Declare this construct in the given namespace, or fail.
-        """
-        namespace[self.name].construct = self
+    def _attach_to_namespace(self, _, namespace):
+        namespace[self.name].declaration = self
 
 
 @attr.s(frozen=True, slots=True)
-class Class(ConstructBase):
+class Global(DeclarationBase):
+    pass
+
+
+@attr.s(frozen=True, slots=True)
+class Function(DeclarationBase):
+    pass
+
+
+@attr.s(frozen=True, slots=True)
+class Class(DeclarationBase):
     @attr.s(frozen=True, slots=True)
-    class Method(ConstructBase):
+    class Method:
         pass
 
     @attr.s(frozen=True, slots=True)
-    class Attribute(ConstructBase):
+    class Attribute:
         pass
 
     bases: typing.Collection[Class] = attr.ib(
