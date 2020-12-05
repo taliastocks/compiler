@@ -1,16 +1,20 @@
 language: python
 cache: pip
-python:
-  - "3.7"
-  - "3.8"
-  - "3.9"
-  - "nightly"
 install:
   - pipenv install --dev
-scripts:
-  - pytest
-  - pytest --flake8
-  - pytest --pylint
+jobs:
+  include:
+    - python: "3.7"
+      script: pytest
+    - python: "3.8"
+      script: pytest
+    - python: "3.9"
+      scripts:
+        - pytest
+        - pytest --flake8
+        - pytest --pylint
+    - python: "nightly"
+      script: pytest
 addons:
   apt:
     update: true
