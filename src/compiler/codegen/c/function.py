@@ -14,7 +14,7 @@ class Function(c.ProgramPartBase):
     """
 
     @attr.s(frozen=True, slots=True)
-    class Argument(object):
+    class Argument:
         """Represents a named and typed function argument.
         """
         name: str = attr.ib(validator=attr.validators.instance_of(str))

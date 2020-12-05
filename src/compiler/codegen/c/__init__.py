@@ -9,7 +9,7 @@ from ...meta import instance_cache
 
 
 @attr.s(frozen=True, slots=True)
-class ProgramPartBase(object, metaclass=instance_cache.InstanceCacheABCMeta):
+class ProgramPartBase(metaclass=instance_cache.InstanceCacheABCMeta):
     """Represents part of a C program.
     """
     indent = '  '
@@ -29,7 +29,7 @@ class ProgramPartBase(object, metaclass=instance_cache.InstanceCacheABCMeta):
 
 
 @attr.s(frozen=True, slots=True)
-class Program(object):
+class Program:
     """Represents a program.
     """
     _parts_by_class: typing.DefaultDict[type, typing.Dict[ProgramPartBase, None]] = attr.ib(
@@ -84,11 +84,11 @@ class Program(object):
 _NestedStrings = typing.Union[str, typing.Sequence['_NestedStrings']]
 
 
-def _flatten(t: _NestedStrings) -> typing.Generator[str, None, None]:
+def _flatten(nested_strings: _NestedStrings) -> typing.Generator[str, None, None]:
     """Flatten a nested tuple of strings into a tuple of strings.
     """
-    if isinstance(t, str):
-        yield t
+    if isinstance(nested_strings, str):
+        yield nested_strings
     else:
-        for item in t:
+        for item in nested_strings:
             yield from _flatten(item)

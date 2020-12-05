@@ -15,7 +15,6 @@ class TypeBase(c.ProgramPartBase, metaclass=abc.ABCMeta):
     """
 
     @property
-    @abc.abstractmethod
     def name(self) -> str:
         """Get the name/identifier of this types.
         """
@@ -103,7 +102,7 @@ class Struct(TypeBase):
     """
 
     @attr.s(frozen=True, slots=True)
-    class Field(object):
+    class Field:
         """Represents a named and typed struct field.
         """
         name: str = attr.ib(validator=attr.validators.instance_of(str))
@@ -143,7 +142,7 @@ class Union(TypeBase):
     """
 
     @attr.s(frozen=True, slots=True)
-    class Field(object):
+    class Field:
         """Represents a named and typed union field.
         """
         name: str = attr.ib(validator=attr.validators.instance_of(str))

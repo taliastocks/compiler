@@ -178,8 +178,10 @@ class Subscript(LValueExpression):
         for i, line in enumerate(operand_rendering):
             if i == len(operand_rendering) - 1:
                 if len(subscript_rendering) == 1:
+                    # pylint: disable=stop-iteration-return
                     yield line, '[', next(subscript_rendering_iterator), ']'
                 else:
+                    # pylint: disable=stop-iteration-return
                     yield line, '[', next(subscript_rendering_iterator)
             else:
                 yield line
