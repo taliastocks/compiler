@@ -8,7 +8,7 @@ import attr
 
 
 @attr.s(slots=True)
-class Namespace(object):
+class Namespace:
     """Represents a global namespace.
     """
     _name: typing.Optional[str] = attr.ib(
@@ -91,7 +91,7 @@ class Namespace(object):
 
 
 @attr.s(frozen=True, slots=True)
-class ConstructBase(object, metaclass=abc.ABCMeta):
+class ConstructBase(metaclass=abc.ABCMeta):
     name: str = attr.ib(validator=attr.validators.instance_of(str))
     namespace: Namespace = attr.ib(
         validator=lambda inst, attr_, value: attr.validators.instance_of(Namespace)(inst, attr_, value)

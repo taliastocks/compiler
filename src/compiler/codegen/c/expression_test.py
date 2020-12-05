@@ -39,12 +39,12 @@ class ExpressionTestCase(unittest.TestCase):
 
         self.assertEqual(64, expression.IntegerLiteral(18446744073709551615).width)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(18446744073709551616)
 
         self.assertEqual(
             'value 18446744073709551616 out of range (signed=False, width=64)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
     def test_integer_literal_expression_default_signed(self):
@@ -67,124 +67,124 @@ class ExpressionTestCase(unittest.TestCase):
     def test_integer_literal_range_validator_16(self):
         expression.IntegerLiteral(32767, width=16, signed=True)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(32768, width=16, signed=True)
 
         self.assertEqual(
             'value 32768 out of range (signed=True, width=16)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
         expression.IntegerLiteral(-32768, width=16, signed=True)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(-32769, width=16, signed=True)
 
         self.assertEqual(
             'value -32769 out of range (signed=True, width=16)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
         expression.IntegerLiteral(65535, width=16, signed=False)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(65536, width=16, signed=False)
 
         self.assertEqual(
             'value 65536 out of range (signed=False, width=16)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
         expression.IntegerLiteral(0, width=16, signed=False)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(-1, width=16, signed=False)
 
         self.assertEqual(
             'value -1 out of range (signed=False, width=16)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
     def test_integer_literal_range_validator_32(self):
         expression.IntegerLiteral(2147483647, width=32, signed=True)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(2147483648, width=32, signed=True)
 
         self.assertEqual(
             'value 2147483648 out of range (signed=True, width=32)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
         expression.IntegerLiteral(-2147483648, width=32, signed=True)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(-2147483649, width=32, signed=True)
 
         self.assertEqual(
             'value -2147483649 out of range (signed=True, width=32)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
         expression.IntegerLiteral(4294967295, width=32, signed=False)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(4294967296, width=32, signed=False)
 
         self.assertEqual(
             'value 4294967296 out of range (signed=False, width=32)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
         expression.IntegerLiteral(0, width=32, signed=False)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(-1, width=32, signed=False)
 
         self.assertEqual(
             'value -1 out of range (signed=False, width=32)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
     def test_integer_literal_range_validator_64(self):
         expression.IntegerLiteral(9223372036854775807, width=64, signed=True)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(9223372036854775808, width=64, signed=True)
 
         self.assertEqual(
             'value 9223372036854775808 out of range (signed=True, width=64)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
         expression.IntegerLiteral(-9223372036854775808, width=64, signed=True)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(-9223372036854775809, width=64, signed=True)
 
         self.assertEqual(
             'value -9223372036854775809 out of range (signed=True, width=64)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
         expression.IntegerLiteral(18446744073709551615, width=64, signed=False)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(18446744073709551616, width=64, signed=False)
 
         self.assertEqual(
             'value 18446744073709551616 out of range (signed=False, width=64)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
         expression.IntegerLiteral(0, width=64, signed=False)
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError) as exc:
             expression.IntegerLiteral(-1, width=64, signed=False)
 
         self.assertEqual(
             'value -1 out of range (signed=False, width=64)',
-            str(cm.exception)
+            str(exc.exception)
         )
 
     def test_bytes_literal_expression(self):
@@ -373,7 +373,7 @@ class ExpressionTestCase(unittest.TestCase):
                 ).render_expression())
             )
 
-    def test_unary_operators(self):
+    def test_cast(self):
         self.assertEqual(
             [
                 ('(', '(int)', 'foo', ')'),

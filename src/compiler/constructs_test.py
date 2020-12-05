@@ -42,6 +42,7 @@ class NamespaceTestCase(unittest.TestCase):
         self.assertIsNone(root.parent)
 
     def test_members(self):
+        # pylint: disable=pointless-statement
         root = constructs.Namespace()
         root['child1']  # noqa
         root['child2']  # noqa
@@ -100,6 +101,7 @@ class NamespaceTestCase(unittest.TestCase):
         )
 
     def test_resolve(self):
+        # pylint: disable=pointless-statement
         root = constructs.Namespace()
         root['child1']['grandchild1']  # noqa
         root['child1']['conflict']  # noqa

@@ -199,7 +199,7 @@ class SwitchStatement(Statement):
     """Represents a switch statement.
     """
     @attr.s(frozen=True, slots=True)
-    class Case(object):
+    class Case:
         values: typing.Collection[expression_module.IntegerLiteral] = attr.ib(
             validator=attr.validators.deep_iterable(
                 member_validator=attr.validators.instance_of(expression_module.IntegerLiteral),
@@ -247,5 +247,3 @@ class SwitchStatement(Statement):
                 yield self.indent, self.indent, line
 
         yield '}'
-
-

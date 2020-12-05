@@ -7,7 +7,10 @@ python:
   - "nightly"
 install:
   - pipenv install --dev
-script: pytest
+scripts:
+  - pytest
+  - pytest --flake8
+  - pytest --pylint
 addons:
   apt:
     update: true
