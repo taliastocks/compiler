@@ -26,7 +26,9 @@ class TypeBase(metaclass=instance_cache.InstanceCacheABCMeta):
     def unify(types: typing.Collection[TypeBase]) -> typing.Collection[TypeBase]:
         """Combine one or more types together if possible; otherwise return them unchanged.
 
-        Types are expected to all be instances of the same Type class.
+        Types are expected to all be instances of the same TypeBase subclass.
+        Subclasses which override this method may assume ``types`` consists only of instances
+        of that subclass.
         """
         return set(types)  # Default implementation: remove any duplicates.
 
@@ -116,13 +118,16 @@ class Integer(TypeBase):
 
     @staticmethod
     def unify(types: typing.Collection[Integer]) -> typing.Collection[Integer]:
+        if not types:
+            return set()
+
         types_iter = iter(types)
         first_integer = next(types_iter)
 
         minimum_value = first_integer.minimum_value
         maximum_value = first_integer.maximum_value
 
-        for integer in types:
+        for integer in types_iter:
             assert isinstance(integer, Integer)
             # Record the most extreme [minimum_value, maximum_value].
             if integer.minimum_value is None:
