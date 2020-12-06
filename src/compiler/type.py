@@ -43,7 +43,7 @@ class Union(TypeBase):
         ),
         converter=frozenset,
     )
-    
+
     def __new__(cls, subtypes):
         """Unify subtypes before instantiating a Union.
         If Any() is in subtypes, return Any().
@@ -54,7 +54,8 @@ class Union(TypeBase):
         for subtype in subtypes:
             if isinstance(subtype, Any):
                 return subtype
-            elif isinstance(subtype, Union):
+
+            if isinstance(subtype, Union):
                 for subsubtype in subtype.subtypes:
                     subtypes_by_class[type(subsubtype)].add(subsubtype)
             else:
