@@ -1,14 +1,13 @@
 import textwrap
 import unittest
 
-from .. import c
-from . import function, statement, expression
+from . import program, function, statement, expression
 from .types import integer
 
 
 class ProgramTestCase(unittest.TestCase):
     def test_render_program_simple(self):
-        my_program = c.Program()
+        my_program = program.Program()
         my_program.add(
             function.Function(
                 name='main',

@@ -4,12 +4,11 @@ import typing
 
 import attr
 
-from .. import c
-from . import types, statement, include
+from . import program, types, statement, include
 
 
 @attr.s(frozen=True, slots=True)
-class Function(c.ProgramPartBase):
+class Function(program.ProgramPartBase):
     """Represents a function.
     """
 
@@ -21,7 +20,7 @@ class Function(c.ProgramPartBase):
         type: types.TypeBase = attr.ib(validator=attr.validators.instance_of(types.TypeBase))
 
     @attr.s(frozen=True, slots=True)
-    class ForwardDeclaration(c.ProgramPartBase):
+    class ForwardDeclaration(program.ProgramPartBase):
         name: str = attr.ib(validator=attr.validators.instance_of(str))
         argument_types: typing.Sequence[types.TypeBase] = attr.ib(
             validator=attr.validators.deep_iterable(

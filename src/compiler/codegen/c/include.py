@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import attr
 
-from .. import c
+from . import program
 
 
 @attr.s(frozen=True, slots=True)
-class Include(c.ProgramPartBase):
+class Include(program.ProgramPartBase):
     """Represents an "include" directive.
     """
     path = attr.ib(type=str, validator=attr.validators.instance_of(str))

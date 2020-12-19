@@ -5,12 +5,11 @@ import typing
 
 import attr
 
-from .. import include
-from ... import c
+from .. import include, program
 
 
 @attr.s(frozen=True, slots=True)
-class TypeBase(c.ProgramPartBase, metaclass=abc.ABCMeta):
+class TypeBase(program.ProgramPartBase, metaclass=abc.ABCMeta):
     """Represents a types.
     """
 
