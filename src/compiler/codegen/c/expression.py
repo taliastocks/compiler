@@ -3,12 +3,11 @@ import typing
 
 import attr
 
-from .. import c
-from . import string, types
+from . import program, string, types
 
 
 @attr.s(frozen=True, slots=True)
-class Expression(c.ProgramPartBase, metaclass=abc.ABCMeta):
+class Expression(program.ProgramPartBase, metaclass=abc.ABCMeta):
     """Represents an expression.
     """
 

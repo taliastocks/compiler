@@ -3,12 +3,11 @@ import typing
 
 import attr
 
-from .. import c
-from . import expression as expression_module, types
+from . import program, expression as expression_module, types
 
 
 @attr.s(frozen=True, slots=True)
-class Statement(c.ProgramPartBase, metaclass=abc.ABCMeta):
+class Statement(program.ProgramPartBase, metaclass=abc.ABCMeta):
     """Represents a statement.
     """
 
