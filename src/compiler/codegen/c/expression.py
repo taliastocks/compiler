@@ -97,6 +97,39 @@ class BytesLiteral(LiteralExpression):
 
 
 @attr.s(frozen=True, slots=True)
+class Call(Expression):
+    """Represents an function call, i.e. ``my_function(arguments...)``.
+    """
+    function: Expression = attr.ib(validator=attr.validators.instance_of(Expression))
+    arguments: typing.Sequence[Expression] = attr.ib(
+        validator=attr.validators.deep_iterable(
+            member_validator=attr.validators.instance_of(Expression),
+            iterable_validator=attr.validators.instance_of(tuple),
+        ),
+        converter=tuple,
+    )
+
+    def render_expression(self):
+        function_rendering = list(self.function.render_expression())
+
+        for i, line in enumerate(function_rendering):
+            if i == len(function_rendering) - 1:
+                yield line, '('
+            else:
+                yield line
+
+        for arg_index, argument in enumerate(self.arguments):
+            argument_rendering = list(argument.render_expression())
+            for i, line in enumerate(argument_rendering):
+                if i == len(argument_rendering) - 1 and arg_index < len(self.arguments) - 1:
+                    yield self.indent, line, ','
+                else:
+                    yield self.indent, line
+
+        yield ')'
+
+
+@attr.s(frozen=True, slots=True)
 class LValueExpression(Expression, metaclass=abc.ABCMeta):
     """Represents an expression which can appear on the left side of an assignment operator.
     """
@@ -127,39 +160,6 @@ class Dot(LValueExpression):
                 yield line, '.', self.member
             else:
                 yield line
-
-
-@attr.s(frozen=True, slots=True)
-class Call(LValueExpression):
-    """Represents an function call, i.e. ``my_function(arguments...)``.
-    """
-    function: Expression = attr.ib(validator=attr.validators.instance_of(Expression))
-    arguments: typing.Sequence[Expression] = attr.ib(
-        validator=attr.validators.deep_iterable(
-            member_validator=attr.validators.instance_of(Expression),
-            iterable_validator=attr.validators.instance_of(tuple),
-        ),
-        converter=tuple,
-    )
-
-    def render_expression(self):
-        function_rendering = list(self.function.render_expression())
-
-        for i, line in enumerate(function_rendering):
-            if i == len(function_rendering) - 1:
-                yield line, '('
-            else:
-                yield line
-
-        for arg_index, argument in enumerate(self.arguments):
-            argument_rendering = list(argument.render_expression())
-            for i, line in enumerate(argument_rendering):
-                if i == len(argument_rendering) - 1 and arg_index < len(self.arguments) - 1:
-                    yield self.indent, line, ','
-                else:
-                    yield self.indent, line
-
-        yield ')'
 
 
 @attr.s(frozen=True, slots=True)
