@@ -7,6 +7,7 @@ from . import statement
 
 @attr.s(frozen=True, slots=True)
 class Function:
+    name: str
     body: statement.Block
     is_async: bool = attr.ib(default=False)
     is_generator: bool = attr.ib(default=False)
