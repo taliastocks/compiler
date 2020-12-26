@@ -1,7 +1,7 @@
 import typing
 
 import attr
-import frozendict
+import immutabledict
 
 from ...meta import instance_cache
 
@@ -27,7 +27,7 @@ class Struct(TypeBase):
             value_validator=attr.validators.instance_of(TypeBase),
             mapping_validator=attr.validators.instance_of(dict),
         ),
-        converter=frozendict.frozendict,
+        converter=immutabledict.immutabledict,
     )
 
 
