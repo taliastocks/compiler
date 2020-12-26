@@ -43,3 +43,22 @@ class YieldFrom(Expression):
 @attr.s(frozen=True, slots=True)
 class Await(Expression):
     expression: typing.Optional[Expression] = attr.ib(default=None)
+
+
+@attr.s(frozen=True, slots=True)
+class IfElse(Expression):
+    condition: Expression
+    value: Expression
+    else_value: Expression
+
+
+@attr.s(frozen=True, slots=True)
+class Comprehension(Expression):
+    @attr.s(frozen=True, slots=True)
+    class Loop:
+        iterable: Expression
+        receiver: LValue
+
+    value: Expression
+    loops: typing.Sequence[Loop] = attr.ib(converter=tuple)
+    condition: typing.Optional[Expression] = attr.ib(default=None)
