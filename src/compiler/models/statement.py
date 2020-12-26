@@ -46,6 +46,7 @@ class For(Statement):
     receiver: expression_module.LValue
     body: Block
     else_body: typing.Optional[Block]
+    is_async: bool = attr.ib(default=False)
 
 
 @attr.s(frozen=True, slots=True)
@@ -63,6 +64,7 @@ class With(Statement):
     context_manager: expression_module.Expression
     receiver: typing.Optional[expression_module.LValue]
     body: Block
+    is_async: bool = attr.ib(default=False)
 
 
 @attr.s(frozen=True, slots=True)
@@ -82,3 +84,21 @@ class Try(Statement):
 @attr.s(frozen=True, slots=True)
 class Return(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
+
+
+@attr.s(frozen=True, slots=True)
+class Yield(Statement):
+    expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
+    receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
+
+
+@attr.s(frozen=True, slots=True)
+class YieldFrom(Statement):
+    expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
+    receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
+
+
+@attr.s(frozen=True, slots=True)
+class Await(Statement):
+    expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
+    receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
