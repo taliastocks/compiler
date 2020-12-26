@@ -84,21 +84,3 @@ class Try(Statement):
 @attr.s(frozen=True, slots=True)
 class Return(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
-
-
-@attr.s(frozen=True, slots=True)
-class Yield(Statement):
-    expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
-    receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
-
-
-@attr.s(frozen=True, slots=True)
-class YieldFrom(Statement):
-    expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
-    receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
-
-
-@attr.s(frozen=True, slots=True)
-class Await(Statement):
-    expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
-    receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
