@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "5139e7d9cde4873d560f02da89790dc04790d4e2475620566a7dddfbe9ee8daf"
+            "sha256": "3a6799942a03646ee06f90890845ca5256b68ef3d121221b7eb3af7895bc215f"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -24,12 +24,13 @@
             "index": "pypi",
             "version": "==20.3.0"
         },
-        "frozendict": {
+        "immutabledict": {
             "hashes": [
-                "sha256:774179f22db2ef8a106e9c38d4d1f8503864603db08de2e33be5b778230f6e45"
+                "sha256:1e6bb628eb158d32caf961bed5bb283f9e57201b50f48cd5063175612f0f3efd",
+                "sha256:9ba015dc189af8aac5921248af18a06d76a1d026e362f917a8e9ee29e8de5133"
             ],
             "index": "pypi",
-            "version": "==1.2"
+            "version": "==1.2.0"
         }
     },
     "develop": {
