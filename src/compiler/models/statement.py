@@ -1,3 +1,4 @@
+import abc
 import typing
 
 import attr
@@ -6,7 +7,7 @@ from . import expression as expression_module
 
 
 @attr.s(frozen=True, slots=True)
-class Statement:
+class Statement(metaclass=abc.ABCMeta):
     pass
 
 
