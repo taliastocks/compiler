@@ -1,3 +1,4 @@
+import abc
 import typing
 
 import attr
@@ -6,7 +7,7 @@ from . import expression as expression_module
 
 
 @attr.s(frozen=True, slots=True)
-class Statement:
+class Statement(metaclass=abc.ABCMeta):
     pass
 
 
@@ -46,6 +47,7 @@ class For(Statement):
     receiver: expression_module.LValue
     body: Block
     else_body: typing.Optional[Block]
+    is_async: bool = attr.ib(default=False)
 
 
 @attr.s(frozen=True, slots=True)
@@ -63,6 +65,7 @@ class With(Statement):
     context_manager: expression_module.Expression
     receiver: typing.Optional[expression_module.LValue]
     body: Block
+    is_async: bool = attr.ib(default=False)
 
 
 @attr.s(frozen=True, slots=True)
@@ -74,11 +77,16 @@ class Try(Statement):
         body: Block
 
     body: Block
-    exception_handlers: typing.Sequence[ExceptionHandler] = attr.ib(converter=tuple)
-    else_body: typing.Optional[Block]
-    finally_body: typing.Optional[Block]
+    exception_handlers: typing.Sequence[ExceptionHandler] = attr.ib(factory=tuple, converter=tuple)
+    else_body: typing.Optional[Block] = attr.ib(default=None)
+    finally_body: typing.Optional[Block] = attr.ib(default=None)
 
 
 @attr.s(frozen=True, slots=True)
 class Return(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
+
+
+@attr.s(frozen=True, slots=True)
+class Nonlocal(Statement):
+    variables: typing.Sequence[expression_module.Variable] = attr.ib(factory=tuple, converter=tuple)
