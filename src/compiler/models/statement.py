@@ -76,11 +76,16 @@ class Try(Statement):
         body: Block
 
     body: Block
-    exception_handlers: typing.Sequence[ExceptionHandler] = attr.ib(converter=tuple)
-    else_body: typing.Optional[Block]
-    finally_body: typing.Optional[Block]
+    exception_handlers: typing.Sequence[ExceptionHandler] = attr.ib(factory=tuple, converter=tuple)
+    else_body: typing.Optional[Block] = attr.ib(default=None)
+    finally_body: typing.Optional[Block] = attr.ib(default=None)
 
 
 @attr.s(frozen=True, slots=True)
 class Return(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
+
+
+@attr.s(frozen=True, slots=True)
+class Nonlocal(Statement):
+    variables: typing.Sequence[expression_module.Variable] = attr.ib(factory=tuple, converter=tuple)
