@@ -12,7 +12,7 @@ class Statement:
 
 @attr.s(frozen=True, slots=True)
 class Block:
-    statements = typing.Sequence[Statement] = attr.ib(converter=tuple)
+    statements: typing.Sequence[Statement] = attr.ib(converter=tuple)
 
 
 @attr.s(frozen=True, slots=True)
@@ -81,4 +81,4 @@ class Try(Statement):
 
 @attr.s(frozen=True, slots=True)
 class Return(Statement):
-    expression = typing.Optional[expression_module.Expression] = attr.ib(default=None)
+    expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
