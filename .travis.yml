@@ -1,8 +1,5 @@
 language: python
-cache:
-  directories:
-    - .pytest_cache
-    - $HOME/virtualenv
+cache: pip
 python:
   - "3.8"
   - "3.9"
