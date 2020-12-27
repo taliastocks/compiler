@@ -1,7 +1,7 @@
 language: python
 cache:
   directories:
-    - .
+    - .pytest_cache
     - $HOME/virtualenv
 python:
   - "3.8"
