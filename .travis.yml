@@ -18,8 +18,3 @@ jobs:
     - name: Flake8
       python: 3.9
       script: pytest --flake8
-addons:
-  apt:
-    update: true
-    packages:
-      - clang
