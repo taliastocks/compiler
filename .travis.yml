@@ -1,23 +1,11 @@
 language: python
-cache: pip
 python:
-  - "3.7"
   - "3.8"
   - "3.9"
   - "nightly"
 install:
   - pipenv install --dev
-script: pytest
-jobs:
-  include:
-    - name: PyLint
-      python: 3.9
-      script: pytest --pylint
-    - name: Flake8
-      python: 3.9
-      script: pytest --flake8
-addons:
-  apt:
-    update: true
-    packages:
-      - clang
+script:
+  - pytest
+  - pytest --pylint
+  - pytest --flake8
