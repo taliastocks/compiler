@@ -8,7 +8,7 @@ import attr
 from . import expression as expression_module
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Statement(metaclass=abc.ABCMeta):
     """A statement represents some action to be carried out.
     """
@@ -19,7 +19,7 @@ class Statement(metaclass=abc.ABCMeta):
         yield from []
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class ReceiverStatement(metaclass=abc.ABCMeta):
     """A ReceiverStatement is a statement which assigns to an LValue.
     """
@@ -29,7 +29,7 @@ class ReceiverStatement(metaclass=abc.ABCMeta):
         pass
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Block(Statement):
     statements: typing.Sequence[Statement] = attr.ib(converter=tuple)
 
@@ -39,25 +39,25 @@ class Block(Statement):
             yield statement
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Assignment(ReceiverStatement):
     _receivers: typing.Sequence[expression_module.LValue] = attr.ib(converter=tuple)
-    expression: expression_module.Expression
+    expression: expression_module.Expression = attr.ib()
 
     @property
     def receivers(self):
         return list(self._receivers)
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Expression(Statement):
-    expression: expression_module.Expression
+    expression: expression_module.Expression = attr.ib()
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class If(Statement):
-    condition: expression_module.Expression
-    body: Block
+    condition: expression_module.Expression = attr.ib()
+    body: Block = attr.ib()
     else_body: typing.Optional[Block] = attr.ib(default=None)
 
     def linearize(self):
@@ -69,10 +69,10 @@ class If(Statement):
             yield self.else_body
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class While(Statement):
-    condition: expression_module.Expression
-    body: Block
+    condition: expression_module.Expression = attr.ib()
+    body: Block = attr.ib()
     else_body: typing.Optional[Block] = attr.ib(default=None)
 
     def linearize(self):
@@ -84,11 +84,11 @@ class While(Statement):
             yield self.else_body
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class For(ReceiverStatement):
-    iterable: expression_module.Expression
-    receiver: expression_module.LValue
-    body: Block
+    iterable: expression_module.Expression = attr.ib()
+    receiver: expression_module.LValue = attr.ib()
+    body: Block = attr.ib()
     else_body: typing.Optional[Block] = attr.ib(default=None)
     is_async: bool = attr.ib(default=False)
 
@@ -105,21 +105,21 @@ class For(ReceiverStatement):
         return [self.receiver]
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Break(Statement):
     pass
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Continue(Statement):
     pass
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class With(ReceiverStatement):
-    context_manager: expression_module.Expression
-    receiver: typing.Optional[expression_module.LValue]
-    body: Block
+    context_manager: expression_module.Expression = attr.ib()
+    body: Block = attr.ib()
+    receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
     is_async: bool = attr.ib(default=False)
 
     def linearize(self):
@@ -133,15 +133,15 @@ class With(ReceiverStatement):
         return []
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Try(ReceiverStatement):
-    @attr.s(frozen=True, slots=True, auto_attribs=True)
+    @attr.s(frozen=True, slots=True)
     class ExceptionHandler:
-        exception: expression_module.Expression
-        receiver: typing.Optional[expression_module.LValue]
-        body: Block
+        exception: expression_module.Expression = attr.ib()
+        receiver: typing.Optional[expression_module.LValue] = attr.ib()
+        body: Block = attr.ib()
 
-    body: Block
+    body: Block = attr.ib()
     exception_handlers: typing.Sequence[ExceptionHandler] = attr.ib(factory=tuple, converter=tuple)
     else_body: typing.Optional[Block] = attr.ib(default=None)
     finally_body: typing.Optional[Block] = attr.ib(default=None)
@@ -170,11 +170,11 @@ class Try(ReceiverStatement):
         ]
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Return(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Nonlocal(Statement):
     variables: typing.Sequence[expression_module.Variable] = attr.ib(factory=tuple, converter=tuple)

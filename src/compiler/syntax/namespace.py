@@ -6,24 +6,24 @@ import typing
 import attr
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Declarable(metaclass=abc.ABCMeta):
     """A Declarable is an object such as a function or a variable
     which can be declared within a namespace.
     """
 
-    name: str
+    name: str = attr.ib()
     namespace: Namespace = attr.ib()
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Namespace(metaclass=abc.ABCMeta):
     """A Namespace (or scope) is an environment to hold a logical
     grouping of identifiers or symbols.
 
     TODO: tests
     """
-    name: str
+    name: str = attr.ib()
     parent: typing.Optional[Namespace] = attr.ib(default=None)
     declarations: typing.MutableMapping[str, Declarable] = attr.ib(factory=dict, init=False)
 
@@ -34,7 +34,7 @@ class Namespace(metaclass=abc.ABCMeta):
                 self,
             ))
         if declarable.namespace is not self:
-            raise ValueError('expected {!}.namespace to be {!r}, but got {!r}'.format(
+            raise ValueError('expected {!r}.namespace to be {!r}, but got {!r}'.format(
                 declarable,
                 self,
                 declarable.namespace,
@@ -52,7 +52,7 @@ class Namespace(metaclass=abc.ABCMeta):
         return declarable
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class FunctionNamespace(Namespace):
     """Represents the inner scope of a function.
     """

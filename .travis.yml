@@ -6,6 +6,4 @@ python:
 install:
   - pipenv install --dev
 script:
-  - pytest
-  - pytest --pylint
-  - pytest --flake8
+  - pytest --pylint --flake8

@@ -5,18 +5,19 @@ import attr
 from . import expression, statement as statement_module, namespace, variable
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Function(namespace.Declarable):
     """A Function declaration and definition.
 
     TODO: tests
     """
+    # pylint: disable=too-many-instance-attributes
 
-    @attr.s(frozen=True, slots=True, auto_attribs=True)
+    @attr.s(frozen=True, slots=True)
     class Argument:
-        name: str
+        name: str = attr.ib()
 
-    body: statement_module.Block
+    body: statement_module.Block = attr.ib()
     is_async: bool = attr.ib(default=False)
     is_generator: bool = attr.ib(default=False)
 

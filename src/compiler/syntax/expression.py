@@ -6,21 +6,21 @@ import typing
 import attr
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Expression(metaclass=abc.ABCMeta):
     """An Expression is a syntactic entity that may be evaluated to determine
     its value.
     """
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class LValue(Expression):
     """An LValue is an expression which can be assigned to, i.e. it can appear
     on the left-hand side of an `=` sign (thus "L" as in "Left").
     """
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Variable(LValue):
     """A Variable is an expression which evaluates to the value of a
     variable in a scope.
@@ -30,10 +30,10 @@ class Variable(LValue):
 
         name: The name of the variable.
     """
-    name: str
+    name: str = attr.ib()
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Unpack(LValue):
     """On assignment, unpack an iterable into a collection of LValues.
     """
@@ -50,30 +50,30 @@ class Unpack(LValue):
                 yield from lvalue.variables
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Subscript(LValue):
     """An array subscript, i.e. ``my_array[3]``.
     """
-    operand: Expression
-    subscript: Expression
+    operand: Expression = attr.ib()
+    subscript: Expression = attr.ib()
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Dot(LValue):
     """The dot operator, i.e. ``my_instance.my_member``.
     """
-    operand: Expression
-    member: str
+    operand: Expression = attr.ib()
+    member: str = attr.ib()
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Yield(Expression):
     """Yield a single value from a generator.
     """
     expression: typing.Optional[Expression] = attr.ib(default=None)
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class YieldFrom(Expression):
     """Yield all the values of an iterable. This can only be used from within
     a generator.
@@ -85,7 +85,7 @@ class YieldFrom(Expression):
     is_async: bool = attr.ib(default=False)
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Await(Expression):
     """Await a promise. This can only be used from within an async function
     or async generator.
@@ -93,25 +93,25 @@ class Await(Expression):
     expression: typing.Optional[Expression] = attr.ib(default=None)
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class IfElse(Expression):
     """Choose between expressions to evaluate.
     """
-    condition: Expression
-    value: Expression
-    else_value: Expression
+    condition: Expression = attr.ib()
+    value: Expression = attr.ib()
+    else_value: Expression = attr.ib()
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@attr.s(frozen=True, slots=True)
 class Comprehension(Expression):
     """Define a generator in terms of another iterable.
     """
 
-    @attr.s(frozen=True, slots=True, auto_attribs=True)
+    @attr.s(frozen=True, slots=True)
     class Loop:
-        iterable: Expression
-        receiver: LValue
+        iterable: Expression = attr.ib()
+        receiver: LValue = attr.ib()
 
-    value: Expression
+    value: Expression = attr.ib()
     loops: typing.Sequence[Loop] = attr.ib(converter=tuple)
     condition: typing.Optional[Expression] = attr.ib(default=None)
