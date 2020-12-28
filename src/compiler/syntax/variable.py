@@ -3,7 +3,7 @@ import attr
 from . import namespace
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(frozen=True, slots=True, auto_attribs=True)
 class Variable(namespace.Declarable):
     """A Variable is a register in a namespace which can hold runtime values.
 
