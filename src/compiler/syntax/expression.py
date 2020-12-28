@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import typing
 
@@ -28,23 +30,40 @@ class Variable(LValue):
 
         name: The name of the variable.
     """
-    name: str
+    name: str = attr.ib()
+
+
+@attr.s(frozen=True, slots=True)
+class Unpack(LValue):
+    """On assignment, unpack an iterable into a collection of LValues.
+    """
+    lvalues: typing.Sequence[LValue] = attr.ib(converter=tuple)
+
+    @property
+    def variables(self) -> typing.Generator[Variable, None, None]:
+        """Iterate over all the variables which unpacking would assign to.
+        """
+        for lvalue in self.lvalues:
+            if isinstance(lvalue, Variable):
+                yield lvalue
+            elif isinstance(lvalue, Unpack):
+                yield from lvalue.variables
 
 
 @attr.s(frozen=True, slots=True)
 class Subscript(LValue):
     """An array subscript, i.e. ``my_array[3]``.
     """
-    operand: Expression
-    subscript: Expression
+    operand: Expression = attr.ib()
+    subscript: Expression = attr.ib()
 
 
 @attr.s(frozen=True, slots=True)
 class Dot(LValue):
     """The dot operator, i.e. ``my_instance.my_member``.
     """
-    operand: Expression
-    member: str
+    operand: Expression = attr.ib()
+    member: str = attr.ib()
 
 
 @attr.s(frozen=True, slots=True)
@@ -78,9 +97,9 @@ class Await(Expression):
 class IfElse(Expression):
     """Choose between expressions to evaluate.
     """
-    condition: Expression
-    value: Expression
-    else_value: Expression
+    condition: Expression = attr.ib()
+    value: Expression = attr.ib()
+    else_value: Expression = attr.ib()
 
 
 @attr.s(frozen=True, slots=True)
@@ -90,9 +109,9 @@ class Comprehension(Expression):
 
     @attr.s(frozen=True, slots=True)
     class Loop:
-        iterable: Expression
-        receiver: LValue
+        iterable: Expression = attr.ib()
+        receiver: LValue = attr.ib()
 
-    value: Expression
+    value: Expression = attr.ib()
     loops: typing.Sequence[Loop] = attr.ib(converter=tuple)
     condition: typing.Optional[Expression] = attr.ib(default=None)
