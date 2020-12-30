@@ -1,0 +1,48 @@
+name: Python package
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9]
+
+    env:
+      VIRTUAL_ENV: /tmp/virtualenvs/compiler
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache virtualenv
+      uses: actions/cache@v2
+      with:
+        # This path is specific to Ubuntu
+        path: |
+          /tmp/virtualenvs/compiler
+        # Look to see if there is a cache hit for the corresponding requirements file
+        key: >
+          v1-${{ runner.os }}
+          virtualenv-${{ matrix.python-version }}
+          ${{ hashFiles('Pipfile.lock') }}
+          ${{ hashFiles('.github/workflows/test.yml') }}
+
+    - name: Install dependencies
+      run: |
+        if [ ! -d "$VIRTUAL_ENV" ]; then
+          python -m venv $VIRTUAL_ENV
+          source $VIRTUAL_ENV/bin/activate
+          python -m pip install pipenv
+          python -m pipenv install --dev
+        fi
+
+    - name: Test with pytest
+      run: |
+        source $VIRTUAL_ENV/bin/activate
+        python -m pytest --pylint --flake8
