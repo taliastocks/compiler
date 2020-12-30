@@ -28,16 +28,19 @@ jobs:
           /tmp/virtualenvs/compiler
         # Look to see if there is a cache hit for the corresponding requirements file
         key: >
-          v1-${{ runner.os }}-virtualenv-${{ matrix.python-version }}-
-          ${{ hashFiles('Pipfile.lock') }}-
+          v1-${{ runner.os }}
+          virtualenv-${{ matrix.python-version }}
+          ${{ hashFiles('Pipfile.lock') }}
           ${{ hashFiles('.github/workflows/test.yml') }}
 
     - name: Install dependencies
       run: |
-        python -m venv $VIRTUAL_ENV
-        source $VIRTUAL_ENV/bin/activate
-        python -m pip install pipenv
-        python -m pipenv install --dev
+        if [ ! -d "/path/to/dir" ]; then
+          python -m venv $VIRTUAL_ENV
+          source $VIRTUAL_ENV/bin/activate
+          python -m pip install pipenv
+          python -m pipenv install --dev
+        fi
 
     - name: Test with pytest
       run: |
