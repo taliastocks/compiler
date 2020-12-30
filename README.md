@@ -1,3 +1,3 @@
-# compiler [![Build Status](https://api.travis-ci.org/Sibilance/compiler.svg?branch=main)](https://travis-ci.com/github/Sibilance/compiler)
+# compiler ![pytest](https://github.com/Sibilance/compiler/workflows/pytest/badge.svg)
 
 Work in progress.
