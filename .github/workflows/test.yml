@@ -10,45 +10,51 @@ jobs:
         python-version: [3.8, 3.9]
 
     env:
-      VIRTUAL_ENV: /tmp/virtualenvs/compiler
+      VIRTUAL_ENV: /tmp/virtualenv
 
     steps:
-    - uses: actions/checkout@v2
+      #- uses: actions/checkout@v2
+      - name: Clone branch
+        run: |
+          git init ${{ github.workspace }}
+          git remote add origin https://github.com/${{ github.repository }}
+          git config --local gc.auto 0
+          git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ${{ github.token }}
+          git fetch --no-tags --depth=100 --progress origin +${{ github.sha }}:${{ github.ref }}
+          git checkout --progress --force ${{ github.ref }}
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Cache virtualenv
-      uses: actions/cache@v2
-      with:
-        # This path is specific to Ubuntu
-        path: |
-          /tmp/virtualenvs/compiler
-          /tmp/pytest_cache
-        # Look to see if there is a cache hit for the corresponding requirements file
-        key: >
-          ${{ runner.os }}
-          virtualenv-${{ matrix.python-version }}
-          ${{ hashFiles('Pipfile.lock') }}
-          ${{ hashFiles('.github/workflows/test.yml') }}
+      - name: Cache virtualenv
+        uses: actions/cache@v2
+        with:
+          path: |
+            /tmp/virtualenv
+            /tmp/pytest_cache
+          key: >
+            ${{ runner.os }}
+            virtualenv-${{ matrix.python-version }}
+            ${{ hashFiles('Pipfile.lock') }}
+            ${{ hashFiles('.github/workflows/test.yml') }}
 
-    - name: Install dependencies
-      run: |
-        if [ ! -d "$VIRTUAL_ENV" ]; then
-          python -m venv $VIRTUAL_ENV
+      - name: Install dependencies
+        run: |
+          if [ ! -d "$VIRTUAL_ENV" ]; then
+            python -m venv $VIRTUAL_ENV
+            source $VIRTUAL_ENV/bin/activate
+            python -m pip install pipenv
+            python -m pipenv install --dev
+          fi
+
+          # Set modified time of each file to the latest commit time so pytest caching works.
+          # Credit: https://stackoverflow.com/questions/2458042/restore-a-files-modification-time-in-git
+          git log --pretty=%at --name-status --reverse |
+            perl -ane '($x,$f)=@F;next if !$x;$t=$x,next if !defined($f)||$s{$f};$s{$f}=utime($t,$t,$f),next if $x=~/[AM]/;'
+
+      - name: Test with pytest
+        run: |
           source $VIRTUAL_ENV/bin/activate
-          python -m pip install pipenv
-          python -m pipenv install --dev
-        fi
-
-        # Set modified time of each file to the latest commit time so pytest caching works.
-        # Credit: https://stackoverflow.com/questions/2458042/restore-a-files-modification-time-in-git
-        git log --pretty=%at --name-status --reverse |
-          perl -ane '($x,$f)=@F;next if !$x;$t=$x,next if !defined($f)||$s{$f};$s{$f}=utime($t,$t,$f),next if $x=~/[AM]/;'
-
-    - name: Test with pytest
-      run: |
-        source $VIRTUAL_ENV/bin/activate
-        python -m pytest --pylint --flake8 -o cache_dir=/tmp/pytest_cache
+          python -m pytest --pylint --flake8 -o cache_dir=/tmp/pytest_cache
