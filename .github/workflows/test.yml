@@ -34,7 +34,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m venv --upgrade $VIRTUAL_ENV
+        python -m venv $VIRTUAL_ENV
         source $VIRTUAL_ENV/bin/activate
         python -m pip install pipenv
         python -m pipenv install --dev
