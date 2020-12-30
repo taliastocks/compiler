@@ -11,6 +11,25 @@ class Expression(metaclass=abc.ABCMeta):
     """An Expression is a syntactic entity that may be evaluated to determine
     its value.
     """
+    @property
+    def expressions(self) -> typing.Iterable[Expression]:
+        """Get all the expressions which this expression directly depends on,
+        not including descendants of those expressions.
+        """
+        yield from []
+
+    @property
+    def has_yield(self) -> bool:
+        """True if this expression yields, otherwise False
+        """
+        if isinstance(self, (Yield, YieldFrom)):
+            return True
+
+        for expression in self.expressions:
+            if expression.has_yield:
+                return True
+
+        return False
 
 
 @attr.s(frozen=True, slots=True)
@@ -40,14 +59,18 @@ class Unpack(LValue):
     lvalues: typing.Sequence[LValue] = attr.ib(converter=tuple)
 
     @property
-    def variables(self) -> typing.Generator[Variable, None, None]:
+    def expressions(self):
+        yield from self.lvalues
+
+    @property
+    def variable_assignments(self) -> typing.Iterable[Variable]:
         """Iterate over all the variables which unpacking would assign to.
         """
         for lvalue in self.lvalues:
             if isinstance(lvalue, Variable):
                 yield lvalue
             elif isinstance(lvalue, Unpack):
-                yield from lvalue.variables
+                yield from lvalue.variable_assignments
 
 
 @attr.s(frozen=True, slots=True)
@@ -57,6 +80,11 @@ class Subscript(LValue):
     operand: Expression = attr.ib()
     subscript: Expression = attr.ib()
 
+    @property
+    def expressions(self):
+        yield self.operand
+        yield self.subscript
+
 
 @attr.s(frozen=True, slots=True)
 class Dot(LValue):
@@ -65,12 +93,21 @@ class Dot(LValue):
     operand: Expression = attr.ib()
     member: str = attr.ib()
 
+    @property
+    def expressions(self):
+        yield self.operand
+
 
 @attr.s(frozen=True, slots=True)
 class Yield(Expression):
     """Yield a single value from a generator.
     """
     expression: typing.Optional[Expression] = attr.ib(default=None)
+
+    @property
+    def expressions(self):
+        if self.expression is not None:
+            yield self.expression
 
 
 @attr.s(frozen=True, slots=True)
@@ -84,6 +121,11 @@ class YieldFrom(Expression):
     expression: typing.Optional[Expression] = attr.ib(default=None)
     is_async: bool = attr.ib(default=False)
 
+    @property
+    def expressions(self):
+        if self.expression is not None:
+            yield self.expression
+
 
 @attr.s(frozen=True, slots=True)
 class Await(Expression):
@@ -91,6 +133,11 @@ class Await(Expression):
     or async generator.
     """
     expression: typing.Optional[Expression] = attr.ib(default=None)
+
+    @property
+    def expressions(self):
+        if self.expression is not None:
+            yield self.expression
 
 
 @attr.s(frozen=True, slots=True)
@@ -100,6 +147,12 @@ class IfElse(Expression):
     condition: Expression = attr.ib()
     value: Expression = attr.ib()
     else_value: Expression = attr.ib()
+
+    @property
+    def expressions(self):
+        yield self.condition
+        yield self.value
+        yield self.else_value
 
 
 @attr.s(frozen=True, slots=True)
@@ -115,3 +168,14 @@ class Comprehension(Expression):
     value: Expression = attr.ib()
     loops: typing.Sequence[Loop] = attr.ib(converter=tuple)
     condition: typing.Optional[Expression] = attr.ib(default=None)
+
+    @property
+    def expressions(self):
+        for loop in self.loops:
+            yield loop.iterable
+            yield loop.receiver
+
+        yield self.value
+
+        if self.condition is not None:
+            yield self.condition
