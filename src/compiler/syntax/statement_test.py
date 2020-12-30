@@ -5,13 +5,116 @@ from . import statement, expression
 
 class StatementTestCase(unittest.TestCase):
     def test_variable_assignments(self):
-        pass
+        # Simple assignment returns variables.
+        self.assertEqual(
+            [
+                expression.Variable('foo'),
+                expression.Variable('bar'),
+            ],
+            list(statement.Assignment(
+                receivers=[
+                    expression.Variable('foo'),
+                    expression.Variable('bar'),
+                ],
+                expression=expression.Variable('value'),
+            ).variable_assignments)
+        )
+
+        # Nested statements with unpacking return nested variables.
+        self.assertEqual(
+            [
+                expression.Variable('receiver_1'),
+                expression.Variable('receiver_2'),
+                expression.Variable('receiver_3'),
+                expression.Variable('receiver_4'),
+            ],
+            list(statement.For(
+                iterable=expression.Variable('iterable'),
+                receiver=expression.Unpack([
+                    expression.Variable('receiver_1'),
+                    expression.Unpack([
+                        expression.Variable('receiver_2'),
+                        expression.Variable('receiver_3'),
+                    ]),
+                ]),
+                body=statement.Block([
+                    statement.With(
+                        context_manager=expression.Variable('context_manager'),
+                        body=statement.Block([]),
+                        receiver=expression.Variable('receiver_4'),
+                    ),
+                    statement.Expression(
+                        expression.Variable('some_other_variable')
+                    ),
+                ]),
+            ).variable_assignments)
+        )
 
     def test_nonlocal_variables(self):
-        pass
+        # Simple.
+        self.assertEqual(
+            [
+                expression.Variable('my_nonlocal_1'),
+                expression.Variable('my_nonlocal_2'),
+            ],
+            list(statement.Nonlocal([
+                expression.Variable('my_nonlocal_1'),
+                expression.Variable('my_nonlocal_2'),
+            ]).nonlocal_variables)
+        )
+
+        # Nested.
+        self.assertEqual(
+            [
+                expression.Variable('my_nonlocal'),
+            ],
+            list(statement.While(
+                condition=expression.Variable('condition'),
+                body=statement.Block([
+                    statement.Nonlocal([
+                        expression.Variable('my_nonlocal')
+                    ]),
+                    statement.Expression(
+                        expression.Variable('some_other_variable')
+                    ),
+                ]),
+            ).nonlocal_variables)
+        )
 
     def test_has_yield(self):
-        pass
+        # Simple.
+        self.assertIs(
+            True,
+            statement.Expression(
+                expression.Yield()
+            ).has_yield
+        )
+        self.assertIs(
+            True,
+            statement.Expression(
+                expression.YieldFrom()
+            ).has_yield
+        )
+        self.assertIs(
+            False,
+            statement.Expression(
+                expression.Variable('whatever')
+            ).has_yield
+        )
+
+        # Nested.
+        self.assertIs(
+            True,
+            statement.While(
+                condition=expression.Variable('condition'),
+                body=statement.Block([]),
+                else_body=statement.Block([
+                    statement.Expression(
+                        expression.Yield()
+                    )
+                ])
+            ).has_yield
+        )
 
 
 class BlockTestCase(unittest.TestCase):

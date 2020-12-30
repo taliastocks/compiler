@@ -22,7 +22,8 @@ class Statement(metaclass=abc.ABCMeta):
     @property
     def expressions(self) -> typing.Iterable[expression_module.Expression]:
         """Get all the Expressions this statement executes, not including
-        expressions executed by statements within this statement.
+        expressions executed by statements within this statement, and not
+        including expressions within those expressions.
         """
         yield from []
 
