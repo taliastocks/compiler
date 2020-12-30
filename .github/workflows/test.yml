@@ -1,9 +1,13 @@
 name: Python package
 
-on: [push]
+on:
+  - push
+  - pull_request
 
 jobs:
   build:
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
+
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -35,11 +39,17 @@ jobs:
           path: |
             /tmp/virtualenv
             /tmp/pytest_cache
-          key: >
-            ${{ runner.os }}
-            virtualenv-${{ matrix.python-version }}
-            ${{ hashFiles('Pipfile.lock') }}
-            ${{ hashFiles('.github/workflows/test.yml') }}
+          key: "\
+            ${{ runner.os }}-\
+            virtualenv-${{ matrix.python-version }}-\
+            ${{ hashFiles('Pipfile.lock') }}-\
+            ${{ hashFiles('.github/workflows/test.yml') }}-\
+            ${{ github.sha }}"  # Always create a new cache.
+          restore-keys: "\
+            ${{ runner.os }}-\
+            virtualenv-${{ matrix.python-version }}-\
+            ${{ hashFiles('Pipfile.lock') }}-\
+            ${{ hashFiles('.github/workflows/test.yml') }}-"
 
       - name: Install dependencies
         run: |
