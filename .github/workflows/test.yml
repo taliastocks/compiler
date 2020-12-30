@@ -13,13 +13,14 @@ jobs:
       VIRTUAL_ENV: /tmp/virtualenv
 
     steps:
-      #- uses: actions/checkout@v2
       - name: Clone branch
         run: |
+          # Clone branch.
           set -v
           git init ${{ github.workspace }}
           git remote add origin https://github.com/${{ github.repository }}
           git config --local gc.auto 0
+          git config --local advice.detachedHead 0
           git fetch --no-tags --depth=100 origin +${{ github.sha }}:${{ github.ref }}
           git checkout --progress --force ${{ github.ref }}
 
