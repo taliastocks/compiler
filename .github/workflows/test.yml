@@ -10,7 +10,7 @@ jobs:
         python-version: [3.8, 3.9]
 
     env:
-      VIRTUAL_ENV: ~/.local/share/virtualenvs/compiler
+      VIRTUAL_ENV: /tmp/virtualenvs/compiler
 
     steps:
     - uses: actions/checkout@v2
@@ -26,7 +26,7 @@ jobs:
         # This path is specific to Ubuntu
         path: |
           ~/.cache/pip
-          ~/.local/share/virtualenvs
+          /tmp/virtualenvs/compiler
         # Look to see if there is a cache hit for the corresponding requirements file
         key: v1-${{ runner.os }}-virtualenv-${{ matrix.python-version }}-${{ hashFiles('Pipfile.lock') }}
         restore-keys: |
@@ -41,5 +41,5 @@ jobs:
 
     - name: Test with pytest
       run: |
-        source $VIRTUAL_ENV/activate
+        source $VIRTUAL_ENV/bin/activate
         python -m pytest --pylint --flake8
