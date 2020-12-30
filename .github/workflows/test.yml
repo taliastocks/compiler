@@ -58,7 +58,7 @@ jobs:
         run: |
           set -v
           git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
-          env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node12 /tmp/setup-python/dist/index.js
+          env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
 
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
