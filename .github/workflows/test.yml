@@ -35,10 +35,10 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m venv $VIRTUALENV
-        $VIRTUALENV/bin/python -m pip install --upgrade pipenv
-        $VIRTUALENV/bin/python -m pipenv install --dev
+        python -m venv $VIRTUAL_ENV
+        $VIRTUAL_ENV/bin/python -m pip install --upgrade pipenv
+        $VIRTUAL_ENV/bin/python -m pipenv install --dev
 
     - name: Test with pytest
       run: |
-        $VIRTUALENV/bin/python -m pytest --pylint --flake8
+        $VIRTUAL_ENV/bin/python -m pytest --pylint --flake8
