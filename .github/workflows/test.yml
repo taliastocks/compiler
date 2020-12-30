@@ -5,7 +5,7 @@ on:
   - pull_request
 
 jobs:
-  build:
+  test:
     if: github.event_name == 'push' || github.event.pull_request.merged == true
 
     runs-on: ubuntu-latest
@@ -18,10 +18,12 @@ jobs:
 
     steps:
       - name: Clone branch
+        # Cloning the branch directly (without actions/checkout@v2) is a few seconds faster.
         run: |
           # Clone branch.
           set -v
           git init ${{ github.workspace }}
+          cd ${{ github.workspace }}
           git remote add origin https://github.com/${{ github.repository }}
           git config --local gc.auto 0
           git config --local advice.detachedHead 0
@@ -52,11 +54,15 @@ jobs:
             ${{ hashFiles('Pipfile.lock') }}-\
             ${{ hashFiles('.github/workflows/test.yml') }}-"
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Install Python ${{ matrix.python-version }}
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
+        # Use actions/setup-python@v2 to install Python. We install and invoke the action manually
+        # (rather than with "use:") to avoid downloading it at all if we won't need it.
+        run: |
+          # Install Python
+          set -v
+          git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
+          env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
 
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
