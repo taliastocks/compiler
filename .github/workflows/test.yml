@@ -10,7 +10,7 @@ jobs:
         python-version: [3.8, 3.9]
 
     env:
-      VIRTUAL_ENV: .local/share/virtualenvs/compiler
+      VIRTUAL_ENV: ~/.local/share/virtualenvs/compiler
 
     steps:
     - uses: actions/checkout@v2
