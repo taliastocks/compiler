@@ -55,12 +55,10 @@ jobs:
 
       - name: Install Python ${{ matrix.python-version }}
         if: steps.cache.outputs.cache-hit != 'true'
-        #uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
         run: |
           set -v
           git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
+          export INPUT_PYTHON-VERSION=${{ matrix.python-version }}
           node12 /tmp/setup-python/dist/index.js
 
       - name: Install dependencies
