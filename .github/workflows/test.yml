@@ -22,4 +22,5 @@ jobs:
         python -m pip install --upgrade pipenv
         python -m pipenv install --dev
     - name: Test with pytest
-      run: pytest --pylint --flake8
+      run: |
+        python -m pytest --pylint --flake8
