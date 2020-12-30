@@ -28,16 +28,18 @@ jobs:
           ~/.cache/pip
           ~/.local/share/virtualenvs
         # Look to see if there is a cache hit for the corresponding requirements file
-        key: v1-${{ runner.os }}-virtualenv-${{ hashFiles('Pipfile.lock') }}
+        key: v1-${{ runner.os }}-virtualenv-${{ matrix.python-version }}-${{ hashFiles('Pipfile.lock') }}
         restore-keys: |
-          v1-${{ runner.os }}-virtualenv-
+          v1-${{ runner.os }}-virtualenv-${{ matrix.python-version }}-
 
     - name: Install dependencies
       run: |
-        python -m venv $VIRTUAL_ENV
-        $VIRTUAL_ENV/bin/python -m pip install pipenv
-        $VIRTUAL_ENV/bin/python -m pipenv install --dev
+        python -m venv --upgrade $VIRTUAL_ENV
+        source $VIRTUAL_ENV/activate
+        python -m pip install pipenv
+        python -m pipenv install --dev
 
     - name: Test with pytest
       run: |
-        $VIRTUAL_ENV/bin/python -m pytest --pylint --flake8
+        source $VIRTUAL_ENV/activate
+        python -m pytest --pylint --flake8
