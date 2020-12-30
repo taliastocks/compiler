@@ -20,9 +20,6 @@ jobs:
           git init ${{ github.workspace }}
           git remote add origin https://github.com/${{ github.repository }}
           git config --local gc.auto 0
-          git config --local --name-only --get-regexp core\.sshCommand
-          git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
-          git config --local 'http.https://github.com/.extraheader' 'AUTHORIZATION: basic ${{ github.token }}'
           git fetch --no-tags --depth=100 --progress origin +${{ github.sha }}:${{ github.ref }}
           git checkout --progress --force ${{ github.ref }}
 
