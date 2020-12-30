@@ -43,6 +43,11 @@ jobs:
           python -m pipenv install --dev
         fi
 
+        # Set modified time of each file to the latest commit time so pytest caching works.
+        # Credit: https://stackoverflow.com/questions/2458042/restore-a-files-modification-time-in-git
+        git log --pretty=%at --name-status --reverse |
+          perl -ane '($x,$f)=@F;next if !$x;$t=$x,next if !defined($f)||$s{$f};$s{$f}=utime($t,$t,$f),next if $x=~/[AM]/;'
+
     - name: Test with pytest
       run: |
         source $VIRTUAL_ENV/bin/activate
