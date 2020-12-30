@@ -18,11 +18,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Cache pip
+    - name: Cache virtualenv
       uses: actions/cache@v2
       with:
         # This path is specific to Ubuntu
-        path: ~/.cache/pip
+        path: ~/.local/share/virtualenv
         # Look to see if there is a cache hit for the corresponding requirements file
         key: ${{ runner.os }}-pip-${{ hashFiles('Pipfile.lock') }}
         restore-keys: |
@@ -30,6 +30,7 @@ jobs:
 
     - name: Install dependencies
       run: |
+        python -m pip install --upgrade pip
         python -m pip install --upgrade pipenv
         pipenv install --dev
 
