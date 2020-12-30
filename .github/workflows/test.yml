@@ -45,7 +45,7 @@ jobs:
             ${{ hashFiles('Pipfile.lock') }}-\
             ${{ hashFiles('.github/workflows/test.yml') }}-\
             ${{ github.sha }}"  # Always create a new cache.
-          restore_keys: "\
+          restore-keys: "\
             ${{ runner.os }}-\
             virtualenv-${{ matrix.python-version }}-\
             ${{ hashFiles('Pipfile.lock') }}-\
