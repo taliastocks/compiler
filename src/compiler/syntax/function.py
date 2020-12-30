@@ -2,7 +2,7 @@ import typing
 
 import attr
 
-from . import expression, statement as statement_module, namespace, variable
+from . import statement as statement_module, namespace, variable
 
 
 @attr.s(frozen=True, slots=True)
@@ -27,6 +27,11 @@ class Function(namespace.Declarable):
     extra_keyword_arguments: typing.Optional[Argument] = attr.ib(default=None)
 
     local_scope: namespace.FunctionNamespace = attr.ib(init=False)
+
+    @is_generator.validator
+    def _check_is_generator(self, _, is_generator):
+        if is_generator is False and self.body.has_yield:
+            raise ValueError('body of non-generator contains ``yield`` expression')
 
     @local_scope.default
     def _init_local_scope(self):
@@ -54,29 +59,15 @@ class Function(namespace.Declarable):
 
         # Find all the variable assignments from the function body,
         # as well as all the "nonlocal" declarations.
-        nonlocal_names = set()
-        assigned_variables = set()
-
-        statement: statement_module.Statement
-        for statement in self.body.linearize():
-            if isinstance(statement, statement_module.Nonlocal):
-                statement: statement_module.Nonlocal
-                nonlocal_names.update(
-                    var.name for var in statement.variables
-                )
-
-            if isinstance(statement, statement_module.ReceiverStatement):
-                receiver: expression.LValue
-                for receiver in statement.receivers:
-                    if isinstance(receiver, expression.Variable):
-                        assigned_variables.add(receiver.name)
-                    if isinstance(receiver, expression.Unpack):
-                        assigned_variables.update(
-                            var.name for var in receiver.variables
-                        )
+        nonlocal_names = {
+            nonlocal_variable.name for nonlocal_variable in self.body.nonlocal_variables
+        }
+        assigned_variable_names = {
+            assigned_variable.name for assigned_variable in self.body.variable_assignments
+        }
 
         # Declare all the local variables (anything assigned and not declared nonlocal).
-        for local_name in assigned_variables - nonlocal_names:
+        for local_name in assigned_variable_names - nonlocal_names:
             local_scope.declare(
                 variable.Variable(
                     name=local_name,
