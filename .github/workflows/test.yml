@@ -28,12 +28,13 @@ jobs:
           git fetch --no-tags --depth=100 origin +${{ github.sha }}:${{ github.ref }}
           git checkout --progress --force ${{ github.ref }}
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
+          # Set modified time of each file to the latest commit time so pytest caching works.
+          # Credit: https://stackoverflow.com/questions/2458042/restore-a-files-modification-time-in-git
+          git log --pretty=%at --name-status --reverse |
+            perl -ane '($x,$f)=@F;next if !$x;$t=$x,next if !defined($f)||$s{$f};$s{$f}=utime($t,$t,$f),next if $x=~/[AM]/;'
 
       - name: Cache virtualenv
+        id: cache
         uses: actions/cache@v2
         with:
           path: |
@@ -44,26 +45,26 @@ jobs:
             virtualenv-${{ matrix.python-version }}-\
             ${{ hashFiles('Pipfile.lock') }}-\
             ${{ hashFiles('.github/workflows/test.yml') }}-\
-            ${{ github.sha }}"  # Always create a new cache.
+            ${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}"  # Always create a new cache on main.
           restore-keys: "\
             ${{ runner.os }}-\
             virtualenv-${{ matrix.python-version }}-\
             ${{ hashFiles('Pipfile.lock') }}-\
             ${{ hashFiles('.github/workflows/test.yml') }}-"
 
-      - name: Install dependencies
-        run: |
-          if [ ! -d "$VIRTUAL_ENV" ]; then
-            python -m venv $VIRTUAL_ENV
-            source $VIRTUAL_ENV/bin/activate
-            python -m pip install pipenv
-            python -m pipenv install --dev
-          fi
+      - name: Set up Python ${{ matrix.python-version }}
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
 
-          # Set modified time of each file to the latest commit time so pytest caching works.
-          # Credit: https://stackoverflow.com/questions/2458042/restore-a-files-modification-time-in-git
-          git log --pretty=%at --name-status --reverse |
-            perl -ane '($x,$f)=@F;next if !$x;$t=$x,next if !defined($f)||$s{$f};$s{$f}=utime($t,$t,$f),next if $x=~/[AM]/;'
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          python -m venv $VIRTUAL_ENV
+          source $VIRTUAL_ENV/bin/activate
+          python -m pip install pipenv
+          python -m pipenv install --dev
 
       - name: Test with pytest
         run: |
