@@ -28,10 +28,9 @@ jobs:
           ~/.cache/pip
           ~/.local/share/virtualenvs
         # Look to see if there is a cache hit for the corresponding requirements file
-        key: ${{ runner.os }}-pip-${{ hashFiles('Pipfile.lock') }}
+        key: v1-${{ runner.os }}-virtualenv-${{ hashFiles('Pipfile.lock') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
-          ${{ runner.os }}-
+          v1-${{ runner.os }}-virtualenv-
 
     - name: Install dependencies
       run: |
