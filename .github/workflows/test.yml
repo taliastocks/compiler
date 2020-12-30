@@ -18,6 +18,7 @@ jobs:
 
     steps:
       - name: Clone branch
+        # Cloning the branch directly (without actions/checkout@v2) is a few seconds faster.
         run: |
           # Clone branch.
           set -v
@@ -55,7 +56,10 @@ jobs:
 
       - name: Install Python ${{ matrix.python-version }}
         if: steps.cache.outputs.cache-hit != 'true'
+        # Use actions/setup-python@v2 to install Python. We install and invoke the action manually
+        # (rather than with "use:") to avoid downloading it at all if we won't need it.
         run: |
+          # Install Python
           set -v
           git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
           env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
