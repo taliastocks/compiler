@@ -44,7 +44,7 @@ jobs:
             virtualenv-${{ matrix.python-version }}-\
             ${{ hashFiles('Pipfile.lock') }}-\
             ${{ hashFiles('.github/workflows/test.yml') }}-\
-            ${{ github.sha }}"  # Always create a new cache.
+            ${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}"  # Always create a new cache on main.
           restore-keys: "\
             ${{ runner.os }}-\
             virtualenv-${{ matrix.python-version }}-\
