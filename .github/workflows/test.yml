@@ -20,6 +20,8 @@ jobs:
           git init ${{ github.workspace }}
           git remote add origin https://github.com/${{ github.repository }}
           git config --local gc.auto 0
+          git config --local --name-only --get-regexp core\.sshCommand
+          git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
           git config --local 'http.https://github.com/.extraheader' 'AUTHORIZATION: basic ${{ github.token }}'
           git fetch --no-tags --depth=100 --progress origin +${{ github.sha }}:${{ github.ref }}
           git checkout --progress --force ${{ github.ref }}
@@ -43,6 +45,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -v
+
           if [ ! -d "$VIRTUAL_ENV" ]; then
             python -m venv $VIRTUAL_ENV
             source $VIRTUAL_ENV/bin/activate
@@ -57,5 +61,6 @@ jobs:
 
       - name: Test with pytest
         run: |
+          set -v
           source $VIRTUAL_ENV/bin/activate
           python -m pytest --pylint --flake8 -o cache_dir=/tmp/pytest_cache
