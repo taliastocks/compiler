@@ -6,7 +6,10 @@ on:
 
 jobs:
   test:
-    if: github.event_name == 'push' || github.event.pull_request.merged == true
+    # Run tests on every push, and after landing.
+    # We run tests after landing mainly to update the cache, since a recent
+    # cache on main will speed up the first build on new branches.
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
 
     runs-on: ubuntu-latest
     strategy:
@@ -18,7 +21,23 @@ jobs:
 
     steps:
       - name: Clone branch
-        # Cloning the branch directly (without actions/checkout@v2) is a few seconds faster.
+        # Cloning the branch directly is a few seconds faster than using actions/checkout@v2,
+        # since the latter is way fancier than we actually need.
+        #   gc.auto 0
+        #     GC is slow, so disable it.
+        #   advice.detachedHead 0
+        #     Checking out refs/heads/my_branch issues a big warning by default. Disable it.
+        #   fetch --no-tags
+        #     There might be a large number of tags. Ignore them.
+        #   fetch --depth=100
+        #     We use history to set modified times of files based on commit date in order to
+        #     activate the caching behavior in pytest.flake8 and pytest.pylint. Any files that
+        #     were modified before the first fetched commit get set to the date of the first
+        #     commit that appears in history. Therefore, if the first fetched commit is more
+        #     recent than the latest cache, all tests will have to run. Since we cache test
+        #     results on main for every commit, the depth only needs to be greater than the
+        #     number of commits we expect on a normal branch. Most branches probably don't have
+        #     close to 100 commits, and fetching 100 commits should be fairly inexpensive.
         run: |
           # Clone branch.
           set -v
@@ -28,7 +47,7 @@ jobs:
           git config --local gc.auto 0
           git config --local advice.detachedHead 0
           git fetch --no-tags --depth=100 origin +${{ github.sha }}:${{ github.ref }}
-          git checkout --progress --force ${{ github.ref }}
+          git checkout --force ${{ github.ref }}
 
           # Set modified time of each file to the latest commit time so pytest caching works.
           # Credit: https://stackoverflow.com/questions/2458042/restore-a-files-modification-time-in-git
@@ -42,6 +61,27 @@ jobs:
           path: |
             /tmp/virtualenv
             /tmp/pytest_cache
+          # runner.os
+          #   Caches are not compatible across OSes.
+          # virtualenv
+          #   Identify this particular cache in case we add more.
+          # matrix.python-version
+          #   The virtualenv contains a copy of Python, so we want separate caches for
+          #   each Python version.
+          # hashFiles('Pipfile.lock')
+          #   If the dependencies or dependency versions change, we should create a whole
+          #   new virtualenv to ensure it is clean.
+          # hashFiles('.github/workflows/test.yml')
+          #   If this configuration file changes, the cache may no longer be valid.
+          # github.ref == 'refs/heads/main' && github.sha || github.ref
+          #   On main, create a new cache for every commit. On feature branches, create a new
+          #   cache only for the first commit. This section is truncated from restore-keys to
+          #   allow feature branches (and main) to restore a recent cache created on main.
+          #   Because a new cache is saved for every commit on main, new feature branches will
+          #   always have a recent cache to work with. Subsequent commits on the feature branch
+          #   will use the cache created on the first feature branch commit, which saves a few
+          #   seconds since subsequent commits on feature branches don't need to upload a new
+          #   cache.
           key: "\
             ${{ runner.os }}-\
             virtualenv-${{ matrix.python-version }}-\
@@ -55,16 +95,19 @@ jobs:
             ${{ hashFiles('.github/workflows/test.yml') }}-"
 
       - name: Install Python ${{ matrix.python-version }}
-        if: steps.cache.outputs.cache-hit != 'true'
         # Use actions/setup-python@v2 to install Python. We install and invoke the action manually
         # (rather than with "use:") to avoid downloading it at all if we won't need it.
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           # Install Python
           set -v
           git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
           env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
 
-      - name: Install dependencies
+      - name: Set up virtualenv
+        # Only set up the virtualenv if one wasn't loaded from the cache. Since hashFiles('Pipfile.lock')
+        # is part of the cache key, any change to dependencies will force a cache miss and therefore cause
+        # this section to run.
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           python -m venv $VIRTUAL_ENV
