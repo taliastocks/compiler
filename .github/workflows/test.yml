@@ -35,7 +35,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        if [ ! -d "/path/to/dir" ]; then
+        if [ ! -d "$VIRTUAL_ENV" ]; then
           python -m venv $VIRTUAL_ENV
           source $VIRTUAL_ENV/bin/activate
           python -m pip install pipenv
