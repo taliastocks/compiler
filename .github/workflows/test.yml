@@ -16,6 +16,7 @@ jobs:
       #- uses: actions/checkout@v2
       - name: Clone branch
         run: |
+          set -v
           git init ${{ github.workspace }}
           git remote add origin https://github.com/${{ github.repository }}
           git config --local gc.auto 0
