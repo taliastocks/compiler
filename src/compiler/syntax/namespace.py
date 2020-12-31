@@ -24,8 +24,8 @@ class Namespace(metaclass=abc.ABCMeta):
     TODO: tests
     """
     name: str = attr.ib()
-    parent: typing.Optional[Namespace] = attr.ib(default=None)
-    declarations: typing.MutableMapping[str, Declarable] = attr.ib(factory=dict, init=False)
+    parent: typing.Optional[Namespace] = attr.ib(default=None, repr=False)
+    declarations: typing.MutableMapping[str, Declarable] = attr.ib(factory=dict, init=False, repr=False)
 
     def declare(self, declarable: Declarable):
         if declarable.name in self.declarations:

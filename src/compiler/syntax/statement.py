@@ -77,7 +77,7 @@ class Statement(metaclass=abc.ABCMeta):
 class Block(Statement):
     """A sequence of statements to be executed in order.
     """
-    statements: typing.Sequence[Statement] = attr.ib(converter=tuple)
+    statements: typing.Sequence[Statement] = attr.ib(converter=tuple, factory=list)
 
 
 @attr.s(frozen=True, slots=True)
