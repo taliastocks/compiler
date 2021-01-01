@@ -13,6 +13,10 @@ from . import namespace, function, variable
 class Class(namespace.Declarable):
     """A Class declaration and definition.
     """
+    @attr.s(frozen=True, slots=True)
+    class Decorator:
+        pass
+
     bases: typing.Sequence[Class] = attr.ib(converter=tuple, default=(), repr=False)
     members: typing.Sequence[typing.Union[function.Function, variable.Variable]] = attr.ib(
         converter=tuple,
@@ -132,4 +136,16 @@ class Destructor(function.Function.Decorator):
 
     Destructor methods are executed in the order in which they were declared.
     Destructor methods may omit the method name.
+    """
+
+
+@attr.s(frozen=True, slots=True)
+class Frozen(variable.Variable.Annotation, Class.Decorator):
+    """Annotation/Class Decorator to denote an attribute (or all attributes of a class) as frozen.
+
+    Frozen attributes can only be modified during instance construction; afterwards, they are read-only.
+    A class with only frozen attributes may be passed by value rather than by reference if the compiler
+    determines that this would be more efficient.
+
+    Note that frozen attributes may still be mutable (due to their assigned value being mutable).
     """
