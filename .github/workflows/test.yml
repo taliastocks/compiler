@@ -20,21 +20,21 @@ jobs:
       VIRTUAL_ENV: /tmp/virtualenv
 
     steps:
-      - name: Clone branch
-        # Cloning the branch directly is a few seconds faster than using actions/checkout@v2,
-        # since the latter is way fancier than we actually need.
+      - name: Check out test branch.
+        # Fetching and checking out the branch directly is a few seconds faster than using
+        # actions/checkout@v2, since the latter is way fancier than we actually need.
         #   gc.auto 0
         #     GC is slow, so disable it.
         #   fetch --no-tags
         #     There might be a large number of tags. Ignore them.
         run: |
-          # Clone branch.
+          # Check out test branch.
           set -v
           git init ${{ github.workspace }}
           cd ${{ github.workspace }}
           git remote add origin https://github.com/${{ github.repository }}
           git config --local gc.auto 0
-          git fetch --no-tags --depth=1 origin main
+          git fetch --no-tags --depth=1 origin main:main +${{ github.sha }}:test
           git checkout main
 
           # Set modified time of each file to the latest commit time so pytest caching works.
@@ -42,8 +42,7 @@ jobs:
           git log --pretty=%at --name-status --reverse |
             perl -ane '($x,$f)=@F;next if !$x;$t=$x,next if !defined($f)||$s{$f};$s{$f}=utime($t,$t,$f),next if $x=~/[AM]/;'
 
-          # Finally, checkout the commit we want to test so that any files have their mtime updated.
-          git fetch --no-tags --depth=1 origin +${{ github.sha }}:test
+          # Finally, checkout the commit we want to test so that any modified files have their mtime updated.
           git checkout test
 
       - name: Cache virtualenv
@@ -91,7 +90,7 @@ jobs:
         # (rather than with "use:") to avoid downloading it at all if we won't need it.
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          # Install Python
+          # Install Python (skip if cache was restored).
           if [ ! -d "$VIRTUAL_ENV" ]; then  # Skip if cache restored, even an order cache.
             set -v
             git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
@@ -104,7 +103,7 @@ jobs:
         # this section to run.
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          # Set up virtualenv
+          # Set up virtualenv (skip if cache was restored).
           if [ ! -d "$VIRTUAL_ENV" ]; then  # Skip if cache restored, even an order cache.
             python -m venv $VIRTUAL_ENV
             source $VIRTUAL_ENV/bin/activate
@@ -114,5 +113,6 @@ jobs:
 
       - name: Test with pytest
         run: |
+          # Test with pytest.
           source $VIRTUAL_ENV/bin/activate
           python -m pytest --pylint --flake8 -o cache_dir=/tmp/pytest_cache

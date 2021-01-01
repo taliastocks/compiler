@@ -1,3 +1,5 @@
+import typing
+
 import attr
 
 from . import namespace
@@ -10,3 +12,8 @@ class Variable(namespace.Declarable):
     NB: variable.Variable should not be confused with expression.Variable, which
     represents an expression which evaluates to the value of a variable in a scope.
     """
+    @attr.s(frozen=True, slots=True)
+    class Annotation:
+        pass
+
+    annotations: typing.Sequence[Annotation] = attr.ib(converter=tuple, default=(), repr=False)
