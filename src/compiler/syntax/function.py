@@ -13,6 +13,7 @@ from . import statement as statement_module, namespace, variable, expression
 class Function(namespace.Declarable):
     """A Function declaration and definition.
     """
+    # pylint: disable=too-many-instance-attributes
     @attr.s(frozen=True, slots=True)
     class Argument:
         variable: expression.Variable = attr.ib()
@@ -80,8 +81,8 @@ class Function(namespace.Declarable):
             for arg in arguments
         ]
 
-        last_precedence = 1
-        for i, (argument, precedence) in enumerate(zip(arguments, argument_precedences)):
+        last_precedence = Function._ArgumentPrecedence.positional_only
+        for argument, precedence in zip(arguments, argument_precedences):
             if precedence < last_precedence:
                 raise ValueError('{!r}: {} argument may not appear after {} argument'.format(
                     argument.variable.name,

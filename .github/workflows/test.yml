@@ -46,13 +46,17 @@ jobs:
           git remote add origin https://github.com/${{ github.repository }}
           git config --local gc.auto 0
           git config --local advice.detachedHead 0
-          git fetch --no-tags --depth=100 origin +${{ github.sha }}:${{ github.ref }}
-          git checkout --force ${{ github.ref }}
+          git fetch --no-tags --depth=1 origin main
+          git checkout --force main
 
           # Set modified time of each file to the latest commit time so pytest caching works.
           # Credit: https://stackoverflow.com/questions/2458042/restore-a-files-modification-time-in-git
           git log --pretty=%at --name-status --reverse |
             perl -ane '($x,$f)=@F;next if !$x;$t=$x,next if !defined($f)||$s{$f};$s{$f}=utime($t,$t,$f),next if $x=~/[AM]/;'
+
+          # Finally, checkout the branch we want to test so that any files are
+          git fetch --no-tags --depth=100 origin +${{ github.sha }}:${{ github.ref }}
+          git checkout --force ${{ github.ref }}
 
       - name: Cache virtualenv
         id: cache
