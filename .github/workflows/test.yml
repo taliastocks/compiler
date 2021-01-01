@@ -100,9 +100,11 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           # Install Python
-          set -v
-          git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
-          env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
+          if [ ! -d "$VIRTUAL_ENV" ]; then  # Skip if cache restored, even an order cache.
+            set -v
+            git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
+            env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
+          fi
 
       - name: Set up virtualenv
         # Only set up the virtualenv if one wasn't loaded from the cache. Since hashFiles('Pipfile.lock')
@@ -110,10 +112,13 @@ jobs:
         # this section to run.
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          python -m venv $VIRTUAL_ENV
-          source $VIRTUAL_ENV/bin/activate
-          python -m pip install pipenv
-          python -m pipenv install --dev
+          # Set up virtualenv
+          if [ ! -d "$VIRTUAL_ENV" ]; then  # Skip if cache restored, even an order cache.
+            python -m venv $VIRTUAL_ENV
+            source $VIRTUAL_ENV/bin/activate
+            python -m pip install pipenv
+            python -m pipenv install --dev
+          fi
 
       - name: Test with pytest
         run: |
