@@ -29,15 +29,6 @@ jobs:
         #     Checking out refs/heads/my_branch issues a big warning by default. Disable it.
         #   fetch --no-tags
         #     There might be a large number of tags. Ignore them.
-        #   fetch --depth=100
-        #     We use history to set modified times of files based on commit date in order to
-        #     activate the caching behavior in pytest.flake8 and pytest.pylint. Any files that
-        #     were modified before the first fetched commit get set to the date of the first
-        #     commit that appears in history. Therefore, if the first fetched commit is more
-        #     recent than the latest cache, all tests will have to run. Since we cache test
-        #     results on main for every commit, the depth only needs to be greater than the
-        #     number of commits we expect on a normal branch. Most branches probably don't have
-        #     close to 100 commits, and fetching 100 commits should be fairly inexpensive.
         run: |
           # Clone branch.
           set -v
