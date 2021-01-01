@@ -125,7 +125,7 @@ class FunctionTestCase(unittest.TestCase):
     def test_init_local_scope_arguments(self):
         @attr.s(frozen=True, slots=True)
         class MyAnnotation(variable.Variable.Annotation):
-            foo: str = attr.ib()
+            my_attr: str = attr.ib()
 
         my_function = function.Function(
             arguments=[

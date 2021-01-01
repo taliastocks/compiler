@@ -6,6 +6,8 @@ import attr
 
 from . import namespace, function, variable
 
+# pylint: disable=fixme
+
 
 @attr.s(frozen=True, slots=True)
 class Class(namespace.Declarable):
