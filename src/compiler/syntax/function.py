@@ -4,7 +4,6 @@ import enum
 import typing
 
 import attr
-import immutabledict
 
 from . import statement as statement_module, namespace, variable, expression
 
@@ -35,17 +34,16 @@ class Function(namespace.Declarable):
             if self.is_positional and self.is_keyword and is_extra:
                 raise ValueError('"extra" arguments cannot be both positional and keyword')
 
+    @attr.s(frozen=True, slots=True)
+    class Decorator:
+        pass
+
     body: statement_module.Block = attr.ib(factory=statement_module.Block, repr=False)
     is_async: bool = attr.ib(default=False, repr=False)
 
     arguments: typing.Sequence[Argument] = attr.ib(converter=tuple, default=(), repr=False)
+    decorators: typing.Sequence[Decorator] = attr.ib(converter=tuple, default=(), repr=False)
 
-    positional_arguments: typing.Sequence[Argument] = attr.ib(converter=tuple, init=False, repr=False)
-    keyword_arguments: typing.Mapping[str, Argument] = attr.ib(converter=immutabledict.immutabledict,
-                                                               init=False,
-                                                               repr=False)
-    extra_positionals_argument: typing.Optional[Argument] = attr.ib(init=False, repr=False)
-    extra_keywords_argument: typing.Optional[Argument] = attr.ib(init=False, repr=False)
     is_generator: bool = attr.ib(init=False, repr=False)
     local_scope: namespace.FunctionNamespace = attr.ib(init=False, repr=False)
 
@@ -98,40 +96,6 @@ class Function(namespace.Declarable):
 
             last_precedence = precedence
 
-    @positional_arguments.default
-    def _init_positional_arguments(self):
-        """Extract the positional arguments to a convenience attribute.
-        """
-        for argument in self.arguments:
-            if argument.is_positional and not argument.is_extra:
-                yield argument
-
-    @keyword_arguments.default
-    def _init_keyword_arguments(self):
-        """Extract the keyword arguments to a convenience attribute.
-        """
-        for argument in self.arguments:
-            if argument.is_keyword and not argument.is_extra:
-                yield argument.variable.name, argument
-
-    @extra_positionals_argument.default
-    def _init_extra_positionals_argument(self):
-        """If an argument is supplied to hold extra positional arguments, find it.
-        """
-        for argument in self.arguments:
-            if argument.is_positional and argument.is_extra:
-                return argument
-        return None
-
-    @extra_keywords_argument.default
-    def _init_extra_keywords_argument(self):
-        """If an argument is supplied to hold extra keyword arguments, find it.
-        """
-        for argument in self.arguments:
-            if argument.is_keyword and argument.is_extra:
-                return argument
-        return None
-
     @is_generator.default
     def _init_is_generator(self):
         """A function which yields is a generator.
@@ -141,7 +105,7 @@ class Function(namespace.Declarable):
     @local_scope.default
     def _init_local_scope(self):
         local_scope = namespace.FunctionNamespace(
-            name='{}.{}'.format(self.namespace.name, self.name),
+            name='{}.{}'.format(self.namespace.name, self.name) if self.namespace is not None else '',
             parent=self.namespace,
         )
 
@@ -150,6 +114,7 @@ class Function(namespace.Declarable):
                 local_scope.declare(
                     variable.Variable(
                         name=argument.variable.name,
+                        annotations=argument.variable.annotations,
                         namespace=local_scope,
                     )
                 )
@@ -166,9 +131,11 @@ class Function(namespace.Declarable):
         nonlocal_variable_names = {
             nonlocal_variable.name for nonlocal_variable in self.body.nonlocal_variables
         }
-        assigned_variable_names = {
-            assigned_variable.name for assigned_variable in self.body.variable_assignments
+        assigned_variables_by_names: dict[str, expression.Variable] = {
+            assigned_variable.name: assigned_variable
+            for assigned_variable in self.body.variable_assignments
         }
+        assigned_variable_names = set(assigned_variables_by_names.keys())
         local_variable_names = assigned_variable_names - nonlocal_variable_names
 
         argument_names_declared_nonlocal = argument_names & nonlocal_variable_names

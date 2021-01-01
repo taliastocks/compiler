@@ -5,6 +5,8 @@ import typing
 
 import attr
 
+from . import variable
+
 
 @attr.s(frozen=True, slots=True)
 class Expression(metaclass=abc.ABCMeta):
@@ -50,6 +52,7 @@ class Variable(LValue):
         name: The name of the variable.
     """
     name: str = attr.ib()
+    annotations: typing.Sequence[variable.Variable.Annotation] = attr.ib(converter=tuple, default=(), repr=False)
 
 
 @attr.s(frozen=True, slots=True)

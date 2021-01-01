@@ -12,8 +12,8 @@ class Declarable(metaclass=abc.ABCMeta):
     which can be declared within a namespace.
     """
 
-    name: str = attr.ib()
-    namespace: Namespace = attr.ib()
+    name: str = attr.ib(default='')
+    namespace: typing.Optional[Namespace] = attr.ib(default=None)
 
 
 @attr.s(frozen=True, slots=True)

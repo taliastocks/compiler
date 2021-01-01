@@ -1,6 +1,6 @@
 import unittest
 
-import immutabledict
+import attr
 
 from . import function, expression, namespace, statement, variable
 
@@ -10,8 +10,6 @@ class FunctionTestCase(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "'bar': positional_only argument may not appear after "
                                                 "positional_keyword argument"):
             function.Function(
-                name='function',
-                namespace=namespace.Namespace('namespace'),
                 arguments=[
                     function.Function.Argument(
                         expression.Variable('foo'),
@@ -27,8 +25,6 @@ class FunctionTestCase(unittest.TestCase):
 
         # Should not raise.
         function.Function(
-            name='function',
-            namespace=namespace.Namespace('namespace'),
             arguments=[
                 function.Function.Argument(
                     expression.Variable('foo'),
@@ -42,8 +38,6 @@ class FunctionTestCase(unittest.TestCase):
             ],
         )
         function.Function(
-            name='function',
-            namespace=namespace.Namespace('namespace'),
             arguments=[
                 function.Function.Argument(
                     expression.Variable('foo'),
@@ -61,8 +55,6 @@ class FunctionTestCase(unittest.TestCase):
     def test_check_arguments_repeat_extra(self):
         with self.assertRaisesRegex(ValueError, "'bar': cannot have multiple positional_extra arguments"):
             function.Function(
-                name='function',
-                namespace=namespace.Namespace('namespace'),
                 arguments=[
                     function.Function.Argument(
                         expression.Variable('foo'),
@@ -79,8 +71,6 @@ class FunctionTestCase(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "'bar': cannot have multiple keyword_extra arguments"):
             function.Function(
-                name='function',
-                namespace=namespace.Namespace('namespace'),
                 arguments=[
                     function.Function.Argument(
                         expression.Variable('foo'),
@@ -95,89 +85,8 @@ class FunctionTestCase(unittest.TestCase):
                 ],
             )
 
-    def test_init_arguments(self):
-        my_function = function.Function(
-            name='function',
-            namespace=namespace.Namespace('namespace'),
-            arguments=[
-                function.Function.Argument(
-                    expression.Variable('positional_only'),
-                    is_positional=True,
-                ),
-                function.Function.Argument(
-                    expression.Variable('positional_keyword'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-                function.Function.Argument(
-                    expression.Variable('positional_extra'),
-                    is_positional=True,
-                    is_extra=True,
-                ),
-                function.Function.Argument(
-                    expression.Variable('keyword_only'),
-                    is_keyword=True,
-                ),
-                function.Function.Argument(
-                    expression.Variable('keyword_extra'),
-                    is_keyword=True,
-                    is_extra=True,
-                ),
-            ],
-        )
-
-        self.assertEqual(
-            (
-                function.Function.Argument(
-                    expression.Variable('positional_only'),
-                    is_positional=True,
-                ),
-                function.Function.Argument(
-                    expression.Variable('positional_keyword'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-            ),
-            my_function.positional_arguments
-        )
-
-        self.assertEqual(
-            immutabledict.immutabledict({
-                'positional_keyword': function.Function.Argument(
-                    expression.Variable('positional_keyword'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-                'keyword_only': function.Function.Argument(
-                    expression.Variable('keyword_only'),
-                    is_keyword=True,
-                ),
-            }),
-            my_function.keyword_arguments
-        )
-
-        self.assertEqual(
-            function.Function.Argument(
-                expression.Variable('positional_extra'),
-                is_positional=True,
-                is_extra=True,
-            ),
-            my_function.extra_positionals_argument
-        )
-
-        self.assertEqual(
-            function.Function.Argument(
-                expression.Variable('keyword_extra'),
-                is_keyword=True,
-                is_extra=True,
-            ),
-            my_function.extra_keywords_argument
-        )
-
     def test_init_is_generator(self):
         my_function = function.Function(
-            name='function',
-            namespace=namespace.Namespace('namespace'),
             body=statement.Block([
                 statement.Expression(
                     expression.Yield()
@@ -190,10 +99,7 @@ class FunctionTestCase(unittest.TestCase):
             my_function.is_generator
         )
 
-        my_function = function.Function(
-            name='function',
-            namespace=namespace.Namespace('namespace'),
-        )
+        my_function = function.Function()
 
         self.assertIs(
             False,
@@ -217,16 +123,18 @@ class FunctionTestCase(unittest.TestCase):
         )
 
     def test_init_local_scope_arguments(self):
+        @attr.s(frozen=True, slots=True)
+        class MyAnnotation(variable.Variable.Annotation):
+            foo: str = attr.ib()
+
         my_function = function.Function(
-            name='function',
-            namespace=namespace.Namespace('namespace'),
             arguments=[
                 function.Function.Argument(
-                    expression.Variable('foo'),
+                    expression.Variable('foo', [MyAnnotation('a')]),
                     is_keyword=True,
                 ),
                 function.Function.Argument(
-                    expression.Variable('bar'),
+                    expression.Variable('bar', [MyAnnotation('b')]),
                     is_keyword=True,
                 ),
             ],
@@ -234,8 +142,8 @@ class FunctionTestCase(unittest.TestCase):
 
         self.assertEqual(
             {
-                'foo': variable.Variable('foo', my_function.local_scope),
-                'bar': variable.Variable('bar', my_function.local_scope),
+                'foo': variable.Variable('foo', my_function.local_scope, [MyAnnotation('a')]),
+                'bar': variable.Variable('bar', my_function.local_scope, [MyAnnotation('b')]),
             },
             my_function.local_scope.declarations
         )
@@ -243,8 +151,6 @@ class FunctionTestCase(unittest.TestCase):
     def test_init_local_scope_arguments_repeat_name(self):
         with self.assertRaisesRegex(ValueError, "'foo': repeated argument name not allowed"):
             function.Function(
-                name='function',
-                namespace=namespace.Namespace('namespace'),
                 arguments=[
                     function.Function.Argument(
                         expression.Variable('foo'),
@@ -259,8 +165,6 @@ class FunctionTestCase(unittest.TestCase):
 
     def test_init_local_scope_variables(self):
         my_function = function.Function(
-            name='function',
-            namespace=namespace.Namespace('namespace'),
             arguments=[
                 function.Function.Argument(
                     expression.Variable('foo'),
@@ -292,8 +196,6 @@ class FunctionTestCase(unittest.TestCase):
 
     def test_init_local_scope_nonlocals(self):
         my_function = function.Function(
-            name='function',
-            namespace=namespace.Namespace('namespace'),
             body=statement.Block([
                 statement.Assignment(
                     receivers=[expression.Variable('bar')],
@@ -315,8 +217,6 @@ class FunctionTestCase(unittest.TestCase):
         # Arguments cannot be declared nonlocal.
         with self.assertRaisesRegex(ValueError, 'arguments cannot be declared nonlocal: bar, foo'):
             function.Function(
-                name='function',
-                namespace=namespace.Namespace('namespace'),
                 arguments=[
                     function.Function.Argument(
                         expression.Variable('foo'),
