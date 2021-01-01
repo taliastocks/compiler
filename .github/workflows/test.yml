@@ -29,15 +29,6 @@ jobs:
         #     Checking out refs/heads/my_branch issues a big warning by default. Disable it.
         #   fetch --no-tags
         #     There might be a large number of tags. Ignore them.
-        #   fetch --depth=100
-        #     We use history to set modified times of files based on commit date in order to
-        #     activate the caching behavior in pytest.flake8 and pytest.pylint. Any files that
-        #     were modified before the first fetched commit get set to the date of the first
-        #     commit that appears in history. Therefore, if the first fetched commit is more
-        #     recent than the latest cache, all tests will have to run. Since we cache test
-        #     results on main for every commit, the depth only needs to be greater than the
-        #     number of commits we expect on a normal branch. Most branches probably don't have
-        #     close to 100 commits, and fetching 100 commits should be fairly inexpensive.
         run: |
           # Clone branch.
           set -v
@@ -46,13 +37,17 @@ jobs:
           git remote add origin https://github.com/${{ github.repository }}
           git config --local gc.auto 0
           git config --local advice.detachedHead 0
-          git fetch --no-tags --depth=100 origin +${{ github.sha }}:${{ github.ref }}
-          git checkout --force ${{ github.ref }}
+          git fetch --no-tags --depth=1 origin main
+          git checkout --force main
 
           # Set modified time of each file to the latest commit time so pytest caching works.
           # Credit: https://stackoverflow.com/questions/2458042/restore-a-files-modification-time-in-git
           git log --pretty=%at --name-status --reverse |
             perl -ane '($x,$f)=@F;next if !$x;$t=$x,next if !defined($f)||$s{$f};$s{$f}=utime($t,$t,$f),next if $x=~/[AM]/;'
+
+          # Finally, checkout the branch we want to test so that any files are
+          git fetch --no-tags --depth=1 origin +${{ github.sha }}:${{ github.ref }}
+          git checkout --force ${{ github.ref }}
 
       - name: Cache virtualenv
         id: cache
