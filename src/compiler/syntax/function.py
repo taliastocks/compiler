@@ -138,6 +138,7 @@ class Function(namespace.Declarable):
         """
         return self.body.has_yield
 
+
     @local_scope.default
     def _init_local_scope(self):
         local_scope = namespace.FunctionNamespace(
