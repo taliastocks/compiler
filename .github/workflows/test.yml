@@ -45,6 +45,10 @@ jobs:
           # Finally, checkout the commit we want to test so that any modified files have their mtime updated.
           git checkout test
 
+      - name: Get current date
+        run: |
+          echo "DATE=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+
       - name: Cache virtualenv
         id: cache
         uses: actions/cache@v2
@@ -64,21 +68,21 @@ jobs:
           #   new virtualenv to ensure it is clean.
           # hashFiles('.github/workflows/test.yml')
           #   If this configuration file changes, the cache may no longer be valid.
-          # github.ref == 'refs/heads/main' && github.sha || github.ref
+          # github.ref == 'refs/heads/main' && github.sha || env.DATE
           #   On main, create a new cache for every commit. On feature branches, create a new
-          #   cache only for the first commit. This section is truncated from restore-keys to
-          #   allow feature branches (and main) to restore a recent cache created on main.
-          #   Because a new cache is saved for every commit on main, new feature branches will
-          #   always have a recent cache to work with. Subsequent commits on the feature branch
-          #   will use the cache created on the first feature branch commit, which saves a few
-          #   seconds since subsequent commits on feature branches don't need to upload a new
-          #   cache.
+          #   cache only for the first commit on a given calendar day. This section is truncated
+          #   from restore-keys to allow feature branches (and main) to restore a recent cache
+          #   created on main. Because a new cache is saved for every commit on main, new feature
+          #   branches will always have a recent cache to work with. Subsequent commits on the
+          #   feature branch will use the cache created on the first feature branch commit, which
+          #   saves a few seconds since subsequent commits on feature branches don't need to upload
+          #   a new cache version.
           key: "\
             ${{ runner.os }}-\
             virtualenv-${{ matrix.python-version }}-\
             ${{ hashFiles('Pipfile.lock') }}-\
             ${{ hashFiles('.github/workflows/test.yml') }}-\
-            ${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}"  # Always create a new cache on main.
+            ${{ github.ref == 'refs/heads/main' && github.sha || env.DATE }}"  # Always create a new cache on main.
           restore-keys: "\
             ${{ runner.os }}-\
             virtualenv-${{ matrix.python-version }}-\
