@@ -279,6 +279,16 @@ class Try(Statement):
 
 
 @attr.s(frozen=True, slots=True)
+class Raise(Statement):
+    expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
+
+    @property
+    def expressions(self):
+        if self.expression is not None:
+            yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
 class Return(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
