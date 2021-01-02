@@ -2,11 +2,11 @@ import typing
 
 import attr
 
-from . import namespace
+from . import declarable
 
 
 @attr.s(frozen=True, slots=True)
-class Variable(namespace.Declarable):
+class Variable(declarable.Declarable):
     """A Variable is a register in a namespace which can hold runtime values.
 
     NB: variable.Variable should not be confused with expression.Variable, which

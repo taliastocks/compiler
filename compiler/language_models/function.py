@@ -4,12 +4,13 @@ import enum
 import typing
 
 import attr
+import immutabledict
 
-from . import statement as statement_module, namespace, variable, expression
+from . import statement, declarable, variable, expression
 
 
 @attr.s(frozen=True, slots=True)
-class Function(namespace.Declarable):
+class Function(declarable.Declarable):
     """A Function declaration and definition.
     """
     # pylint: disable=too-many-instance-attributes
@@ -38,14 +39,16 @@ class Function(namespace.Declarable):
     class Decorator:
         pass
 
-    body: statement_module.Block = attr.ib(factory=statement_module.Block, repr=False)
+    body: statement.Block = attr.ib(factory=statement.Block, repr=False)
     is_async: bool = attr.ib(default=False, repr=False)
 
     arguments: typing.Sequence[Argument] = attr.ib(converter=tuple, default=(), repr=False)
     decorators: typing.Sequence[Decorator] = attr.ib(converter=tuple, default=(), repr=False)
 
     is_generator: bool = attr.ib(init=False, repr=False)
-    local_scope: namespace.FunctionNamespace = attr.ib(init=False, repr=False)
+    locals: typing.Mapping[declarable.Declarable] = attr.ib(converter=immutabledict.immutabledict,
+                                                            init=False,
+                                                            repr=False)
 
     class _ArgumentPrecedence(enum.IntEnum):
         positional_only = 1
@@ -102,26 +105,21 @@ class Function(namespace.Declarable):
         """
         return self.body.has_yield
 
-    @local_scope.default
-    def _init_local_scope(self):
-        local_scope = namespace.FunctionNamespace(
-            name='{}.{}'.format(self.namespace.name, self.name) if self.namespace is not None else '',
-            parent=self.namespace,
-        )
+    @locals.default
+    def _init_locals(self):
+        local_declarations = {}
 
         for argument in self.arguments:
-            try:
-                local_scope.declare(
-                    variable.Variable(
-                        name=argument.variable.name,
-                        annotations=argument.variable.annotations,
-                        namespace=local_scope,
-                    )
-                )
-            except KeyError as exc:
+            if argument.variable.name in local_declarations:
                 raise ValueError('{!r}: repeated argument name not allowed'.format(
                     argument.variable.name
-                )) from exc
+                ))
+
+            var = variable.Variable(
+                name=argument.variable.name,
+                annotations=argument.variable.annotations,
+            )
+            local_declarations[var.name] = var
 
         # Find all the variable assignments from the function body,
         # as well as all the "nonlocal" declarations.
@@ -147,11 +145,6 @@ class Function(namespace.Declarable):
         # Declare all the local variables (anything assigned and not declared nonlocal),
         # but skip arguments (which were already declared above).
         for local_name in local_variable_names - argument_names:
-            local_scope.declare(
-                variable.Variable(
-                    name=local_name,
-                    namespace=local_scope,
-                )
-            )
+            local_declarations[local_name] = variable.Variable(name=local_name)
 
-        return local_scope
+        return local_declarations

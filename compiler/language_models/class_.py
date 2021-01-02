@@ -4,13 +4,13 @@ import typing
 
 import attr
 
-from . import namespace, function, variable
+from . import declarable, function, variable
 
 # pylint: disable=fixme
 
 
 @attr.s(frozen=True, slots=True)
-class Class(namespace.Declarable):
+class Class(declarable.Declarable):
     """A Class declaration and definition.
     """
     @attr.s(frozen=True, slots=True)
@@ -18,12 +18,7 @@ class Class(namespace.Declarable):
         pass
 
     bases: typing.Sequence[Class] = attr.ib(converter=tuple, default=(), repr=False)
-    members: typing.Sequence[typing.Union[function.Function, variable.Variable]] = attr.ib(
-        converter=tuple,
-        default=(),
-        repr=False,
-    )
-    # TODO: figure out how scopes will work for classes
+    declarations: typing.Sequence[declarable.Declarable] = attr.ib(converter=tuple, default=(), repr=False)
 
 
 @attr.s(frozen=True, slots=True)
