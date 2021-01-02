@@ -81,6 +81,13 @@ class Block(Statement):
 
 
 @attr.s(frozen=True, slots=True)
+class Declaration(Statement):
+    """An inline declaration, e.g. of a function or class.
+    """
+    declarable: declarable.Declarable = attr.ib()
+
+
+@attr.s(frozen=True, slots=True)
 class Assignment(Statement):
     """An assignment statement, e.g. ``foo = 3`` or ``foo = bar = 42``.
     """

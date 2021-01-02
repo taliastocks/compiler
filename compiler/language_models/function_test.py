@@ -2,7 +2,7 @@ import unittest
 
 import attr
 
-from . import function, expression, namespace, statement, variable
+from . import function, expression, statement, variable
 
 
 class FunctionTestCase(unittest.TestCase):
@@ -10,6 +10,7 @@ class FunctionTestCase(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "'bar': positional_only argument may not appear after "
                                                 "positional_keyword argument"):
             function.Function(
+                name='func',
                 arguments=[
                     function.Function.Argument(
                         expression.Variable('foo'),
@@ -25,6 +26,7 @@ class FunctionTestCase(unittest.TestCase):
 
         # Should not raise.
         function.Function(
+            name='func',
             arguments=[
                 function.Function.Argument(
                     expression.Variable('foo'),
@@ -38,6 +40,7 @@ class FunctionTestCase(unittest.TestCase):
             ],
         )
         function.Function(
+            name='func',
             arguments=[
                 function.Function.Argument(
                     expression.Variable('foo'),
@@ -55,6 +58,7 @@ class FunctionTestCase(unittest.TestCase):
     def test_check_arguments_repeat_extra(self):
         with self.assertRaisesRegex(ValueError, "'bar': cannot have multiple positional_extra arguments"):
             function.Function(
+                name='func',
                 arguments=[
                     function.Function.Argument(
                         expression.Variable('foo'),
@@ -71,6 +75,7 @@ class FunctionTestCase(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "'bar': cannot have multiple keyword_extra arguments"):
             function.Function(
+                name='func',
                 arguments=[
                     function.Function.Argument(
                         expression.Variable('foo'),
@@ -87,6 +92,7 @@ class FunctionTestCase(unittest.TestCase):
 
     def test_init_is_generator(self):
         my_function = function.Function(
+            name='func',
             body=statement.Block([
                 statement.Expression(
                     expression.Yield()
@@ -99,35 +105,20 @@ class FunctionTestCase(unittest.TestCase):
             my_function.is_generator
         )
 
-        my_function = function.Function()
+        my_function = function.Function('func')
 
         self.assertIs(
             False,
             my_function.is_generator
         )
 
-    def test_init_local_scope_name_and_parent(self):
-        my_function = function.Function(
-            name='function',
-            namespace=namespace.Namespace('namespace'),
-        )
-
-        self.assertEqual(
-            'namespace.function',
-            my_function.local_scope.name
-        )
-
-        self.assertEqual(
-            namespace.Namespace('namespace'),
-            my_function.local_scope.parent
-        )
-
-    def test_init_local_scope_arguments(self):
+    def test_init_locals_arguments(self):
         @attr.s(frozen=True, slots=True)
         class MyAnnotation(variable.Variable.Annotation):
             my_attr: str = attr.ib()
 
         my_function = function.Function(
+            name='func',
             arguments=[
                 function.Function.Argument(
                     expression.Variable('foo', [MyAnnotation('a')]),
@@ -142,15 +133,16 @@ class FunctionTestCase(unittest.TestCase):
 
         self.assertEqual(
             {
-                'foo': variable.Variable('foo', my_function.local_scope, [MyAnnotation('a')]),
-                'bar': variable.Variable('bar', my_function.local_scope, [MyAnnotation('b')]),
+                'foo': variable.Variable('foo', [MyAnnotation('a')]),
+                'bar': variable.Variable('bar', [MyAnnotation('b')]),
             },
-            my_function.local_scope.declarations
+            my_function.locals
         )
 
-    def test_init_local_scope_arguments_repeat_name(self):
+    def test_init_locals_arguments_repeat_name(self):
         with self.assertRaisesRegex(ValueError, "'foo': repeated argument name not allowed"):
             function.Function(
+                name='func',
                 arguments=[
                     function.Function.Argument(
                         expression.Variable('foo'),
@@ -163,8 +155,9 @@ class FunctionTestCase(unittest.TestCase):
                 ],
             )
 
-    def test_init_local_scope_variables(self):
+    def test_init_locals_variables(self):
         my_function = function.Function(
+            name='func',
             arguments=[
                 function.Function.Argument(
                     expression.Variable('foo'),
@@ -188,14 +181,15 @@ class FunctionTestCase(unittest.TestCase):
 
         self.assertEqual(
             {
-                'foo': variable.Variable('foo', my_function.local_scope),
-                'bar': variable.Variable('bar', my_function.local_scope),
+                'foo': variable.Variable('foo'),
+                'bar': variable.Variable('bar'),
             },
-            my_function.local_scope.declarations
+            my_function.locals
         )
 
-    def test_init_local_scope_nonlocals(self):
+    def test_init_locals_nonlocals(self):
         my_function = function.Function(
+            name='func',
             body=statement.Block([
                 statement.Assignment(
                     receivers=[expression.Variable('bar')],
@@ -210,13 +204,14 @@ class FunctionTestCase(unittest.TestCase):
 
         self.assertEqual(
             {},
-            my_function.local_scope.declarations
+            my_function.locals
         )
 
-    def test_init_local_scope_arguments_not_nonlocal(self):
+    def test_init_locals_arguments_not_nonlocal(self):
         # Arguments cannot be declared nonlocal.
         with self.assertRaisesRegex(ValueError, 'arguments cannot be declared nonlocal: bar, foo'):
             function.Function(
+                name='func',
                 arguments=[
                     function.Function.Argument(
                         expression.Variable('foo'),

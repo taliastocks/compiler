@@ -42,17 +42,13 @@ class LValue(Expression):
 
 
 @attr.s(frozen=True, slots=True)
-class Variable(LValue):
+class Variable(LValue, variable.Variable):
     """A Variable is an expression which evaluates to the value of a
     variable in a scope.
 
     NB: expression.Variable should not be confused with variable.Variable, which
     represents a register in a namespace which can hold runtime values.
-
-        name: The name of the variable.
     """
-    name: str = attr.ib()
-    annotations: typing.Sequence[variable.Variable.Annotation] = attr.ib(converter=tuple, default=(), repr=False)
 
 
 @attr.s(frozen=True, slots=True)
