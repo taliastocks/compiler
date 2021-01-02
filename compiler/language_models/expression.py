@@ -5,7 +5,8 @@ import typing
 
 import attr
 
-from . import variable
+from . import declarable
+from .. import grammar
 
 
 @attr.s(frozen=True, slots=True)
@@ -42,13 +43,22 @@ class LValue(Expression):
 
 
 @attr.s(frozen=True, slots=True)
-class Variable(LValue, variable.Variable):
-    """A Variable is an expression which evaluates to the value of a
-    variable in a scope.
+class Variable(declarable.Declarable, grammar.NonTerminal, LValue):
+    """A Variable is a register in a namespace which can hold runtime values.
 
-    NB: expression.Variable should not be confused with variable.Variable, which
-    represents a register in a namespace which can hold runtime values.
+    When used as an expression, evaluates to the value of the variable.
     """
+    @attr.s(frozen=True, slots=True)
+    class Annotation:
+        pass
+
+    annotations: typing.Sequence[Annotation] = attr.ib(converter=tuple, default=(), repr=False)
+    initializer: typing.Optional[Expression] = attr.ib(default=None, repr=False)
+
+    @classmethod
+    def production_rules(cls):
+        # Placeholder until I get around to writing a real implementation.
+        yield from []
 
 
 @attr.s(frozen=True, slots=True)

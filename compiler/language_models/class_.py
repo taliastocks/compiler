@@ -4,21 +4,27 @@ import typing
 
 import attr
 
-from . import declarable, function, variable, path
+from . import declarable, function, expression, reference
 
 # pylint: disable=fixme
+from .. import grammar
 
 
 @attr.s(frozen=True, slots=True)
-class Class(declarable.Declarable):
+class Class(declarable.Declarable, grammar.NonTerminal):
     """A Class declaration and definition.
     """
     @attr.s(frozen=True, slots=True)
     class Decorator:
         pass
 
-    bases: typing.Sequence[path.ClassPath] = attr.ib(converter=tuple, default=(), repr=False)
+    bases: typing.Sequence[reference.ClassReference] = attr.ib(converter=tuple, default=(), repr=False)
     declarations: typing.Sequence[declarable.Declarable] = attr.ib(converter=tuple, default=(), repr=False)
+
+    @classmethod
+    def production_rules(cls):
+        # Placeholder until I get around to writing a real implementation.
+        yield from []
 
 
 @attr.s(frozen=True, slots=True)
@@ -71,7 +77,7 @@ class Setter(function.Function.Decorator):
 
 
 @attr.s(frozen=True, slots=True)
-class Private(function.Function.Decorator, variable.Variable.Annotation):
+class Private(function.Function.Decorator, expression.Variable.Annotation):
     """Decorator/Annotation to denote a method or attribute as "private".
 
     Private methods/attributes may only be accessed from methods of the same class.
@@ -89,7 +95,7 @@ class Private(function.Function.Decorator, variable.Variable.Annotation):
 
 
 @attr.s(frozen=True, slots=True)
-class Protected(function.Function.Decorator, variable.Variable.Annotation):
+class Protected(function.Function.Decorator, expression.Variable.Annotation):
     """Decorator/Annotation to denote a method or attribute as "protected".
 
     Protected methods/attributes may only be accessed from methods of the same class,
@@ -106,7 +112,7 @@ class Protected(function.Function.Decorator, variable.Variable.Annotation):
 
 
 @attr.s(frozen=True, slots=True)
-class Constructor(function.Function.Decorator, variable.Variable.Annotation):
+class Constructor(function.Function.Decorator, expression.Variable.Annotation):
     """Decorator/Annotation to denote a method or attribute as part of the instance constructor.
 
     Constructor attributes are appended as position_keyword arguments of the same name to the instance
@@ -135,7 +141,7 @@ class Destructor(function.Function.Decorator):
 
 
 @attr.s(frozen=True, slots=True)
-class Frozen(variable.Variable.Annotation, Class.Decorator):
+class Frozen(expression.Variable.Annotation, Class.Decorator):
     """Annotation/Class Decorator to denote an attribute (or all attributes of a class) as frozen.
 
     Frozen attributes can only be modified during instance construction; afterwards, they are read-only.
