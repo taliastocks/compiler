@@ -4,11 +4,11 @@ import abc
 import typing
 
 
-class Symbol:
+class Symbol(metaclass=abc.ABCMeta):
     pass
 
 
-class Terminal(Symbol):
+class Terminal(Symbol, metaclass=abc.ABCMeta):
     pass
 
 

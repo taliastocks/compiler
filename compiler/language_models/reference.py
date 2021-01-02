@@ -1,8 +1,10 @@
+import abc
+
 import attr
 
 
 @attr.s(frozen=True, slots=True)
-class Reference:
+class Reference(metaclass=abc.ABCMeta):
     """Represents a path, e.g. to a module or declaration.
     """
     name: str = attr.ib()

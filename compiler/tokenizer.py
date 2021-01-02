@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import abc
 import typing
 
 import attr
@@ -38,7 +39,7 @@ class Tokenizer:
 
 
 @attr.s(frozen=True, slots=True)
-class Token(grammar.Terminal):
+class Token(grammar.Terminal, metaclass=abc.ABCMeta):
     tokenizer: Tokenizer = attr.ib()
     first_line: int = attr.ib()
     last_line: int = attr.ib()
