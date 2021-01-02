@@ -280,8 +280,8 @@ class FunctionArgumentPrecedenceTestCase(unittest.TestCase):
     # pylint: disable=protected-access
     def test_from_argument(self):
         self.assertEqual(
-            function.Function._ArgumentPrecedence.positional_only,
-            function.Function._ArgumentPrecedence.from_argument(
+            function.Function.Argument.Ordering.positional_only,
+            function.Function.Argument.Ordering.from_argument(
                 function.Function.Argument(
                     variable=expression.Variable('foo'),
                     is_positional=True,
@@ -291,8 +291,8 @@ class FunctionArgumentPrecedenceTestCase(unittest.TestCase):
             )
         )
         self.assertEqual(
-            function.Function._ArgumentPrecedence.positional_keyword,
-            function.Function._ArgumentPrecedence.from_argument(
+            function.Function.Argument.Ordering.positional_keyword,
+            function.Function.Argument.Ordering.from_argument(
                 function.Function.Argument(
                     variable=expression.Variable('foo'),
                     is_positional=True,
@@ -302,8 +302,8 @@ class FunctionArgumentPrecedenceTestCase(unittest.TestCase):
             )
         )
         self.assertEqual(
-            function.Function._ArgumentPrecedence.positional_extra,
-            function.Function._ArgumentPrecedence.from_argument(
+            function.Function.Argument.Ordering.positional_extra,
+            function.Function.Argument.Ordering.from_argument(
                 function.Function.Argument(
                     variable=expression.Variable('foo'),
                     is_positional=True,
@@ -313,8 +313,8 @@ class FunctionArgumentPrecedenceTestCase(unittest.TestCase):
             )
         )
         self.assertEqual(
-            function.Function._ArgumentPrecedence.keyword_only,
-            function.Function._ArgumentPrecedence.from_argument(
+            function.Function.Argument.Ordering.keyword_only,
+            function.Function.Argument.Ordering.from_argument(
                 function.Function.Argument(
                     variable=expression.Variable('foo'),
                     is_positional=False,
@@ -324,8 +324,8 @@ class FunctionArgumentPrecedenceTestCase(unittest.TestCase):
             )
         )
         self.assertEqual(
-            function.Function._ArgumentPrecedence.keyword_extra,
-            function.Function._ArgumentPrecedence.from_argument(
+            function.Function.Argument.Ordering.keyword_extra,
+            function.Function.Argument.Ordering.from_argument(
                 function.Function.Argument(
                     variable=expression.Variable('foo'),
                     is_positional=False,

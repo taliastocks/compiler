@@ -4,7 +4,7 @@ import typing
 
 import attr
 
-from . import declarable, function, variable
+from . import declarable, function, variable, path
 
 # pylint: disable=fixme
 
@@ -17,7 +17,7 @@ class Class(declarable.Declarable):
     class Decorator:
         pass
 
-    bases: typing.Sequence[Class] = attr.ib(converter=tuple, default=(), repr=False)
+    bases: typing.Sequence[path.ClassPath] = attr.ib(converter=tuple, default=(), repr=False)
     declarations: typing.Sequence[declarable.Declarable] = attr.ib(converter=tuple, default=(), repr=False)
 
 

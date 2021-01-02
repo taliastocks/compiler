@@ -35,6 +35,26 @@ class Function(declarable.Declarable):
             if self.is_positional and self.is_keyword and is_extra:
                 raise ValueError('"extra" arguments cannot be both positional and keyword')
 
+        class Ordering(enum.IntEnum):
+            positional_only = 1
+            positional_keyword = 2
+            positional_extra = 3
+            keyword_only = 4
+            keyword_extra = 5
+
+            @classmethod
+            def from_argument(cls, argument: Function.Argument):
+                try:
+                    return {
+                        (True, False, False): cls.positional_only,
+                        (True, True, False): cls.positional_keyword,
+                        (True, False, True): cls.positional_extra,
+                        (False, True, False): cls.keyword_only,
+                        (False, True, True): cls.keyword_extra,
+                    }[argument.is_positional, argument.is_keyword, argument.is_extra]
+                except KeyError as exc:
+                    raise RuntimeError('this should be unreachable') from exc
+
     @attr.s(frozen=True, slots=True)
     class Decorator:
         pass
@@ -50,26 +70,6 @@ class Function(declarable.Declarable):
                                                             init=False,
                                                             repr=False)
 
-    class _ArgumentPrecedence(enum.IntEnum):
-        positional_only = 1
-        positional_keyword = 2
-        positional_extra = 3
-        keyword_only = 4
-        keyword_extra = 5
-
-        @classmethod
-        def from_argument(cls, argument: Function.Argument):
-            try:
-                return {
-                    (True, False, False): cls.positional_only,
-                    (True, True, False): cls.positional_keyword,
-                    (True, False, True): cls.positional_extra,
-                    (False, True, False): cls.keyword_only,
-                    (False, True, True): cls.keyword_extra,
-                }[argument.is_positional, argument.is_keyword, argument.is_extra]
-            except KeyError as exc:
-                raise RuntimeError('this should be unreachable') from exc
-
     @arguments.validator
     def _check_arguments(self, _, arguments: typing.Sequence[Argument]):
         """Check that arguments appear in a meaningful order: zero or more positional-
@@ -78,11 +78,11 @@ class Function(declarable.Declarable):
         only arguments, followed by zero or one "extra keywords" argument.
         """
         argument_precedences = [
-            Function._ArgumentPrecedence.from_argument(arg)
+            Function.Argument.Ordering.from_argument(arg)
             for arg in arguments
         ]
 
-        last_precedence = Function._ArgumentPrecedence.positional_only
+        last_precedence = Function.Argument.Ordering.positional_only
         for argument, precedence in zip(arguments, argument_precedences):
             if precedence < last_precedence:
                 raise ValueError('{!r}: {} argument may not appear after {} argument'.format(
