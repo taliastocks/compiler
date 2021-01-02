@@ -2,7 +2,7 @@ import unittest
 
 import attr
 
-from . import function, expression, statement, variable
+from . import function, expression, statement
 
 
 class FunctionTestCase(unittest.TestCase):
@@ -114,7 +114,7 @@ class FunctionTestCase(unittest.TestCase):
 
     def test_init_locals_arguments(self):
         @attr.s(frozen=True, slots=True)
-        class MyAnnotation(variable.Variable.Annotation):
+        class MyAnnotation(expression.Variable.Annotation):
             my_attr: str = attr.ib()
 
         my_function = function.Function(
@@ -133,8 +133,8 @@ class FunctionTestCase(unittest.TestCase):
 
         self.assertEqual(
             {
-                'foo': variable.Variable('foo', [MyAnnotation('a')]),
-                'bar': variable.Variable('bar', [MyAnnotation('b')]),
+                'foo': expression.Variable('foo', [MyAnnotation('a')]),
+                'bar': expression.Variable('bar', [MyAnnotation('b')]),
             },
             my_function.locals
         )
@@ -181,8 +181,8 @@ class FunctionTestCase(unittest.TestCase):
 
         self.assertEqual(
             {
-                'foo': variable.Variable('foo'),
-                'bar': variable.Variable('bar'),
+                'foo': expression.Variable('foo'),
+                'bar': expression.Variable('bar'),
             },
             my_function.locals
         )

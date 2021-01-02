@@ -5,29 +5,42 @@ import typing
 import attr
 import immutabledict
 
-from . import declarable as declarable_module, function as function_module, class_ as class_module, path as path_module
+from . import (
+    class_ as class_module,
+    declarable as declarable_module,
+    expression,
+    function as function_module,
+    reference as path_module,
+)
+from .. import grammar
 
 
 @attr.s(frozen=True, slots=True)
-class Module:
-    path: path_module.ModulePath = attr.ib()
-    imports: typing.Collection[Import] = attr.ib(converter=frozenset, repr=False)
-    functions: typing.Collection[function_module.Function] = attr.ib(converter=frozenset, repr=False)
-    classes: typing.Collection[class_module.Class] = attr.ib(converter=frozenset, repr=False)
+class Module(grammar.NonTerminal):
+    imports: typing.Collection[Import] = attr.ib(converter=frozenset, default=(), repr=False)
+    functions: typing.Collection[function_module.Function] = attr.ib(converter=frozenset, default=(), repr=False)
+    classes: typing.Collection[class_module.Class] = attr.ib(converter=frozenset, default=(), repr=False)
+    variables: typing.Collection[expression.Variable] = attr.ib(converter=frozenset, default=(), repr=False)
 
     globals: typing.Mapping[declarable_module.Declarable] = attr.ib(converter=immutabledict.immutabledict,
                                                                     init=False,
                                                                     repr=False)
 
-    @staticmethod
-    def from_string(name: str, code: str):
+    @classmethod
+    def production_rules(cls):
+        yield [grammar.repeated(
+            grammar.one_of(Import, function_module.Function, class_module.Class, expression.Variable)
+        )]
+
+    @classmethod
+    def from_string(cls, name: str, code: str):
         pass
 
     @globals.default
     def _init_globals(self):
         global_declarations = {}
 
-        for declarables in [self.imports, self.functions, self.classes]:
+        for declarables in [self.imports, self.functions, self.classes, self.variables]:
             for declarable in declarables:
                 if declarable.name in global_declarations:
                     raise ValueError('{!r} cannot be declared with the same name as {!r}'.format(
@@ -40,5 +53,10 @@ class Module:
 
 
 @attr.s(frozen=True, slots=True)
-class Import(declarable_module.Declarable):
-    path: path_module.ModulePath = attr.ib()
+class Import(declarable_module.Declarable, grammar.NonTerminal):
+    path: path_module.ModuleReference = attr.ib()
+
+    @classmethod
+    def production_rules(cls):
+        # Placeholder until I get around to writing a real implementation.
+        yield from []

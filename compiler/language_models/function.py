@@ -6,11 +6,12 @@ import typing
 import attr
 import immutabledict
 
-from . import statement, declarable, variable, expression
+from . import statement, declarable, expression
+from .. import grammar
 
 
 @attr.s(frozen=True, slots=True)
-class Function(declarable.Declarable):
+class Function(declarable.Declarable, grammar.NonTerminal):
     """A Function declaration and definition.
     """
     # pylint: disable=too-many-instance-attributes
@@ -70,6 +71,11 @@ class Function(declarable.Declarable):
                                                             init=False,
                                                             repr=False)
 
+    @classmethod
+    def production_rules(cls):
+        # Placeholder until I get around to writing a real implementation.
+        yield from []
+
     @arguments.validator
     def _check_arguments(self, _, arguments: typing.Sequence[Argument]):
         """Check that arguments appear in a meaningful order: zero or more positional-
@@ -115,7 +121,7 @@ class Function(declarable.Declarable):
                     argument.variable.name
                 ))
 
-            var = variable.Variable(
+            var = expression.Variable(
                 name=argument.variable.name,
                 annotations=argument.variable.annotations,
             )
@@ -145,6 +151,6 @@ class Function(declarable.Declarable):
         # Declare all the local variables (anything assigned and not declared nonlocal),
         # but skip arguments (which were already declared above).
         for local_name in local_variable_names - argument_names:
-            local_declarations[local_name] = variable.Variable(name=local_name)
+            local_declarations[local_name] = expression.Variable(name=local_name)
 
         return local_declarations
