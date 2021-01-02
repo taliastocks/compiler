@@ -626,3 +626,31 @@ class TryTestCase(unittest.TestCase):
             ],
             list(try_statement.statements)
         )
+
+
+class RaiseTestCase(unittest.TestCase):
+    def test_expressions(self):
+        raise_statement = statement.Raise(
+            expression=expression.Variable('foo')
+        )
+
+        self.assertEqual(
+            [
+                expression.Variable('foo')
+            ],
+            list(raise_statement.expressions)
+        )
+
+
+class ReturnTestCase(unittest.TestCase):
+    def test_expressions(self):
+        return_statement = statement.Return(
+            expression=expression.Variable('foo')
+        )
+
+        self.assertEqual(
+            [
+                expression.Variable('foo')
+            ],
+            list(return_statement.expressions)
+        )
