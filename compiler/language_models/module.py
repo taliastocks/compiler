@@ -47,11 +47,11 @@ class Module(parser_module.Symbol):
             ])
             if isinstance(parser.last_symbol, Import):
                 imports.append(parser.last_symbol)
-            if isinstance(parser.last_symbol, function_module.Function):
+            elif isinstance(parser.last_symbol, function_module.Function):
                 functions.append(parser.last_symbol)
-            if isinstance(parser.last_symbol, class_module.Class):
+            elif isinstance(parser.last_symbol, class_module.Class):
                 classes.append(parser.last_symbol)
-            if isinstance(parser.last_symbol, expression.Variable):
+            elif isinstance(parser.last_symbol, expression.Variable):
                 variables.append(parser.last_symbol)
 
         return parser.new_from_symbol(cls(
