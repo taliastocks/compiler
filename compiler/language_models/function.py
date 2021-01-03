@@ -7,11 +7,10 @@ import attr
 import immutabledict
 
 from . import statement, declarable, expression
-from .. import grammar
 
 
 @attr.s(frozen=True, slots=True)
-class Function(declarable.Declarable, grammar.NonTerminal):
+class Function(declarable.Declarable):
     """A Function declaration and definition.
     """
     # pylint: disable=too-many-instance-attributes
@@ -72,9 +71,8 @@ class Function(declarable.Declarable, grammar.NonTerminal):
                                                             repr=False)
 
     @classmethod
-    def production_rules(cls):
-        # Placeholder until I get around to writing a real implementation.
-        yield from []
+    def parse(cls, parser):
+        pass  # Placeholder until I get around to writing a real implementation.
 
     @arguments.validator
     def _check_arguments(self, _, arguments: typing.Sequence[Argument]):

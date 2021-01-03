@@ -7,11 +7,10 @@ import attr
 from . import declarable, function, expression, reference
 
 # pylint: disable=fixme
-from .. import grammar
 
 
 @attr.s(frozen=True, slots=True)
-class Class(declarable.Declarable, grammar.NonTerminal):
+class Class(declarable.Declarable):
     """A Class declaration and definition.
     """
     @attr.s(frozen=True, slots=True)
@@ -22,9 +21,8 @@ class Class(declarable.Declarable, grammar.NonTerminal):
     declarations: typing.Sequence[declarable.Declarable] = attr.ib(converter=tuple, default=(), repr=False)
 
     @classmethod
-    def production_rules(cls):
-        # Placeholder until I get around to writing a real implementation.
-        yield from []
+    def parse(cls, parser):
+        pass  # Placeholder until I get around to writing a real implementation.
 
 
 @attr.s(frozen=True, slots=True)

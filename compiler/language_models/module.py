@@ -12,11 +12,11 @@ from . import (
     function as function_module,
     reference as path_module,
 )
-from .. import grammar
+from .. import parser as parser_module
 
 
 @attr.s(frozen=True, slots=True)
-class Module(grammar.NonTerminal):
+class Module(parser_module.Symbol):
     imports: typing.Collection[Import] = attr.ib(converter=frozenset, default=(), repr=False)
     functions: typing.Collection[function_module.Function] = attr.ib(converter=frozenset, default=(), repr=False)
     classes: typing.Collection[class_module.Class] = attr.ib(converter=frozenset, default=(), repr=False)
@@ -27,14 +27,39 @@ class Module(grammar.NonTerminal):
                                                                     repr=False)
 
     @classmethod
-    def production_rules(cls):
-        yield [grammar.repeated(
-            grammar.one_of(Import, function_module.Function, class_module.Class, expression.Variable)
-        )]
+    def from_string(cls, code: str):
+        pass
 
     @classmethod
-    def from_string(cls, name: str, code: str):
-        pass
+    def parse(cls, parser: parser_module.Parser):
+        imports = []
+        functions = []
+        classes = []
+        variables = []
+
+        while not isinstance(parser.last_symbol, parser_module.EndFile):
+            parser = parser.parse([
+                parser_module.EndFile,
+                Import,
+                function_module.Function,
+                class_module.Class,
+                expression.Variable,
+            ])
+            if isinstance(parser.last_symbol, Import):
+                imports.append(parser.last_symbol)
+            if isinstance(parser.last_symbol, function_module.Function):
+                functions.append(parser.last_symbol)
+            if isinstance(parser.last_symbol, class_module.Class):
+                classes.append(parser.last_symbol)
+            if isinstance(parser.last_symbol, expression.Variable):
+                variables.append(parser.last_symbol)
+
+        return parser.new_from_symbol(cls(
+            imports=imports,
+            functions=functions,
+            classes=classes,
+            variables=variables,
+        ))
 
     @globals.default
     def _init_globals(self):
@@ -53,10 +78,9 @@ class Module(grammar.NonTerminal):
 
 
 @attr.s(frozen=True, slots=True)
-class Import(declarable_module.Declarable, grammar.NonTerminal):
+class Import(declarable_module.Declarable, parser_module.Symbol):
     path: path_module.ModuleReference = attr.ib()
 
     @classmethod
-    def production_rules(cls):
-        # Placeholder until I get around to writing a real implementation.
-        yield from []
+    def parse(cls, parser):
+        pass  # Placeholder until I get around to writing a real implementation.

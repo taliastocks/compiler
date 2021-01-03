@@ -6,7 +6,6 @@ import typing
 import attr
 
 from . import declarable
-from .. import grammar
 
 
 @attr.s(frozen=True, slots=True)
@@ -43,7 +42,7 @@ class LValue(Expression):
 
 
 @attr.s(frozen=True, slots=True)
-class Variable(declarable.Declarable, grammar.NonTerminal, LValue):
+class Variable(declarable.Declarable, LValue):
     """A Variable is a register in a namespace which can hold runtime values.
 
     When used as an expression, evaluates to the value of the variable.
@@ -56,9 +55,8 @@ class Variable(declarable.Declarable, grammar.NonTerminal, LValue):
     initializer: typing.Optional[Expression] = attr.ib(default=None, repr=False)
 
     @classmethod
-    def production_rules(cls):
-        # Placeholder until I get around to writing a real implementation.
-        yield from []
+    def parse(cls, parser):
+        pass  # Placeholder until I get around to writing a real implementation.
 
 
 @attr.s(frozen=True, slots=True)
