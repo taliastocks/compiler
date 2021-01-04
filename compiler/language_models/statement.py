@@ -6,10 +6,11 @@ import typing
 import attr
 
 from . import expression as expression_module
+from .. import parser as parser_module
 
 
 @attr.s(frozen=True, slots=True)
-class Statement(metaclass=abc.ABCMeta):
+class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
     """A statement represents some action to be carried out.
     """
     @property
@@ -79,12 +80,20 @@ class Block(Statement):
     """
     statements: typing.Sequence[Statement] = attr.ib(converter=tuple, factory=list)
 
+    @classmethod
+    def parse(cls, parser):
+        pass
+
 
 @attr.s(frozen=True, slots=True)
 class Declaration(Statement):
     """An inline declaration, e.g. of a function or class.
     """
     declarable: declarable.Declarable = attr.ib()
+
+    @classmethod
+    def parse(cls, parser):
+        pass
 
 
 @attr.s(frozen=True, slots=True)
@@ -93,6 +102,10 @@ class Assignment(Statement):
     """
     receivers: typing.Sequence[expression_module.LValue] = attr.ib(converter=tuple)
     expression: expression_module.Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, parser):
+        pass
 
     @property
     def expressions(self):
@@ -110,6 +123,10 @@ class Expression(Statement):
     """
     expression: expression_module.Expression = attr.ib()
 
+    @classmethod
+    def parse(cls, parser):
+        pass
+
     @property
     def expressions(self):
         yield self.expression
@@ -123,6 +140,10 @@ class If(Statement):
     condition: expression_module.Expression = attr.ib()
     body: Block = attr.ib()
     else_body: typing.Optional[Block] = attr.ib(default=None)
+
+    @classmethod
+    def parse(cls, parser):
+        pass
 
     @property
     def expressions(self):
@@ -146,6 +167,10 @@ class While(Statement):
     condition: expression_module.Expression = attr.ib()
     body: Block = attr.ib()
     else_body: typing.Optional[Block] = attr.ib(default=None)
+
+    @classmethod
+    def parse(cls, parser):
+        pass
 
     @property
     def expressions(self):
@@ -172,6 +197,10 @@ class For(Statement):
     else_body: typing.Optional[Block] = attr.ib(default=None)
     is_async: bool = attr.ib(default=False)
 
+    @classmethod
+    def parse(cls, parser):
+        pass
+
     @property
     def expressions(self):
         yield self.iterable
@@ -193,12 +222,18 @@ class For(Statement):
 class Break(Statement):
     """Break out of the current loop.
     """
+    @classmethod
+    def parse(cls, parser):
+        pass
 
 
 @attr.s(frozen=True, slots=True)
 class Continue(Statement):
     """Skip the rest of the loop body and begin the next iteration.
     """
+    @classmethod
+    def parse(cls, parser):
+        pass
 
 
 @attr.s(frozen=True, slots=True)
@@ -213,6 +248,10 @@ class With(Statement):
     body: Block = attr.ib()
     receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
     is_async: bool = attr.ib(default=False)
+
+    @classmethod
+    def parse(cls, parser):
+        pass
 
     @property
     def receivers(self):
@@ -257,6 +296,10 @@ class Try(Statement):
     else_body: typing.Optional[Block] = attr.ib(default=None)
     finally_body: typing.Optional[Block] = attr.ib(default=None)
 
+    @classmethod
+    def parse(cls, parser):
+        pass
+
     @property
     def receivers(self):
         for exception_handler in self.exception_handlers:
@@ -289,6 +332,10 @@ class Try(Statement):
 class Raise(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
+    @classmethod
+    def parse(cls, parser):
+        pass
+
     @property
     def expressions(self):
         if self.expression is not None:
@@ -299,6 +346,10 @@ class Raise(Statement):
 class Return(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
+    @classmethod
+    def parse(cls, parser):
+        pass
+
     @property
     def expressions(self):
         if self.expression is not None:
@@ -308,3 +359,7 @@ class Return(Statement):
 @attr.s(frozen=True, slots=True)
 class Nonlocal(Statement):
     variables: typing.Sequence[expression_module.Variable] = attr.ib(factory=tuple, converter=tuple)
+
+    @classmethod
+    def parse(cls, parser):
+        pass

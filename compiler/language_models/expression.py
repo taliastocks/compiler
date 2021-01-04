@@ -6,10 +6,11 @@ import typing
 import attr
 
 from . import declarable
+from .. import parser as parser_module
 
 
 @attr.s(frozen=True, slots=True)
-class Expression(metaclass=abc.ABCMeta):
+class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
     """An Expression is a syntactic entity that may be evaluated to determine
     its value.
     """
@@ -35,7 +36,7 @@ class Expression(metaclass=abc.ABCMeta):
 
 
 @attr.s(frozen=True, slots=True)
-class LValue(Expression):
+class LValue(Expression, metaclass=abc.ABCMeta):
     """An LValue is an expression which can be assigned to, i.e. it can appear
     on the left-hand side of an `=` sign (thus "L" as in "Left").
     """
@@ -65,6 +66,10 @@ class Unpack(LValue):
     """
     lvalues: typing.Sequence[LValue] = attr.ib(converter=tuple)
 
+    @classmethod
+    def parse(cls, parser):
+        pass
+
     @property
     def expressions(self):
         yield from self.lvalues
@@ -87,6 +92,10 @@ class Subscript(LValue):
     operand: Expression = attr.ib()
     subscript: Expression = attr.ib()
 
+    @classmethod
+    def parse(cls, parser):
+        pass
+
     @property
     def expressions(self):
         yield self.operand
@@ -100,6 +109,10 @@ class Dot(LValue):
     operand: Expression = attr.ib()
     member: str = attr.ib()
 
+    @classmethod
+    def parse(cls, parser):
+        pass
+
     @property
     def expressions(self):
         yield self.operand
@@ -110,6 +123,10 @@ class Yield(Expression):
     """Yield a single value from a generator.
     """
     expression: typing.Optional[Expression] = attr.ib(default=None)
+
+    @classmethod
+    def parse(cls, parser):
+        pass
 
     @property
     def expressions(self):
@@ -128,6 +145,10 @@ class YieldFrom(Expression):
     expression: typing.Optional[Expression] = attr.ib(default=None)
     is_async: bool = attr.ib(default=False)
 
+    @classmethod
+    def parse(cls, parser):
+        pass
+
     @property
     def expressions(self):
         if self.expression is not None:
@@ -140,6 +161,10 @@ class Await(Expression):
     or async generator.
     """
     expression: typing.Optional[Expression] = attr.ib(default=None)
+
+    @classmethod
+    def parse(cls, parser):
+        pass
 
     @property
     def expressions(self):
@@ -154,6 +179,10 @@ class IfElse(Expression):
     condition: Expression = attr.ib()
     value: Expression = attr.ib()
     else_value: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, parser):
+        pass
 
     @property
     def expressions(self):
@@ -175,6 +204,10 @@ class Comprehension(Expression):
     value: Expression = attr.ib()
     loops: typing.Sequence[Loop] = attr.ib(converter=tuple)
     condition: typing.Optional[Expression] = attr.ib(default=None)
+
+    @classmethod
+    def parse(cls, parser):
+        pass
 
     @property
     def expressions(self):
