@@ -5,12 +5,13 @@ import typing
 import attr
 
 from . import declarable, function, expression, reference
+from .. import parser as parser_module
 
 # pylint: disable=fixme
 
 
 @attr.s(frozen=True, slots=True)
-class Class(declarable.Declarable):
+class Class(parser_module.Symbol, declarable.Declarable):
     """A Class declaration and definition.
     """
     @attr.s(frozen=True, slots=True)
