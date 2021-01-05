@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import abc
-import re
 import typing
 
 import attr
+import regex
 
 
 @attr.s(frozen=True, slots=True)
@@ -246,7 +246,7 @@ class Whitespace(Token):
 
 
 @attr.s(frozen=True, slots=True)
-class WhitespaceLines(Token):
+class MultilineWhitespace(Token):
     """Token representing whitespace, potentially split over multiple lines.
     """
     @classmethod
@@ -269,6 +269,31 @@ class WhitespaceLines(Token):
                         first_column=parser.column,
                         next_column=next_column,
                     ))
+
+        return None
+
+
+@attr.s(frozen=True, slots=True)
+class Identifier(Token):
+    """Token representing a valid variable name or reserved word.
+
+    An identifier must be a non-digit word character followed by zero or more
+    word characters.
+    """
+    identifier: str = attr.ib()
+
+    @classmethod
+    def parse(cls, parser: Parser):
+        match = _IDENTIFIER_REGEX.match(parser.line_text()[parser.column:])
+
+        if match:
+            return parser.new_from_symbol(cls(
+                first_line=parser.line,
+                next_line=parser.line,
+                first_column=parser.column,
+                next_column=parser.column + match.end(),
+                identifier=match.group(),
+            ))
 
         return None
 
@@ -309,5 +334,6 @@ def _measure_block_depth(parser):
     return block_depth
 
 
-_INDENT_REGEX = re.compile(r'^( *)(\s*)')
-_WHITESPACE_REGEX = re.compile(r'^\s+')
+_INDENT_REGEX = regex.compile(r'^( *)(\s*)')
+_WHITESPACE_REGEX = regex.compile(r'^\s+')
+_IDENTIFIER_REGEX = regex.compile(r'^[\w--\d]\w*', regex.V1)
