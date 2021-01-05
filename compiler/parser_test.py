@@ -643,6 +643,81 @@ class TokenTestCase(unittest.TestCase):
             )
         )
 
+    def test_whitespace(self):
+        self.assertEqual(
+            parser_module.Whitespace.parse(
+                parser_module.Parser(
+                    lines=['foo   bar'],
+                    column=3,
+                )
+            ),
+            parser_module.Parser(
+                lines=['foo   bar'],
+                column=6,
+                last_symbol=parser_module.Whitespace(
+                    first_line=0,
+                    next_line=0,
+                    first_column=3,
+                    next_column=6,
+                ),
+            )
+        )
+        self.assertIsNone(
+            parser_module.Whitespace.parse(
+                parser_module.Parser(
+                    lines=['foo   bar'],
+                    column=2,
+                )
+            )
+        )
+
+    def test_whitespace_lines(self):
+        self.assertEqual(
+            parser_module.WhitespaceLines.parse(
+                parser_module.Parser(
+                    lines=['foo   bar'],
+                    column=3,
+                )
+            ),
+            parser_module.Parser(
+                lines=['foo   bar'],
+                column=6,
+                last_symbol=parser_module.WhitespaceLines(
+                    first_line=0,
+                    next_line=0,
+                    first_column=3,
+                    next_column=6,
+                ),
+            )
+        )
+        self.assertEqual(
+            parser_module.WhitespaceLines.parse(
+                parser_module.Parser(
+                    lines=['foo ', '  ', '    bar'],
+                    column=3,
+                )
+            ),
+            parser_module.Parser(
+                lines=['foo ', '  ', '    bar'],
+                line=2,
+                column=4,
+                last_symbol=parser_module.WhitespaceLines(
+                    first_line=0,
+                    next_line=2,
+                    first_column=3,
+                    next_column=4,
+                ),
+            )
+        )
+        self.assertIsNone(
+            parser_module.Whitespace.parse(
+                parser_module.Parser(
+                    lines=['foo   bar'],
+                    column=2,
+                )
+            )
+        )
+
 
 class HelpersTestCase(unittest.TestCase):
     # pylint: disable=protected-access

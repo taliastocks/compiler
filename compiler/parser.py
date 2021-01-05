@@ -147,7 +147,8 @@ class BlankLine(Token):
         if parser.column != 0:
             return None  # Only match the beginning of a line.
 
-        if parser.line_text().strip() == '':
+        line = parser.line_text()
+        if not line or _WHITESPACE_REGEX.fullmatch(line):
             return parser.new_from_symbol(cls(
                 first_line=parser.line,
                 next_line=parser.line + 1,
@@ -225,6 +226,53 @@ class EndBlock(Token):
         return None
 
 
+@attr.s(frozen=True, slots=True)
+class Whitespace(Token):
+    """Token representing whitespace.
+    """
+    @classmethod
+    def parse(cls, parser: Parser):
+        match = _WHITESPACE_REGEX.match(parser.line_text()[parser.column:])
+
+        if match:
+            return parser.new_from_symbol(cls(
+                first_line=parser.line,
+                next_line=parser.line,
+                first_column=parser.column,
+                next_column=parser.column + match.end(),
+            ))
+
+        return None
+
+
+@attr.s(frozen=True, slots=True)
+class WhitespaceLines(Token):
+    """Token representing whitespace, potentially split over multiple lines.
+    """
+    @classmethod
+    def parse(cls, parser: Parser):
+        match = _WHITESPACE_REGEX.match(parser.line_text()[parser.column:])
+        next_line = parser.line
+        next_column = parser.column
+
+        if match:
+            next_column += match.end()
+            while True:
+                if next_column == len(parser.line_text(next_line)):
+                    next_line += 1
+                    match = _WHITESPACE_REGEX.match(parser.line_text(next_line))
+                    next_column = match.end()
+                else:
+                    return parser.new_from_symbol(cls(
+                        first_line=parser.line,
+                        next_line=next_line,
+                        first_column=parser.column,
+                        next_column=next_column,
+                    ))
+
+        return None
+
+
 def _measure_block_depth(parser):
     """Measure the block depth for the current line number.
 
@@ -262,3 +310,4 @@ def _measure_block_depth(parser):
 
 
 _INDENT_REGEX = re.compile(r'^( *)(\s*)')
+_WHITESPACE_REGEX = re.compile(r'^\s+')
