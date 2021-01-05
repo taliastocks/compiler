@@ -671,9 +671,9 @@ class TokenTestCase(unittest.TestCase):
             )
         )
 
-    def test_whitespace_lines(self):
+    def test_multiline_whitespace(self):
         self.assertEqual(
-            parser_module.WhitespaceLines.parse(
+            parser_module.MultilineWhitespace.parse(
                 parser_module.Parser(
                     lines=['foo   bar'],
                     column=3,
@@ -682,7 +682,7 @@ class TokenTestCase(unittest.TestCase):
             parser_module.Parser(
                 lines=['foo   bar'],
                 column=6,
-                last_symbol=parser_module.WhitespaceLines(
+                last_symbol=parser_module.MultilineWhitespace(
                     first_line=0,
                     next_line=0,
                     first_column=3,
@@ -691,7 +691,7 @@ class TokenTestCase(unittest.TestCase):
             )
         )
         self.assertEqual(
-            parser_module.WhitespaceLines.parse(
+            parser_module.MultilineWhitespace.parse(
                 parser_module.Parser(
                     lines=['foo ', '  ', '    bar'],
                     column=3,
@@ -701,7 +701,7 @@ class TokenTestCase(unittest.TestCase):
                 lines=['foo ', '  ', '    bar'],
                 line=2,
                 column=4,
-                last_symbol=parser_module.WhitespaceLines(
+                last_symbol=parser_module.MultilineWhitespace(
                     first_line=0,
                     next_line=2,
                     first_column=3,
@@ -714,6 +714,59 @@ class TokenTestCase(unittest.TestCase):
                 parser_module.Parser(
                     lines=['foo   bar'],
                     column=2,
+                )
+            )
+        )
+
+    def test_identifier(self):
+        self.assertEqual(
+            parser_module.Identifier.parse(
+                parser_module.Parser(
+                    lines=['foo1   bar'],
+                )
+            ),
+            parser_module.Parser(
+                lines=['foo1   bar'],
+                column=4,
+                last_symbol=parser_module.Identifier(
+                    first_line=0,
+                    next_line=0,
+                    first_column=0,
+                    next_column=4,
+                    identifier='foo1',
+                ),
+            )
+        )
+        self.assertEqual(
+            parser_module.Identifier.parse(
+                parser_module.Parser(
+                    lines=['foo   bar42'],
+                    column=6,
+                )
+            ),
+            parser_module.Parser(
+                lines=['foo   bar42'],
+                column=11,
+                last_symbol=parser_module.Identifier(
+                    first_line=0,
+                    next_line=0,
+                    first_column=6,
+                    next_column=11,
+                    identifier='bar42',
+                ),
+            )
+        )
+        self.assertIsNone(
+            parser_module.Identifier.parse(
+                parser_module.Parser(
+                    lines=[' foo'],
+                )
+            )
+        )
+        self.assertIsNone(
+            parser_module.Identifier.parse(
+                parser_module.Parser(
+                    lines=['1foo'],
                 )
             )
         )
