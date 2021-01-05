@@ -147,7 +147,8 @@ class BlankLine(Token):
         if parser.column != 0:
             return None  # Only match the beginning of a line.
 
-        if _WHITESPACE_REGEX.fullmatch(parser.line_text()):
+        line = parser.line_text()
+        if not line or _WHITESPACE_REGEX.fullmatch(line):
             return parser.new_from_symbol(cls(
                 first_line=parser.line,
                 next_line=parser.line + 1,
