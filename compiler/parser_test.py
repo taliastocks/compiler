@@ -174,6 +174,24 @@ class ParserTestCase(unittest.TestCase):
                 parser_module.EndLine,
             ])
 
+    def test_parse_always(self):
+        parser = parser_module.Parser(
+            lines=[
+                'foo'
+            ],
+        )
+
+        new_parser = parser.parse([
+            parser_module.BlankLine,
+            parser_module.EndLine,
+            parser_module.Always,
+        ])
+
+        self.assertIsInstance(
+            new_parser.last_symbol,
+            parser_module.Always
+        )
+
     def test_parse_recursive_no_match(self):
         class MySymbol(parser_module.Symbol):
             @classmethod
@@ -800,9 +818,9 @@ class TokenTestCase(unittest.TestCase):
             )
         )
 
-    def test_operator(self):
+    def test_characters(self):
         self.assertEqual(
-            parser_module.Operator['&&'].parse(
+            parser_module.Characters['&&'].parse(
                 parser_module.Parser(
                     lines=[' && '],
                 )
@@ -810,7 +828,7 @@ class TokenTestCase(unittest.TestCase):
             parser_module.Parser(
                 lines=[' && '],
                 column=3,
-                last_symbol=parser_module.Operator['&&'](
+                last_symbol=parser_module.Characters['&&'](
                     first_line=0,
                     next_line=0,
                     first_column=0,
@@ -819,7 +837,7 @@ class TokenTestCase(unittest.TestCase):
             )
         )
         self.assertIsNone(
-            parser_module.Operator['&&'].parse(
+            parser_module.Characters['&&'].parse(
                 parser_module.Parser(
                     lines=[' || '],
                 )

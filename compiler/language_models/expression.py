@@ -56,13 +56,54 @@ class Variable(declarable.Declarable, LValue):
     initializer: typing.Optional[Expression] = attr.ib(default=None, repr=False)
 
     @classmethod
-    def parse(cls, parser, allowed_annotations=(), initializer=False):
+    def parse(cls, parser, allowed_annotations: typing.Sequence[Variable.Annotation] = (), parse_initializer=False):
         # pylint: disable=unused-argument, arguments-differ
         parser = parser.parse([
             parser_module.Identifier,
         ])
-        # pylint: disable=fixme
-        # TODO: annotations, initializer
+        if isinstance(parser.last_symbol, parser_module.Identifier):
+            name = parser.last_symbol.identifier
+        else:
+            raise RuntimeError('this should be unreachable')
+
+        annotations = []
+        if allowed_annotations:
+            parser = parser.parse([
+                parser_module.Characters[':'],
+                parser_module.Always,
+            ])
+
+            while not isinstance(parser.last_symbol, parser_module.Always):
+                parser = parser.parse([*allowed_annotations, parser_module.Always])
+                if isinstance(parser.last_symbol, Variable.Annotation):
+                    annotations.append(parser.last_symbol)
+
+            if not annotations:
+                raise parser_module.ParseError(
+                    message='expected annotations',
+                    parser=parser,
+                )
+
+        initializer = None
+        if parse_initializer:
+            parser = parser.parse([
+                parser_module.Characters['='],
+                parser_module.Always,
+            ])
+
+            if isinstance(parser.last_symbol, Expression):
+                initializer = parser.last_symbol
+            else:
+                raise parser_module.ParseError(
+                    message='expected initializer expression',
+                    parser=parser,
+                )
+
+        return parser.new_from_symbol(cls(
+            name=name,
+            annotations=annotations,
+            initializer=initializer,
+        ))
 
 
 @attr.s(frozen=True, slots=True)
