@@ -4,7 +4,7 @@ import typing
 
 import attr
 
-from . import declarable, function, expression, reference
+from . import declarable, function, expression
 from .. import parser as parser_module
 
 # pylint: disable=fixme
@@ -18,7 +18,7 @@ class Class(parser_module.Symbol, declarable.Declarable):
     class Decorator:
         pass
 
-    bases: typing.Sequence[reference.ClassReference] = attr.ib(converter=tuple, default=(), repr=False)
+    bases: typing.Sequence[expression.Expression] = attr.ib(converter=tuple, default=(), repr=False)
     declarations: typing.Sequence[declarable.Declarable] = attr.ib(converter=tuple, default=(), repr=False)
 
     @classmethod
@@ -92,6 +92,10 @@ class Private(function.Function.Decorator, expression.Variable.Annotation):
     TODO: Design a test framework API which provides access to private methods/attributes.
     """
 
+    @classmethod
+    def parse(cls, parser):
+        pass  # Placeholder until I get around to writing a real implementation.
+
 
 @attr.s(frozen=True, slots=True)
 class Protected(function.Function.Decorator, expression.Variable.Annotation):
@@ -108,6 +112,10 @@ class Protected(function.Function.Decorator, expression.Variable.Annotation):
 
     TODO: Design a test framework API which provides access to protected methods/attributes.
     """
+
+    @classmethod
+    def parse(cls, parser):
+        pass  # Placeholder until I get around to writing a real implementation.
 
 
 @attr.s(frozen=True, slots=True)
@@ -129,6 +137,10 @@ class Constructor(function.Function.Decorator, expression.Variable.Annotation):
     TODO: Figure out how to build the instance constructor (repeated argument names, etc).
     """
 
+    @classmethod
+    def parse(cls, parser):
+        pass  # Placeholder until I get around to writing a real implementation.
+
 
 @attr.s(frozen=True, slots=True)
 class Destructor(function.Function.Decorator):
@@ -149,3 +161,7 @@ class Frozen(expression.Variable.Annotation, Class.Decorator):
 
     Note that frozen attributes may still be mutable (due to their assigned value being mutable).
     """
+
+    @classmethod
+    def parse(cls, parser):
+        pass  # Placeholder until I get around to writing a real implementation.

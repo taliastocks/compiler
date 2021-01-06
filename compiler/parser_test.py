@@ -399,6 +399,24 @@ class TokenTestCase(unittest.TestCase):
         self.assertEqual(
             parser_module.EndLine.parse(
                 parser_module.Parser(
+                    lines=['a   '],
+                    column=1,
+                )
+            ),
+            parser_module.Parser(
+                lines=['a   '],
+                line=1,
+                last_symbol=parser_module.EndLine(
+                    first_line=0,
+                    next_line=1,
+                    first_column=1,
+                    next_column=0,
+                ),
+            )
+        )
+        self.assertEqual(
+            parser_module.EndLine.parse(
+                parser_module.Parser(
                     lines=['foo'],
                     column=3,
                 )
@@ -756,17 +774,54 @@ class TokenTestCase(unittest.TestCase):
                 ),
             )
         )
-        self.assertIsNone(
+        self.assertEqual(
             parser_module.Identifier.parse(
                 parser_module.Parser(
-                    lines=[' foo'],
+                    lines=[' foo '],
                 )
+            ),
+            parser_module.Parser(
+                lines=[' foo '],
+                column=4,
+                last_symbol=parser_module.Identifier(
+                    first_line=0,
+                    next_line=0,
+                    first_column=0,
+                    next_column=4,
+                    identifier='foo',
+                ),
             )
         )
         self.assertIsNone(
             parser_module.Identifier.parse(
                 parser_module.Parser(
                     lines=['1foo'],
+                )
+            )
+        )
+
+    def test_operator(self):
+        self.assertEqual(
+            parser_module.Operator['&&'].parse(
+                parser_module.Parser(
+                    lines=[' && '],
+                )
+            ),
+            parser_module.Parser(
+                lines=[' && '],
+                column=3,
+                last_symbol=parser_module.Operator['&&'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=0,
+                    next_column=3,
+                ),
+            )
+        )
+        self.assertIsNone(
+            parser_module.Operator['&&'].parse(
+                parser_module.Parser(
+                    lines=[' || '],
                 )
             )
         )

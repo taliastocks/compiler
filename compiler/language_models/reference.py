@@ -20,13 +20,3 @@ class ModuleReference(Reference):
     @classmethod
     def parse(cls, parser):
         pass
-
-
-@attr.s(frozen=True, slots=True)
-class ClassReference(Reference):
-    """Represents a reference to a class.
-    """
-
-    @classmethod
-    def parse(cls, parser):
-        pass
