@@ -6,6 +6,8 @@ import typing
 import attr
 import regex
 
+from .meta import generic
+
 
 @attr.s(frozen=True, slots=True)
 class Parser:
@@ -165,7 +167,8 @@ class EndLine(Token):
     """
     @classmethod
     def parse(cls, parser: Parser):
-        if parser.column >= len(parser.line_text()):
+        match = _END_LINE_REGEX.match(parser.line_text()[parser.column:])
+        if match:
             return parser.new_from_symbol(cls(
                 first_line=parser.line,
                 next_line=parser.line + 1,
@@ -292,10 +295,34 @@ class Identifier(Token):
                 next_line=parser.line,
                 first_column=parser.column,
                 next_column=parser.column + match.end(),
-                identifier=match.group(),
+                identifier=match.group(1),
             ))
 
         return None
+
+
+@generic.Generic
+def Operator(characters):  # noqa
+    # pylint: disable=invalid-name
+    operator_regex = regex.compile(r'^ *({})'.format(regex.escape(characters)))
+
+    class Operator(Token):  # noqa
+        # pylint: disable=redefined-outer-name
+        @classmethod
+        def parse(cls, parser: Parser):
+            match = operator_regex.match(parser.line_text()[parser.column:])
+
+            if match:
+                return parser.new_from_symbol(cls(
+                    first_line=parser.line,
+                    next_line=parser.line,
+                    first_column=parser.column,
+                    next_column=parser.column + match.end(),
+                ))
+
+            return None
+
+    return Operator
 
 
 def _measure_block_depth(parser):
@@ -334,6 +361,7 @@ def _measure_block_depth(parser):
     return block_depth
 
 
+_END_LINE_REGEX = regex.compile(r'^ *$')
 _INDENT_REGEX = regex.compile(r'^( *)(\s*)')
 _WHITESPACE_REGEX = regex.compile(r'^\s+')
-_IDENTIFIER_REGEX = regex.compile(r'^[\w--\d]\w*', regex.V1)
+_IDENTIFIER_REGEX = regex.compile(r'^ *([\w--\d]\w*)', regex.V1)

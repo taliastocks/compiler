@@ -117,6 +117,9 @@ class FunctionTestCase(unittest.TestCase):
         class MyAnnotation(expression.Variable.Annotation):
             my_attr: str = attr.ib()
 
+            def parse(self, _):
+                pass
+
         my_function = function.Function(
             name='func',
             arguments=[

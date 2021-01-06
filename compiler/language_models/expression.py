@@ -49,15 +49,20 @@ class Variable(declarable.Declarable, LValue):
     When used as an expression, evaluates to the value of the variable.
     """
     @attr.s(frozen=True, slots=True)
-    class Annotation:
+    class Annotation(parser_module.Symbol, metaclass=abc.ABCMeta):
         pass
 
     annotations: typing.Sequence[Annotation] = attr.ib(converter=tuple, default=(), repr=False)
     initializer: typing.Optional[Expression] = attr.ib(default=None, repr=False)
 
     @classmethod
-    def parse(cls, parser):
-        pass  # Placeholder until I get around to writing a real implementation.
+    def parse(cls, parser, allowed_annotations=(), initializer=False):
+        # pylint: disable=unused-argument, arguments-differ
+        parser = parser.parse([
+            parser_module.Identifier,
+        ])
+        # pylint: disable=fixme
+        # TODO: annotations, initializer
 
 
 @attr.s(frozen=True, slots=True)
