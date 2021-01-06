@@ -68,6 +68,7 @@ class Parser:
             except NoMatchError as exc:
                 if i == len(one_of) - 1:
                     raise NoMatchError(
+                        message='none of the expected symbols were found',
                         parser=self,
                         expected_symbols=one_of,
                     ) from exc
@@ -76,6 +77,7 @@ class Parser:
                     return next_parser
 
         raise NoMatchError(
+            message='none of the expected symbols were found',
             parser=self,
             expected_symbols=one_of,
         )
@@ -83,19 +85,18 @@ class Parser:
 
 @attr.s(frozen=True, slots=True)
 class ParseError(Exception):
-    pass
+    message: str = attr.ib()
+    parser: Parser = attr.ib()
 
 
 @attr.s(frozen=True, slots=True)
 class NoMatchError(ParseError):
-    parser: Parser = attr.ib()
     expected_symbols: typing.Sequence[typing.Type[Symbol]] = attr.ib()
 
 
 @attr.s(frozen=True, slots=True)
 class IndentationError(ParseError):  # noqa
     # pylint: disable=redefined-builtin
-    message: str = attr.ib()
     line: int = attr.ib()
     column: int = attr.ib()
 
@@ -111,6 +112,15 @@ class Symbol(metaclass=abc.ABCMeta):
 
         If this Symbol cannot be constructed from the parser, returns None.
         """
+
+
+@attr.s(frozen=True, slots=True)
+class Always(Symbol):
+    """Always matches and consumes no characters.
+    """
+    @classmethod
+    def parse(cls, parser: Parser):
+        return parser.new_from_symbol(cls())
 
 
 @attr.s(frozen=True, slots=True)
@@ -302,15 +312,15 @@ class Identifier(Token):
 
 
 @generic.Generic
-def Operator(characters):  # noqa
+def Characters(characters):  # noqa
     # pylint: disable=invalid-name
-    operator_regex = regex.compile(r'^ *({})'.format(regex.escape(characters)))
+    characters_regex = regex.compile(r'^ *({})'.format(regex.escape(characters)))
 
-    class Operator(Token):  # noqa
+    class Characters(Token):  # noqa
         # pylint: disable=redefined-outer-name
         @classmethod
         def parse(cls, parser: Parser):
-            match = operator_regex.match(parser.line_text()[parser.column:])
+            match = characters_regex.match(parser.line_text()[parser.column:])
 
             if match:
                 return parser.new_from_symbol(cls(
@@ -322,7 +332,7 @@ def Operator(characters):  # noqa
 
             return None
 
-    return Operator
+    return Characters
 
 
 def _measure_block_depth(parser):
@@ -336,6 +346,7 @@ def _measure_block_depth(parser):
 
     if match.group(2):  # group(2) matches tabs
         raise IndentationError(
+            parser=parser,
             message='each block must be indented four spaces (other whitespace found)',
             line=parser.line,
             column=match.start(2),  # first other space character
@@ -346,6 +357,7 @@ def _measure_block_depth(parser):
 
     if remainder:
         raise IndentationError(
+            parser=parser,
             message='each block must be indented four spaces (extra spaces found)',
             line=parser.line,
             column=block_depth * 4,  # start of extra spaces
@@ -353,6 +365,7 @@ def _measure_block_depth(parser):
 
     if parser.block_depth + 1 < block_depth:
         raise IndentationError(
+            parser=parser,
             message='each block must be indented four spaces (block over-indented)',
             line=parser.line,
             column=(parser.block_depth + 1) * 4,  # start of extra indentation

@@ -48,6 +48,12 @@ class ExpressionTestCase(unittest.TestCase):
         )
 
 
+class VariableTestCase(unittest.TestCase):
+    def test_parse(self):
+        # pylint: disable=fixme
+        pass  # TODO: test parsing variables
+
+
 class UnpackTestCase(unittest.TestCase):
     def test_expressions(self):
         unpack = expression.Unpack([
