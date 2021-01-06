@@ -68,8 +68,7 @@ class VariableTestCase(unittest.TestCase):
                     return parser.new_from_symbol(cls(
                         expression=parser.last_symbol
                     ))
-                else:
-                    raise RuntimeError('this should be unreachable')
+                raise RuntimeError('this should be unreachable')
 
         self.assertEqual(
             expression_module.Variable.parse(
