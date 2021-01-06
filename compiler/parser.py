@@ -88,6 +88,9 @@ class ParseError(Exception):
     message: str = attr.ib()
     parser: Parser = attr.ib()
 
+    def __str__(self):
+        return self.message
+
 
 @attr.s(frozen=True, slots=True)
 class NoMatchError(ParseError):
@@ -99,9 +102,6 @@ class IndentationError(ParseError):  # noqa
     # pylint: disable=redefined-builtin
     line: int = attr.ib()
     column: int = attr.ib()
-
-    def __str__(self):
-        return self.message
 
 
 class Symbol(metaclass=abc.ABCMeta):

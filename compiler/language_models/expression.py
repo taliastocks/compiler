@@ -14,6 +14,14 @@ class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
     """An Expression is a syntactic entity that may be evaluated to determine
     its value.
     """
+    @classmethod
+    def parse(cls, parser):
+        """Parse an expression, taking into account precedence rules,
+        into the appropriate subclass.
+        """
+        # placeholder to allow Variable tests to pass
+        return Variable.parse(parser)
+
     @property
     def expressions(self) -> typing.Iterable[Expression]:
         """Get all the expressions which this expression directly depends on,
@@ -56,7 +64,10 @@ class Variable(declarable.Declarable, LValue):
     initializer: typing.Optional[Expression] = attr.ib(default=None, repr=False)
 
     @classmethod
-    def parse(cls, parser, allowed_annotations: typing.Sequence[Variable.Annotation] = (), parse_initializer=False):
+    def parse(cls,
+              parser,
+              allowed_annotations: typing.Sequence[typing.Type[Variable.Annotation]] = (),
+              parse_initializer=False):
         # pylint: disable=unused-argument, arguments-differ
         parser = parser.parse([
             parser_module.Identifier,
@@ -66,23 +77,24 @@ class Variable(declarable.Declarable, LValue):
         else:
             raise RuntimeError('this should be unreachable')
 
-        annotations = []
+        annotations = []  # noqa
         if allowed_annotations:
             parser = parser.parse([
                 parser_module.Characters[':'],
                 parser_module.Always,
             ])
 
-            while not isinstance(parser.last_symbol, parser_module.Always):
-                parser = parser.parse([*allowed_annotations, parser_module.Always])
-                if isinstance(parser.last_symbol, Variable.Annotation):
-                    annotations.append(parser.last_symbol)
+            if not isinstance(parser.last_symbol, parser_module.Always):
+                while not isinstance(parser.last_symbol, parser_module.Always):
+                    parser = parser.parse([*allowed_annotations, parser_module.Always])
+                    if isinstance(parser.last_symbol, Variable.Annotation):
+                        annotations.append(parser.last_symbol)
 
-            if not annotations:
-                raise parser_module.ParseError(
-                    message='expected annotations',
-                    parser=parser,
-                )
+                if not annotations:
+                    raise parser_module.ParseError(
+                        message='expected annotations',
+                        parser=parser,
+                    )
 
         initializer = None
         if parse_initializer:
@@ -91,13 +103,19 @@ class Variable(declarable.Declarable, LValue):
                 parser_module.Always,
             ])
 
-            if isinstance(parser.last_symbol, Expression):
-                initializer = parser.last_symbol
-            else:
-                raise parser_module.ParseError(
-                    message='expected initializer expression',
-                    parser=parser,
-                )
+            if not isinstance(parser.last_symbol, parser_module.Always):
+                parser = parser.parse([
+                    Expression,
+                    parser_module.Always,
+                ])
+
+                if isinstance(parser.last_symbol, Expression):
+                    initializer = parser.last_symbol
+                else:
+                    raise parser_module.ParseError(
+                        message='expected initializer expression',
+                        parser=parser,
+                    )
 
         return parser.new_from_symbol(cls(
             name=name,
