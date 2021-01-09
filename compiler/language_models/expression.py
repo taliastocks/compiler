@@ -8,6 +8,8 @@ import attr
 from . import declarable
 from .. import parser as parser_module
 
+# pylint: disable=fixme
+
 
 @attr.s(frozen=True, slots=True)
 class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
@@ -15,12 +17,12 @@ class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
     its value.
     """
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         """Parse an expression, taking into account precedence rules,
         into the appropriate subclass.
         """
         # placeholder to allow Variable tests to pass
-        return Variable.parse(parser)
+        return Variable.parse(cursor)
 
     @property
     def expressions(self) -> typing.Iterable[Expression]:
@@ -65,59 +67,59 @@ class Variable(declarable.Declarable, LValue):
 
     @classmethod
     def parse(cls,
-              parser,
+              cursor,
               allowed_annotations: typing.Sequence[typing.Type[Variable.Annotation]] = (),
               parse_initializer=False):
         # pylint: disable=unused-argument, arguments-differ
-        parser = parser.parse([
+        cursor = cursor.parse([
             parser_module.Identifier,
         ])
-        if isinstance(parser.last_symbol, parser_module.Identifier):
-            name = parser.last_symbol.identifier
+        if isinstance(cursor.last_symbol, parser_module.Identifier):
+            name = cursor.last_symbol.identifier
         else:
             raise RuntimeError('this should be unreachable')
 
         annotations = []  # noqa
         if allowed_annotations:
-            parser = parser.parse([
+            cursor = cursor.parse([
                 parser_module.Characters[':'],
                 parser_module.Always,
             ])
 
-            if not isinstance(parser.last_symbol, parser_module.Always):
-                while not isinstance(parser.last_symbol, parser_module.Always):
-                    parser = parser.parse([*allowed_annotations, parser_module.Always])
-                    if isinstance(parser.last_symbol, Variable.Annotation):
-                        annotations.append(parser.last_symbol)
+            if not isinstance(cursor.last_symbol, parser_module.Always):
+                while not isinstance(cursor.last_symbol, parser_module.Always):
+                    cursor = cursor.parse([*allowed_annotations, parser_module.Always])
+                    if isinstance(cursor.last_symbol, Variable.Annotation):
+                        annotations.append(cursor.last_symbol)
 
                 if not annotations:
                     raise parser_module.ParseError(
                         message='expected annotations',
-                        parser=parser,
+                        cursor=cursor,
                     )
 
         initializer = None
         if parse_initializer:
-            parser = parser.parse([
+            cursor = cursor.parse([
                 parser_module.Characters['='],
                 parser_module.Always,
             ])
 
-            if not isinstance(parser.last_symbol, parser_module.Always):
-                parser = parser.parse([
+            if not isinstance(cursor.last_symbol, parser_module.Always):
+                cursor = cursor.parse([
                     Expression,
                     parser_module.Always,
                 ])
 
-                if isinstance(parser.last_symbol, Expression):
-                    initializer = parser.last_symbol
+                if isinstance(cursor.last_symbol, Expression):
+                    initializer = cursor.last_symbol
                 else:
                     raise parser_module.ParseError(
                         message='expected initializer expression',
-                        parser=parser,
+                        cursor=cursor,
                     )
 
-        return parser.new_from_symbol(cls(
+        return cursor.new_from_symbol(cls(
             name=name,
             annotations=annotations,
             initializer=initializer,
@@ -131,7 +133,7 @@ class Unpack(LValue):
     lvalues: typing.Sequence[LValue] = attr.ib(converter=tuple)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -150,20 +152,110 @@ class Unpack(LValue):
 
 
 @attr.s(frozen=True, slots=True)
-class Subscript(LValue):
-    """An array subscript, i.e. ``my_array[3]``.
+class Comprehension(Expression):
+    """Define a generator in terms of another iterable.
     """
-    operand: Expression = attr.ib()
-    subscript: Expression = attr.ib()
+
+    @attr.s(frozen=True, slots=True)
+    class Loop:
+        iterable: Expression = attr.ib()
+        receiver: LValue = attr.ib()
+
+    value: Expression = attr.ib()
+    loops: typing.Sequence[Loop] = attr.ib(converter=tuple)
+    condition: typing.Optional[Expression] = attr.ib(default=None)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
     def expressions(self):
-        yield self.operand
-        yield self.subscript
+        for loop in self.loops:
+            yield loop.iterable
+            yield loop.receiver
+
+        yield self.value
+
+        if self.condition is not None:
+            yield self.condition
+
+
+@attr.s(frozen=True, slots=True)
+class Parenthesized(Expression):
+    """Define a parenthesized expression.
+    """
+    expression: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class Dictionary(Expression):
+    """Define a dictionary literal or comprehension.
+    """
+    expression: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class Set(Expression):
+    """Define a set literal or comprehension.
+    """
+    expression: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class List(Expression):
+    """Define a list literal or comprehension.
+    """
+    expression: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class Call(LValue):
+    """A function call, i.e. ``foo(...args...)``.
+    """
+    function: Expression = attr.ib()
+    # TODO: arguments
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.function
+        # TODO: get expressions from arguments
 
 
 @attr.s(frozen=True, slots=True)
@@ -174,12 +266,581 @@ class Dot(LValue):
     member: str = attr.ib()
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
     def expressions(self):
         yield self.operand
+
+
+@attr.s(frozen=True, slots=True)
+class Subscript(LValue):
+    """An array subscript, i.e. ``my_array[3]``.
+    """
+    operand: Expression = attr.ib()
+    subscript: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.operand
+        yield self.subscript
+
+
+@attr.s(frozen=True, slots=True)
+class Await(Expression):
+    """Await a promise. This can only be used from within an async function
+    or async generator.
+    """
+    expression: typing.Optional[Expression] = attr.ib(default=None)
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        if self.expression is not None:
+            yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class Exponentiation(Expression):
+    """a ** b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class Positive(Expression):
+    """+expr
+    """
+    expression: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class Negative(Expression):
+    """-expr
+    """
+    expression: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class BitInverse(Expression):
+    """~expr
+    """
+    expression: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class Multiply(Expression):
+    """a * b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class MatrixMultiply(Expression):
+    """a @ b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class Divide(Expression):
+    """a / b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class FloorDivide(Expression):
+    """a // b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class Modulo(Expression):
+    """a % b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class Add(Expression):
+    """a + b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class Subtract(Expression):
+    """a - b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class ShiftLeft(Expression):
+    """a << b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class ShiftRight(Expression):
+    """a >> b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class BitAnd(Expression):
+    """a & b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class BitXor(Expression):
+    """a ^ b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class BitOr(Expression):
+    """a | b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class In(Expression):
+    """a in b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class NotIn(Expression):
+    """a not in b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class Is(Expression):
+    """a is b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class IsNot(Expression):
+    """a is not b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class LessThan(Expression):
+    """a < b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class LessThanOrEqual(Expression):
+    """a <= b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class GreaterThan(Expression):
+    """a > b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class GreaterThanOrEqual(Expression):
+    """a >= b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class NotEqual(Expression):
+    """a != b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class Equal(Expression):
+    """a == b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class Not(Expression):
+    """not expr
+    """
+    expression: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class And(Expression):
+    """a and b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class Or(Expression):
+    """a or b
+    """
+    left: Expression = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class IfElse(Expression):
+    """Choose between expressions to evaluate.
+    """
+    condition: Expression = attr.ib()
+    value: Expression = attr.ib()
+    else_value: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.condition
+        yield self.value
+        yield self.else_value
+
+
+@attr.s(frozen=True, slots=True)
+class Lambda(Expression):
+    """Inline function definition.
+    """
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield from []  # TODO
+
+
+@attr.s(frozen=True, slots=True)
+class Assignment(Expression):
+    """a := b
+    """
+    left: LValue = attr.ib()
+    right: Expression = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.left
+        yield self.right
 
 
 @attr.s(frozen=True, slots=True)
@@ -189,7 +850,7 @@ class Yield(Expression):
     expression: typing.Optional[Expression] = attr.ib(default=None)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -210,7 +871,7 @@ class YieldFrom(Expression):
     is_async: bool = attr.ib(default=False)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -220,66 +881,38 @@ class YieldFrom(Expression):
 
 
 @attr.s(frozen=True, slots=True)
-class Await(Expression):
-    """Await a promise. This can only be used from within an async function
-    or async generator.
+class OperatorParser(parser_module.Parser):
+    """Parse an expression according to the rules of operator precedence.
     """
-    expression: typing.Optional[Expression] = attr.ib(default=None)
+    operands = (
+        Variable,
+        Parenthesized,
+        Dictionary,
+        Set,
+        List,
+    )
+    operator_precedences: typing.Sequence[typing.Sequence[parser_module.Symbol]] = (
+        (Call, Dot, Subscript),
+        (Await,),
+        (Exponentiation,),
+        (Positive, Negative, BitInverse),
+        (Multiply, MatrixMultiply, Divide, FloorDivide, Modulo),
+        (Add, Subtract),
+        (ShiftLeft, ShiftRight),
+        (BitAnd,),
+        (BitXor,),
+        (BitOr,),
+        (In, NotIn, Is, IsNot, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual, NotEqual, Equal),
+        (Not,),
+        (And,),
+        (Or,),
+        (IfElse,),
+        (Lambda,),
+        (Assignment,),
+        (Yield, YieldFrom),
+    )
 
     @classmethod
-    def parse(cls, parser):
-        pass
-
-    @property
-    def expressions(self):
-        if self.expression is not None:
-            yield self.expression
-
-
-@attr.s(frozen=True, slots=True)
-class IfElse(Expression):
-    """Choose between expressions to evaluate.
-    """
-    condition: Expression = attr.ib()
-    value: Expression = attr.ib()
-    else_value: Expression = attr.ib()
-
-    @classmethod
-    def parse(cls, parser):
-        pass
-
-    @property
-    def expressions(self):
-        yield self.condition
-        yield self.value
-        yield self.else_value
-
-
-@attr.s(frozen=True, slots=True)
-class Comprehension(Expression):
-    """Define a generator in terms of another iterable.
-    """
-
-    @attr.s(frozen=True, slots=True)
-    class Loop:
-        iterable: Expression = attr.ib()
-        receiver: LValue = attr.ib()
-
-    value: Expression = attr.ib()
-    loops: typing.Sequence[Loop] = attr.ib(converter=tuple)
-    condition: typing.Optional[Expression] = attr.ib(default=None)
-
-    @classmethod
-    def parse(cls, parser):
-        pass
-
-    @property
-    def expressions(self):
-        for loop in self.loops:
-            yield loop.iterable
-            yield loop.receiver
-
-        yield self.value
-
-        if self.condition is not None:
-            yield self.condition
+    def parse(cls, cursor):
+        """Parse an expression according to the rules of operator precedence.
+        """

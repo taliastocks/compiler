@@ -60,25 +60,25 @@ class VariableTestCase(unittest.TestCase):
             expression: expression_module.Expression = attr.ib()
 
             @classmethod
-            def parse(cls, parser):
-                parser = parser.parse([
+            def parse(cls, cursor):
+                cursor = cursor.parse([
                     expression_module.Expression
                 ])
-                if isinstance(parser.last_symbol, expression_module.Expression):
-                    return parser.new_from_symbol(cls(
-                        expression=parser.last_symbol
+                if isinstance(cursor.last_symbol, expression_module.Expression):
+                    return cursor.new_from_symbol(cls(
+                        expression=cursor.last_symbol
                     ))
                 raise RuntimeError('this should be unreachable')
 
         self.assertEqual(
             expression_module.Variable.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['variable: annotation1 annotation2 = other_variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['variable: annotation1 annotation2 = other_variable'],
                 column=50,
                 last_symbol=expression_module.Variable(
@@ -105,13 +105,13 @@ class VariableTestCase(unittest.TestCase):
         # No spaces.
         self.assertEqual(
             expression_module.Variable.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['variable:annotation1 annotation2=other_variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['variable:annotation1 annotation2=other_variable'],
                 column=47,
                 last_symbol=expression_module.Variable(
@@ -138,13 +138,13 @@ class VariableTestCase(unittest.TestCase):
         # All spaces.
         self.assertEqual(
             expression_module.Variable.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['variable  :  annotation1  annotation2  =  other_variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['variable  :  annotation1  annotation2  =  other_variable'],
                 column=56,
                 last_symbol=expression_module.Variable(
@@ -171,13 +171,13 @@ class VariableTestCase(unittest.TestCase):
         # Annotations are optional.
         self.assertEqual(
             expression_module.Variable.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['variable = other_variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['variable = other_variable'],
                 column=25,
                 last_symbol=expression_module.Variable(
@@ -192,13 +192,13 @@ class VariableTestCase(unittest.TestCase):
         # Initializers are optional.
         self.assertEqual(
             expression_module.Variable.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['variable: annotation1 annotation2']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['variable: annotation1 annotation2'],
                 column=33,
                 last_symbol=expression_module.Variable(
@@ -222,13 +222,13 @@ class VariableTestCase(unittest.TestCase):
         # Initializers and annotations are optional.
         self.assertEqual(
             expression_module.Variable.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['variable'],
                 column=8,
                 last_symbol=expression_module.Variable(
@@ -240,12 +240,12 @@ class VariableTestCase(unittest.TestCase):
     def test_parse_no_annotations(self):
         self.assertEqual(
             expression_module.Variable.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['variable = other_variable']
                 ),
                 parse_initializer=True,
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['variable = other_variable'],
                 column=25,
                 last_symbol=expression_module.Variable(
@@ -261,12 +261,12 @@ class VariableTestCase(unittest.TestCase):
         # of the line can be part of a larger expression.
         self.assertEqual(
             expression_module.Variable.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['variable: annotation = other_variable']
                 ),
                 parse_initializer=True,
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['variable: annotation = other_variable'],
                 column=8,
                 last_symbol=expression_module.Variable(
@@ -280,11 +280,11 @@ class VariableTestCase(unittest.TestCase):
         # of the line can be part of a larger expression.
         self.assertEqual(
             expression_module.Variable.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['variable = other_variable']
                 ),
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['variable = other_variable'],
                 column=8,
                 last_symbol=expression_module.Variable(
@@ -336,6 +336,82 @@ class UnpackTestCase(unittest.TestCase):
         )
 
 
+class ComprehensionTestCase(unittest.TestCase):
+    def test_expressions(self):
+        comprehension = expression_module.Comprehension(
+            value=expression_module.Variable('value'),
+            loops=[],
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('value'),
+            ],
+            list(comprehension.expressions)
+        )
+
+        comprehension = expression_module.Comprehension(
+            value=expression_module.Variable('value'),
+            loops=[
+                expression_module.Comprehension.Loop(
+                    iterable=expression_module.Variable('iterable'),
+                    receiver=expression_module.Variable('receiver'),
+                ),
+            ],
+            condition=expression_module.Variable('condition'),
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('iterable'),
+                expression_module.Variable('receiver'),
+                expression_module.Variable('value'),
+                expression_module.Variable('condition'),
+            ],
+            list(comprehension.expressions)
+        )
+
+
+class ParenthesizedTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class DictionaryTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class SetTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class ListTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class CallTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class DotTestCase(unittest.TestCase):
+    def test_expressions(self):
+        dot = expression_module.Dot(
+            operand=expression_module.Variable('my_object'),
+            member='foo',
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('my_object'),
+            ],
+            list(dot.expressions)
+        )
+
+
 class SubscriptTestCase(unittest.TestCase):
     def test_expressions(self):
         subscript = expression_module.Subscript(
@@ -352,19 +428,198 @@ class SubscriptTestCase(unittest.TestCase):
         )
 
 
-class DotTestCase(unittest.TestCase):
+class AwaitTestCase(unittest.TestCase):
     def test_expressions(self):
-        dot = expression_module.Dot(
-            operand=expression_module.Variable('my_object'),
-            member='foo',
+        await_expr = expression_module.Await()
+
+        self.assertEqual(
+            [],
+            list(await_expr.expressions)
+        )
+
+        await_expr = expression_module.Await(
+            expression=expression_module.Variable('foo')
         )
 
         self.assertEqual(
             [
-                expression_module.Variable('my_object'),
+                expression_module.Variable('foo')
             ],
-            list(dot.expressions)
+            list(await_expr.expressions)
         )
+
+
+class ExponentiationTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class PositiveTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class NegativeTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class BitInverseTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class MultiplyTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class MatrixMultiplyTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class DivideTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class FloorDivideTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class ModuloTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class AddTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class SubtractTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class ShiftLeftTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class ShiftRightTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class BitAndTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class BitXorTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class BitOrTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class InTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class NotInTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class IsTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class IsNotTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class LessThanTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class LessThanOrEqualTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class GreaterThanTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class GreaterThanOrEqualTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class NotEqualTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class EqualTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class NotTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class AndTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class OrTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class IfElseTestCase(unittest.TestCase):
+    def test_expressions(self):
+        if_else = expression_module.IfElse(
+            condition=expression_module.Variable('condition'),
+            value=expression_module.Variable('value'),
+            else_value=expression_module.Variable('else_value'),
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('condition'),
+                expression_module.Variable('value'),
+                expression_module.Variable('else_value'),
+            ],
+            list(if_else.expressions)
+        )
+
+
+class LambdaTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class AssignmentTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
 
 
 class YieldTestCase(unittest.TestCase):
@@ -406,79 +661,4 @@ class YieldFromTestCase(unittest.TestCase):
                 expression_module.Variable('foo')
             ],
             list(yield_from_expr.expressions)
-        )
-
-
-class AwaitTestCase(unittest.TestCase):
-    def test_expressions(self):
-        await_expr = expression_module.Await()
-
-        self.assertEqual(
-            [],
-            list(await_expr.expressions)
-        )
-
-        await_expr = expression_module.Await(
-            expression=expression_module.Variable('foo')
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Variable('foo')
-            ],
-            list(await_expr.expressions)
-        )
-
-
-class IfElseTestCase(unittest.TestCase):
-    def test_expressions(self):
-        if_else = expression_module.IfElse(
-            condition=expression_module.Variable('condition'),
-            value=expression_module.Variable('value'),
-            else_value=expression_module.Variable('else_value'),
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Variable('condition'),
-                expression_module.Variable('value'),
-                expression_module.Variable('else_value'),
-            ],
-            list(if_else.expressions)
-        )
-
-
-class ComprehensionTestCase(unittest.TestCase):
-    def test_expressions(self):
-        comprehension = expression_module.Comprehension(
-            value=expression_module.Variable('value'),
-            loops=[],
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Variable('value'),
-            ],
-            list(comprehension.expressions)
-        )
-
-        comprehension = expression_module.Comprehension(
-            value=expression_module.Variable('value'),
-            loops=[
-                expression_module.Comprehension.Loop(
-                    iterable=expression_module.Variable('iterable'),
-                    receiver=expression_module.Variable('receiver'),
-                ),
-            ],
-            condition=expression_module.Variable('condition'),
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Variable('iterable'),
-                expression_module.Variable('receiver'),
-                expression_module.Variable('value'),
-                expression_module.Variable('condition'),
-            ],
-            list(comprehension.expressions)
         )

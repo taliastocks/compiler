@@ -31,30 +31,30 @@ class Module(parser_module.Symbol):
         pass
 
     @classmethod
-    def parse(cls, parser: parser_module.Parser):
+    def parse(cls, cursor: parser_module.Cursor):
         imports = []
         functions = []
         classes = []
         variables = []
 
-        while not isinstance(parser.last_symbol, parser_module.EndFile):
-            parser = parser.parse([
+        while not isinstance(cursor.last_symbol, parser_module.EndFile):
+            cursor = cursor.parse([
                 parser_module.EndFile,
                 Import,
                 function_module.Function,
                 class_module.Class,
                 expression.Variable,
             ])
-            if isinstance(parser.last_symbol, Import):
-                imports.append(parser.last_symbol)
-            elif isinstance(parser.last_symbol, function_module.Function):
-                functions.append(parser.last_symbol)
-            elif isinstance(parser.last_symbol, class_module.Class):
-                classes.append(parser.last_symbol)
-            elif isinstance(parser.last_symbol, expression.Variable):
-                variables.append(parser.last_symbol)
+            if isinstance(cursor.last_symbol, Import):
+                imports.append(cursor.last_symbol)
+            elif isinstance(cursor.last_symbol, function_module.Function):
+                functions.append(cursor.last_symbol)
+            elif isinstance(cursor.last_symbol, class_module.Class):
+                classes.append(cursor.last_symbol)
+            elif isinstance(cursor.last_symbol, expression.Variable):
+                variables.append(cursor.last_symbol)
 
-        return parser.new_from_symbol(cls(
+        return cursor.new_from_symbol(cls(
             imports=imports,
             functions=functions,
             classes=classes,
@@ -82,5 +82,5 @@ class Import(declarable_module.Declarable, parser_module.Symbol):
     path: path_module.ModuleReference = attr.ib()
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass  # Placeholder until I get around to writing a real implementation.

@@ -22,7 +22,7 @@ class Class(parser_module.Symbol, declarable.Declarable):
     declarations: typing.Sequence[declarable.Declarable] = attr.ib(converter=tuple, default=(), repr=False)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass  # Placeholder until I get around to writing a real implementation.
 
 
@@ -93,7 +93,7 @@ class Private(function.Function.Decorator, expression.Variable.Annotation):
     """
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass  # Placeholder until I get around to writing a real implementation.
 
 
@@ -114,7 +114,7 @@ class Protected(function.Function.Decorator, expression.Variable.Annotation):
     """
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass  # Placeholder until I get around to writing a real implementation.
 
 
@@ -138,7 +138,7 @@ class Constructor(function.Function.Decorator, expression.Variable.Annotation):
     """
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass  # Placeholder until I get around to writing a real implementation.
 
 
@@ -163,5 +163,5 @@ class Frozen(expression.Variable.Annotation, Class.Decorator):
     """
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass  # Placeholder until I get around to writing a real implementation.

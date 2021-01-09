@@ -2,6 +2,8 @@ import unittest
 
 from . import statement, expression
 
+# pylint: disable=fixme
+
 
 class StatementTestCase(unittest.TestCase):
     def test_variable_assignments(self):
@@ -49,6 +51,8 @@ class StatementTestCase(unittest.TestCase):
                 ]),
             ).variable_assignments)
         )
+
+        # TODO: assignments from expression.Assignment
 
     def test_nonlocal_variables(self):
         # Simple.
