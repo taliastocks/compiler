@@ -18,5 +18,5 @@ class ModuleReference(Reference):
     """
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass

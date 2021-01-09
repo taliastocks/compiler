@@ -10,7 +10,18 @@ from .meta import generic
 
 
 @attr.s(frozen=True, slots=True)
-class Parser:
+class Parser(metaclass=abc.ABCMeta):
+    @classmethod
+    @abc.abstractmethod
+    def parse(cls, cursor: Cursor) -> typing.Optional[Cursor]:
+        """Optionally parse a Symbol from a cursor.
+
+        If a Symbol cannot be constructed from the cursor, returns None.
+        """
+
+
+@attr.s(frozen=True, slots=True)
+class Cursor:
     _lines: typing.Sequence[str] = attr.ib(converter=tuple, repr=False)
     line: int = attr.ib(default=0)
     column: int = attr.ib(default=0)
@@ -28,7 +39,7 @@ class Parser:
         return max(0, len(self._lines) - 1)
 
     def new_from_symbol(self, symbol: Symbol):
-        """Get a new parser from an existing parser and a symbol.
+        """Get a new cursor from an existing cursor and a symbol.
         """
         if isinstance(symbol, (BeginBlock, EndBlock)):
             block_depth = symbol.block_depth
@@ -42,7 +53,7 @@ class Parser:
             line = self.line
             column = self.column
 
-        return Parser(
+        return Cursor(
             lines=self._lines,
             # Only allow one extra line (for cases where the file
             # doesn't end in a newline).
@@ -52,33 +63,33 @@ class Parser:
             block_depth=block_depth,
         )
 
-    def parse(self, one_of: typing.Sequence[typing.Type[Symbol]]) -> Parser:
-        """Parse one Symbol, returning a new Parser object.
+    def parse(self, one_of: typing.Sequence[typing.Type[Symbol]]) -> Cursor:
+        """Parse one Symbol, returning a new Cursor object.
 
         Tries to parse the symbols in ``one_of`` in order, returning after the
         first success.
 
         :param one_of: Parse one of these Symbols.
-        :return: A new Parser object with ``parser.last_symbol`` set.
+        :return: A new Cursor object with ``cursor.last_symbol`` set.
         :raises NoMatchError: if none of the symbols match.
         """
         for i, symbol_type in enumerate(one_of):
             try:
-                next_parser = symbol_type.parse(self)
+                next_cursor = symbol_type.parse(self)
             except NoMatchError as exc:
                 if i == len(one_of) - 1:
                     raise NoMatchError(
                         message='none of the expected symbols were found',
-                        parser=self,
+                        cursor=self,
                         expected_symbols=one_of,
                     ) from exc
             else:
-                if next_parser is not None:
-                    return next_parser
+                if next_cursor is not None:
+                    return next_cursor
 
         raise NoMatchError(
             message='none of the expected symbols were found',
-            parser=self,
+            cursor=self,
             expected_symbols=one_of,
         )
 
@@ -86,7 +97,7 @@ class Parser:
 @attr.s(frozen=True, slots=True)
 class ParseError(Exception):
     message: str = attr.ib()
-    parser: Parser = attr.ib()
+    cursor: Cursor = attr.ib()
 
     def __str__(self):
         return self.message
@@ -104,14 +115,9 @@ class IndentationError(ParseError):  # noqa
     column: int = attr.ib()
 
 
-class Symbol(metaclass=abc.ABCMeta):
-    @classmethod
-    @abc.abstractmethod
-    def parse(cls, parser: Parser) -> typing.Optional[Parser]:
-        """Construct this Symbol from a Parser.
-
-        If this Symbol cannot be constructed from the parser, returns None.
-        """
+@attr.s(frozen=True, slots=True)
+class Symbol(Parser, metaclass=abc.ABCMeta):
+    pass
 
 
 @attr.s(frozen=True, slots=True)
@@ -119,8 +125,8 @@ class Always(Symbol):
     """Always matches and consumes no characters.
     """
     @classmethod
-    def parse(cls, parser: Parser):
-        return parser.new_from_symbol(cls())
+    def parse(cls, cursor: Cursor):
+        return cursor.new_from_symbol(cls())
 
 
 @attr.s(frozen=True, slots=True)
@@ -136,15 +142,15 @@ class EndFile(Token):
     """Token representing the end of a file.
     """
     @classmethod
-    def parse(cls, parser: Parser):
-        if parser.line >= parser.last_line:
-            if parser.column >= len(parser.line_text()):
+    def parse(cls, cursor: Cursor):
+        if cursor.line >= cursor.last_line:
+            if cursor.column >= len(cursor.line_text()):
                 # We parsed the whole line already.
-                return parser.new_from_symbol(cls(
-                    first_line=parser.line,
-                    next_line=parser.line,
-                    first_column=parser.column,
-                    next_column=parser.column,
+                return cursor.new_from_symbol(cls(
+                    first_line=cursor.line,
+                    next_line=cursor.line,
+                    first_column=cursor.column,
+                    next_column=cursor.column,
                 ))
 
         return None
@@ -155,15 +161,15 @@ class BlankLine(Token):
     """Token representing a blank line (or a line consisting only of spaces).
     """
     @classmethod
-    def parse(cls, parser: Parser):
-        if parser.column != 0:
+    def parse(cls, cursor: Cursor):
+        if cursor.column != 0:
             return None  # Only match the beginning of a line.
 
-        line = parser.line_text()
+        line = cursor.line_text()
         if not line or _WHITESPACE_REGEX.fullmatch(line):
-            return parser.new_from_symbol(cls(
-                first_line=parser.line,
-                next_line=parser.line + 1,
+            return cursor.new_from_symbol(cls(
+                first_line=cursor.line,
+                next_line=cursor.line + 1,
                 first_column=0,
                 next_column=0,
             ))
@@ -176,13 +182,13 @@ class EndLine(Token):
     """Token representing the end of a line.
     """
     @classmethod
-    def parse(cls, parser: Parser):
-        match = _END_LINE_REGEX.match(parser.line_text()[parser.column:])
+    def parse(cls, cursor: Cursor):
+        match = _END_LINE_REGEX.match(cursor.line_text()[cursor.column:])
         if match:
-            return parser.new_from_symbol(cls(
-                first_line=parser.line,
-                next_line=parser.line + 1,
-                first_column=parser.column,
+            return cursor.new_from_symbol(cls(
+                first_line=cursor.line,
+                next_line=cursor.line + 1,
+                first_column=cursor.column,
                 next_column=0,
             ))
 
@@ -196,18 +202,18 @@ class BeginBlock(Token):
     block_depth: int = attr.ib()
 
     @classmethod
-    def parse(cls, parser: Parser):
-        if parser.column != 0:
+    def parse(cls, cursor: Cursor):
+        if cursor.column != 0:
             return None  # Only match the beginning of a line.
 
-        if parser.block_depth < _measure_block_depth(parser):
-            return parser.new_from_symbol(cls(
-                first_line=parser.line,
-                next_line=parser.line,
-                first_column=parser.column,
-                next_column=parser.column,
+        if cursor.block_depth < _measure_block_depth(cursor):
+            return cursor.new_from_symbol(cls(
+                first_line=cursor.line,
+                next_line=cursor.line,
+                first_column=cursor.column,
+                next_column=cursor.column,
                 # Block depth can only ever increase by one.
-                block_depth=parser.block_depth + 1,
+                block_depth=cursor.block_depth + 1,
             ))
 
         return None
@@ -220,20 +226,20 @@ class EndBlock(Token):
     block_depth: int = attr.ib()
 
     @classmethod
-    def parse(cls, parser: Parser):
-        if parser.column != 0:
+    def parse(cls, cursor: Cursor):
+        if cursor.column != 0:
             return None  # Only match the beginning of a line.
 
-        if _measure_block_depth(parser) < parser.block_depth:
-            return parser.new_from_symbol(cls(
-                first_line=parser.line,
-                next_line=parser.line,
-                first_column=parser.column,
-                next_column=parser.column,
+        if _measure_block_depth(cursor) < cursor.block_depth:
+            return cursor.new_from_symbol(cls(
+                first_line=cursor.line,
+                next_line=cursor.line,
+                first_column=cursor.column,
+                next_column=cursor.column,
                 # If the block depth decreased by more than one, we want
                 # to produce one EndBlock token per block depth, so only
                 # decrease the block depth by one at a time.
-                block_depth=parser.block_depth - 1,
+                block_depth=cursor.block_depth - 1,
             ))
 
         return None
@@ -244,15 +250,15 @@ class Whitespace(Token):
     """Token representing whitespace.
     """
     @classmethod
-    def parse(cls, parser: Parser):
-        match = _WHITESPACE_REGEX.match(parser.line_text()[parser.column:])
+    def parse(cls, cursor: Cursor):
+        match = _WHITESPACE_REGEX.match(cursor.line_text()[cursor.column:])
 
         if match:
-            return parser.new_from_symbol(cls(
-                first_line=parser.line,
-                next_line=parser.line,
-                first_column=parser.column,
-                next_column=parser.column + match.end(),
+            return cursor.new_from_symbol(cls(
+                first_line=cursor.line,
+                next_line=cursor.line,
+                first_column=cursor.column,
+                next_column=cursor.column + match.end(),
             ))
 
         return None
@@ -263,23 +269,23 @@ class MultilineWhitespace(Token):
     """Token representing whitespace, potentially split over multiple lines.
     """
     @classmethod
-    def parse(cls, parser: Parser):
-        match = _WHITESPACE_REGEX.match(parser.line_text()[parser.column:])
-        next_line = parser.line
-        next_column = parser.column
+    def parse(cls, cursor: Cursor):
+        match = _WHITESPACE_REGEX.match(cursor.line_text()[cursor.column:])
+        next_line = cursor.line
+        next_column = cursor.column
 
         if match:
             next_column += match.end()
             while True:
-                if next_column == len(parser.line_text(next_line)):
+                if next_column == len(cursor.line_text(next_line)):
                     next_line += 1
-                    match = _WHITESPACE_REGEX.match(parser.line_text(next_line))
+                    match = _WHITESPACE_REGEX.match(cursor.line_text(next_line))
                     next_column = match.end()
                 else:
-                    return parser.new_from_symbol(cls(
-                        first_line=parser.line,
+                    return cursor.new_from_symbol(cls(
+                        first_line=cursor.line,
                         next_line=next_line,
-                        first_column=parser.column,
+                        first_column=cursor.column,
                         next_column=next_column,
                     ))
 
@@ -296,15 +302,15 @@ class Identifier(Token):
     identifier: str = attr.ib()
 
     @classmethod
-    def parse(cls, parser: Parser):
-        match = _IDENTIFIER_REGEX.match(parser.line_text()[parser.column:])
+    def parse(cls, cursor: Cursor):
+        match = _IDENTIFIER_REGEX.match(cursor.line_text()[cursor.column:])
 
         if match:
-            return parser.new_from_symbol(cls(
-                first_line=parser.line,
-                next_line=parser.line,
-                first_column=parser.column,
-                next_column=parser.column + match.end(),
+            return cursor.new_from_symbol(cls(
+                first_line=cursor.line,
+                next_line=cursor.line,
+                first_column=cursor.column,
+                next_column=cursor.column + match.end(),
                 identifier=match.group(1),
             ))
 
@@ -319,15 +325,15 @@ def Characters(characters):  # noqa
     class Characters(Token):  # noqa
         # pylint: disable=redefined-outer-name
         @classmethod
-        def parse(cls, parser: Parser):
-            match = characters_regex.match(parser.line_text()[parser.column:])
+        def parse(cls, cursor: Cursor):
+            match = characters_regex.match(cursor.line_text()[cursor.column:])
 
             if match:
-                return parser.new_from_symbol(cls(
-                    first_line=parser.line,
-                    next_line=parser.line,
-                    first_column=parser.column,
-                    next_column=parser.column + match.end(),
+                return cursor.new_from_symbol(cls(
+                    first_line=cursor.line,
+                    next_line=cursor.line,
+                    first_column=cursor.column,
+                    next_column=cursor.column + match.end(),
                 ))
 
             return None
@@ -335,20 +341,20 @@ def Characters(characters):  # noqa
     return Characters
 
 
-def _measure_block_depth(parser):
+def _measure_block_depth(cursor):
     """Measure the block depth for the current line number.
 
     Indentation must be a multiple of four spaces. If
 
     :raises IndentationError: on bad indentation
     """
-    match = _INDENT_REGEX.match(parser.line_text())
+    match = _INDENT_REGEX.match(cursor.line_text())
 
     if match.group(2):  # group(2) matches tabs
         raise IndentationError(
-            parser=parser,
+            cursor=cursor,
             message='each block must be indented four spaces (other whitespace found)',
-            line=parser.line,
+            line=cursor.line,
             column=match.start(2),  # first other space character
         )
 
@@ -357,18 +363,18 @@ def _measure_block_depth(parser):
 
     if remainder:
         raise IndentationError(
-            parser=parser,
+            cursor=cursor,
             message='each block must be indented four spaces (extra spaces found)',
-            line=parser.line,
+            line=cursor.line,
             column=block_depth * 4,  # start of extra spaces
         )
 
-    if parser.block_depth + 1 < block_depth:
+    if cursor.block_depth + 1 < block_depth:
         raise IndentationError(
-            parser=parser,
+            cursor=cursor,
             message='each block must be indented four spaces (block over-indented)',
-            line=parser.line,
-            column=(parser.block_depth + 1) * 4,  # start of extra indentation
+            line=cursor.line,
+            column=(cursor.block_depth + 1) * 4,  # start of extra indentation
         )
 
     return block_depth

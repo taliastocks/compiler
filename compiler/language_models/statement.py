@@ -8,6 +8,8 @@ import attr
 from . import expression as expression_module
 from .. import parser as parser_module
 
+# pylint: disable=fixme
+
 
 @attr.s(frozen=True, slots=True)
 class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
@@ -45,6 +47,8 @@ class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
             if isinstance(lvalue, expression_module.Unpack):
                 yield from lvalue.variable_assignments
 
+        # TODO: get variable assignments from expression_module.Assignment
+
         for statement in self.statements:
             yield from statement.variable_assignments
 
@@ -81,7 +85,7 @@ class Block(Statement):
     statements: typing.Sequence[Statement] = attr.ib(converter=tuple, factory=list)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
 
@@ -92,7 +96,7 @@ class Declaration(Statement):
     declarable: declarable.Declarable = attr.ib()
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
 
@@ -104,7 +108,7 @@ class Assignment(Statement):
     expression: expression_module.Expression = attr.ib()
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -124,7 +128,7 @@ class Expression(Statement):
     expression: expression_module.Expression = attr.ib()
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -142,7 +146,7 @@ class If(Statement):
     else_body: typing.Optional[Block] = attr.ib(default=None)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -169,7 +173,7 @@ class While(Statement):
     else_body: typing.Optional[Block] = attr.ib(default=None)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -198,7 +202,7 @@ class For(Statement):
     is_async: bool = attr.ib(default=False)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -223,7 +227,7 @@ class Break(Statement):
     """Break out of the current loop.
     """
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
 
@@ -232,7 +236,7 @@ class Continue(Statement):
     """Skip the rest of the loop body and begin the next iteration.
     """
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
 
@@ -250,7 +254,7 @@ class With(Statement):
     is_async: bool = attr.ib(default=False)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -297,7 +301,7 @@ class Try(Statement):
     finally_body: typing.Optional[Block] = attr.ib(default=None)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -333,7 +337,7 @@ class Raise(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -347,7 +351,7 @@ class Return(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass
 
     @property
@@ -361,5 +365,5 @@ class Nonlocal(Statement):
     variables: typing.Sequence[expression_module.Variable] = attr.ib(factory=tuple, converter=tuple)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass

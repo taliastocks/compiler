@@ -5,40 +5,40 @@ from . import parser as parser_module
 
 class ParserTestCase(unittest.TestCase):
     def test_line_text(self):
-        parser = parser_module.Parser(
+        cursor = parser_module.Cursor(
             lines=[
                 'hello',
                 'world',
             ]
         )
 
-        self.assertEqual('hello', parser.line_text())
-        self.assertEqual('world', parser.line_text(1))
-        self.assertEqual('', parser.line_text(2))
+        self.assertEqual('hello', cursor.line_text())
+        self.assertEqual('world', cursor.line_text(1))
+        self.assertEqual('', cursor.line_text(2))
 
     def test_last_line(self):
-        parser = parser_module.Parser(
+        cursor = parser_module.Cursor(
             lines=[
                 'hello',
                 'world',
             ]
         )
-        self.assertEqual(1, parser.last_line)
+        self.assertEqual(1, cursor.last_line)
 
-        parser = parser_module.Parser(
+        cursor = parser_module.Cursor(
             lines=[
                 'hello',
             ]
         )
-        self.assertEqual(0, parser.last_line)
+        self.assertEqual(0, cursor.last_line)
 
-        parser = parser_module.Parser(
+        cursor = parser_module.Cursor(
             lines=[]
         )
-        self.assertEqual(0, parser.last_line)
+        self.assertEqual(0, cursor.last_line)
 
     def test_new_from_symbol_begin_block(self):
-        parser = parser_module.Parser([''] * 20)  # prevent clamping line numbers
+        parser = parser_module.Cursor([''] * 20)  # prevent clamping line numbers
         begin_block = parser_module.BeginBlock(
             block_depth=1,
             first_line=12,
@@ -46,21 +46,21 @@ class ParserTestCase(unittest.TestCase):
             first_column=24,
             next_column=25,
         )
-        new_parser = parser.new_from_symbol(begin_block)
+        new_cursor = parser.new_from_symbol(begin_block)
 
         self.assertEqual(
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[''] * 20,
                 line=13,
                 column=25,
                 last_symbol=begin_block,
                 block_depth=1,
             ),
-            new_parser
+            new_cursor
         )
 
     def test_new_from_symbol_end_block(self):
-        parser = parser_module.Parser([''] * 20)  # prevent clamping line numbers
+        cursor = parser_module.Cursor([''] * 20)  # prevent clamping line numbers
         end_block = parser_module.EndBlock(
             block_depth=1,
             first_line=12,
@@ -68,38 +68,38 @@ class ParserTestCase(unittest.TestCase):
             first_column=24,
             next_column=25,
         )
-        new_parser = parser.new_from_symbol(end_block)
+        new_cursor = cursor.new_from_symbol(end_block)
 
         self.assertEqual(
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[''] * 20,
                 line=13,
                 column=25,
                 last_symbol=end_block,
                 block_depth=1,
             ),
-            new_parser
+            new_cursor
         )
 
     def test_new_from_symbol_token(self):
-        parser = parser_module.Parser([''] * 20)  # prevent clamping line numbers
+        cursor = parser_module.Cursor([''] * 20)  # prevent clamping line numbers
         token = parser_module.BlankLine(
             first_line=12,
             next_line=13,
             first_column=24,
             next_column=25,
         )
-        new_parser = parser.new_from_symbol(token)
+        new_cursor = cursor.new_from_symbol(token)
 
         self.assertEqual(
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[''] * 20,
                 line=13,
                 column=25,
                 last_symbol=token,
                 block_depth=0,
             ),
-            new_parser
+            new_cursor
         )
 
     def test_new_from_symbol_normal_case(self):
@@ -108,26 +108,26 @@ class ParserTestCase(unittest.TestCase):
             def parse(cls, _):
                 return None
 
-        parser = parser_module.Parser([])
+        cursor = parser_module.Cursor([])
         symbol = MySymbol()
-        new_parser = parser.new_from_symbol(symbol)
+        new_cursor = cursor.new_from_symbol(symbol)
 
         self.assertEqual(
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[],
                 line=0,
                 column=0,
                 last_symbol=symbol,
                 block_depth=0,
             ),
-            new_parser
+            new_cursor
         )
 
     def test_parse_one_of(self):
-        parser = parser_module.Parser([
+        cursor = parser_module.Cursor([
             ''
         ])
-        next_parser = parser.parse([
+        next_cursor = cursor.parse([
             parser_module.BlankLine,
             parser_module.EndLine,
         ])
@@ -138,16 +138,16 @@ class ParserTestCase(unittest.TestCase):
                 first_column=0,
                 next_column=0,
             ),
-            next_parser.last_symbol
+            next_cursor.last_symbol
         )
 
-        parser = parser_module.Parser(
+        cursor = parser_module.Cursor(
             lines=[
                 'foo'
             ],
             column=3,
         )
-        next_parser = parser.parse([
+        next_cursor = cursor.parse([
             parser_module.BlankLine,
             parser_module.EndLine,
         ])
@@ -158,61 +158,61 @@ class ParserTestCase(unittest.TestCase):
                 first_column=3,
                 next_column=0,
             ),
-            next_parser.last_symbol
+            next_cursor.last_symbol
         )
 
     def test_parse_no_match(self):
-        parser = parser_module.Parser(
+        cursor = parser_module.Cursor(
             lines=[
                 'foo'
             ],
         )
 
         with self.assertRaises(parser_module.NoMatchError):
-            parser.parse([
+            cursor.parse([
                 parser_module.BlankLine,
                 parser_module.EndLine,
             ])
 
     def test_parse_always(self):
-        parser = parser_module.Parser(
+        cursor = parser_module.Cursor(
             lines=[
                 'foo'
             ],
         )
 
-        new_parser = parser.parse([
+        new_cursor = cursor.parse([
             parser_module.BlankLine,
             parser_module.EndLine,
             parser_module.Always,
         ])
 
         self.assertIsInstance(
-            new_parser.last_symbol,
+            new_cursor.last_symbol,
             parser_module.Always
         )
 
     def test_parse_recursive_no_match(self):
         class MySymbol(parser_module.Symbol):
             @classmethod
-            def parse(cls, parser):
-                parser.parse([  # Should raise NoMatchError
+            def parse(cls, cursor):
+                cursor.parse([  # Should raise NoMatchError
                     parser_module.BeginBlock,
                 ])
 
-        my_parser = parser_module.Parser(
+        cursor = parser_module.Cursor(
             lines=[
                 ''
             ],
         )
 
         with self.assertRaises(parser_module.NoMatchError):
-            my_parser.parse([
+            cursor.parse([
                 MySymbol
             ])
 
         # This case should succeed.
-        my_parser.parse([
+        cursor.parse([
             MySymbol,
             parser_module.BlankLine,  # matches
         ])
@@ -222,11 +222,11 @@ class TokenTestCase(unittest.TestCase):
     def test_end_file(self):
         self.assertEqual(
             parser_module.EndFile.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=[],
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[],
                 last_symbol=parser_module.EndFile(
                     first_line=0,
@@ -238,11 +238,11 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.EndFile.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=[''],
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[''],
                 last_symbol=parser_module.EndFile(
                     first_line=0,
@@ -254,14 +254,14 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.EndFile.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo'],
                 )
             )
         )
         self.assertIsNone(
             parser_module.EndFile.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo'],
                     column=2,
                 )
@@ -269,7 +269,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.EndFile.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['', 'foo'],
                     line=1,
                     column=2,
@@ -278,12 +278,12 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.EndFile.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo'],
                     column=3,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['foo'],
                 column=3,
                 last_symbol=parser_module.EndFile(
@@ -296,13 +296,13 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.EndFile.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['', 'foo'],
                     line=1,
                     column=3,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['', 'foo'],
                 line=1,
                 column=3,
@@ -318,12 +318,12 @@ class TokenTestCase(unittest.TestCase):
     def test_end_file_past_end(self):
         self.assertEqual(
             parser_module.EndFile.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo'],
                     column=10,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['foo'],
                 column=10,
                 last_symbol=parser_module.EndFile(
@@ -336,12 +336,12 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.EndFile.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo'],
                     line=10,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['foo'],
                 line=1,  # clamped to eof + 1 line
                 last_symbol=parser_module.EndFile(
@@ -356,11 +356,11 @@ class TokenTestCase(unittest.TestCase):
     def test_blank_line(self):
         self.assertEqual(
             parser_module.BlankLine.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=[''],
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[''],
                 line=1,
                 last_symbol=parser_module.BlankLine(
@@ -373,11 +373,11 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.BlankLine.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['   '],
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['   '],
                 line=1,
                 last_symbol=parser_module.BlankLine(
@@ -390,7 +390,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.BlankLine.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=[' a '],
                 )
             )
@@ -399,11 +399,11 @@ class TokenTestCase(unittest.TestCase):
     def test_end_line(self):
         self.assertEqual(
             parser_module.EndLine.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=[''],
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[''],
                 line=1,
                 last_symbol=parser_module.EndLine(
@@ -416,12 +416,12 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.EndLine.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['a   '],
                     column=1,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['a   '],
                 line=1,
                 last_symbol=parser_module.EndLine(
@@ -434,12 +434,12 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.EndLine.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo'],
                     column=3,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['foo'],
                 line=1,
                 last_symbol=parser_module.EndLine(
@@ -452,7 +452,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.EndLine.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo'],
                     column=2,
                 )
@@ -462,12 +462,12 @@ class TokenTestCase(unittest.TestCase):
     def test_end_line_eof(self):
         self.assertEqual(
             parser_module.EndLine.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=[''],
                     line=1,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[''],
                 line=1,  # clamped to last line + 1
                 last_symbol=parser_module.EndLine(
@@ -482,11 +482,11 @@ class TokenTestCase(unittest.TestCase):
     def test_begin_block(self):
         self.assertEqual(
             parser_module.BeginBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    '],
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['    '],
                 block_depth=1,
                 last_symbol=parser_module.BeginBlock(
@@ -500,12 +500,12 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.BeginBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['        hello'],
                     block_depth=1,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['        hello'],
                 block_depth=2,
                 last_symbol=parser_module.BeginBlock(
@@ -519,7 +519,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.BeginBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    '],
                     block_depth=1,  # same indentation
                 )
@@ -527,7 +527,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.BeginBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    '],
                     column=1,  # not at beginning of line
                 )
@@ -537,7 +537,7 @@ class TokenTestCase(unittest.TestCase):
     def test_begin_block_tabs(self):
         with self.assertRaisesRegex(parser_module.IndentationError, 'other whitespace found'):
             parser_module.BeginBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    \t'],
                     block_depth=1,
                 )
@@ -546,7 +546,7 @@ class TokenTestCase(unittest.TestCase):
     def test_begin_block_remainder(self):
         with self.assertRaisesRegex(parser_module.IndentationError, 'extra spaces found'):
             parser_module.BeginBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['     '],  # 5 spaces
                     block_depth=1,
                 )
@@ -555,7 +555,7 @@ class TokenTestCase(unittest.TestCase):
     def test_begin_block_over_indented(self):
         with self.assertRaisesRegex(parser_module.IndentationError, 'block over-indented'):
             parser_module.BeginBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    ' * 3],
                     block_depth=1,
                 )
@@ -564,12 +564,12 @@ class TokenTestCase(unittest.TestCase):
     def test_end_block(self):
         self.assertEqual(
             parser_module.EndBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    '],
                     block_depth=2,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['    '],
                 block_depth=1,
                 last_symbol=parser_module.EndBlock(
@@ -583,12 +583,12 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.EndBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['        hello'],
                     block_depth=3,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['        hello'],
                 block_depth=2,
                 last_symbol=parser_module.EndBlock(
@@ -602,7 +602,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.EndBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    '],
                     block_depth=1,  # same indentation
                 )
@@ -610,7 +610,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.EndBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    '],
                     column=1,  # not at beginning of line
                 )
@@ -620,7 +620,7 @@ class TokenTestCase(unittest.TestCase):
     def test_end_block_tabs(self):
         with self.assertRaisesRegex(parser_module.IndentationError, 'other whitespace found'):
             parser_module.EndBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    \t'],
                     block_depth=1,
                 )
@@ -629,7 +629,7 @@ class TokenTestCase(unittest.TestCase):
     def test_end_block_remainder(self):
         with self.assertRaisesRegex(parser_module.IndentationError, 'extra spaces found'):
             parser_module.EndBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['     '],  # 5 spaces
                     block_depth=1,
                 )
@@ -638,12 +638,12 @@ class TokenTestCase(unittest.TestCase):
     def test_end_block_multiple(self):
         self.assertEqual(
             parser_module.EndBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    '],
                     block_depth=3,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['    '],
                 block_depth=2,  # only decrease depth by one at a time
                 last_symbol=parser_module.EndBlock(
@@ -659,13 +659,13 @@ class TokenTestCase(unittest.TestCase):
     def test_end_block_eof(self):
         self.assertEqual(
             parser_module.EndBlock.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    '],
                     line=1,  # past the end by one line
                     block_depth=1,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['    '],
                 line=1,
                 block_depth=0,  # close final block
@@ -682,12 +682,12 @@ class TokenTestCase(unittest.TestCase):
     def test_whitespace(self):
         self.assertEqual(
             parser_module.Whitespace.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo   bar'],
                     column=3,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['foo   bar'],
                 column=6,
                 last_symbol=parser_module.Whitespace(
@@ -700,7 +700,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.Whitespace.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo   bar'],
                     column=2,
                 )
@@ -710,12 +710,12 @@ class TokenTestCase(unittest.TestCase):
     def test_multiline_whitespace(self):
         self.assertEqual(
             parser_module.MultilineWhitespace.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo   bar'],
                     column=3,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['foo   bar'],
                 column=6,
                 last_symbol=parser_module.MultilineWhitespace(
@@ -728,12 +728,12 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.MultilineWhitespace.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo ', '  ', '    bar'],
                     column=3,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['foo ', '  ', '    bar'],
                 line=2,
                 column=4,
@@ -747,7 +747,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.Whitespace.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo   bar'],
                     column=2,
                 )
@@ -757,11 +757,11 @@ class TokenTestCase(unittest.TestCase):
     def test_identifier(self):
         self.assertEqual(
             parser_module.Identifier.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo1   bar'],
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['foo1   bar'],
                 column=4,
                 last_symbol=parser_module.Identifier(
@@ -775,12 +775,12 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.Identifier.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['foo   bar42'],
                     column=6,
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=['foo   bar42'],
                 column=11,
                 last_symbol=parser_module.Identifier(
@@ -794,11 +794,11 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertEqual(
             parser_module.Identifier.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=[' foo '],
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[' foo '],
                 column=4,
                 last_symbol=parser_module.Identifier(
@@ -812,7 +812,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.Identifier.parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['1foo'],
                 )
             )
@@ -821,11 +821,11 @@ class TokenTestCase(unittest.TestCase):
     def test_characters(self):
         self.assertEqual(
             parser_module.Characters['&&'].parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=[' && '],
                 )
             ),
-            parser_module.Parser(
+            parser_module.Cursor(
                 lines=[' && '],
                 column=3,
                 last_symbol=parser_module.Characters['&&'](
@@ -838,7 +838,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIsNone(
             parser_module.Characters['&&'].parse(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=[' || '],
                 )
             )
@@ -851,7 +851,7 @@ class HelpersTestCase(unittest.TestCase):
         self.assertEqual(
             0,
             parser_module._measure_block_depth(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['hello'],
                 )
             )
@@ -859,7 +859,7 @@ class HelpersTestCase(unittest.TestCase):
         self.assertEqual(
             1,
             parser_module._measure_block_depth(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['    hello'],
                 )
             )
@@ -867,7 +867,7 @@ class HelpersTestCase(unittest.TestCase):
         self.assertEqual(
             2,
             parser_module._measure_block_depth(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['        hello'],
                     block_depth=1,
                 )
@@ -877,14 +877,14 @@ class HelpersTestCase(unittest.TestCase):
     def test_measure_block_depth_tabs(self):
         with self.assertRaisesRegex(parser_module.IndentationError, 'other whitespace found'):
             parser_module._measure_block_depth(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['\thello'],
                 )
             )
 
         with self.assertRaisesRegex(parser_module.IndentationError, 'other whitespace found'):
             parser_module._measure_block_depth(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['  \thello'],
                 )
             )
@@ -892,14 +892,14 @@ class HelpersTestCase(unittest.TestCase):
     def test_measure_block_depth_remainder(self):
         with self.assertRaisesRegex(parser_module.IndentationError, 'extra spaces found'):
             parser_module._measure_block_depth(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=[' hello'],
                 )
             )
 
         with self.assertRaisesRegex(parser_module.IndentationError, 'extra spaces found'):
             parser_module._measure_block_depth(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['     hello'],
                 )
             )
@@ -907,13 +907,13 @@ class HelpersTestCase(unittest.TestCase):
     def test_measure_block_depth_over_indented(self):
         with self.assertRaisesRegex(parser_module.IndentationError, 'block over-indented'):
             parser_module._measure_block_depth(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['        hello'],
                 )
             )
         with self.assertRaisesRegex(parser_module.IndentationError, 'block over-indented'):
             parser_module._measure_block_depth(
-                parser_module.Parser(
+                parser_module.Cursor(
                     lines=['            hello'],
                     block_depth=1,
                 )
