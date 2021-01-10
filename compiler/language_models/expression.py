@@ -982,13 +982,47 @@ class YieldFrom(Operator):
 
 
 @attr.s(frozen=True, slots=True)
+class Star(Operator):
+    """*iterable
+    """
+    expression: Expression = attr.ib()
+
+    higher_precedence_operators = Yield.higher_precedence_operators | {Yield, YieldFrom}
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class StarStar(Operator):
+    """**mapping
+    """
+    expression: Expression = attr.ib()
+
+    higher_precedence_operators = Star.higher_precedence_operators
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+    @property
+    def expressions(self):
+        yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
 class Comma(Operator):
     """a, b
     """
     left: Expression = attr.ib()
     right: Expression = attr.ib()
 
-    higher_precedence_operators = Yield.higher_precedence_operators | {Yield, YieldFrom}
+    higher_precedence_operators = Star.higher_precedence_operators | {Star, StarStar}
 
     @classmethod
     def parse(cls, cursor):
