@@ -17,14 +17,6 @@ class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
     """An Expression is a syntactic entity that may be evaluated to determine
     its value.
     """
-    @classmethod
-    def parse(cls, cursor):
-        """Parse an expression, taking into account precedence rules,
-        into the appropriate subclass.
-        """
-        # placeholder to allow Variable tests to pass
-        return Variable.parse(cursor)
-
     @property
     def expressions(self) -> typing.Iterable[Expression]:
         """Get all the expressions which this expression directly depends on,
@@ -114,10 +106,7 @@ class Variable(declarable.Declarable, LValue):
             ])
 
             if not isinstance(cursor.last_symbol, parser_module.Always):
-                cursor = cursor.parse([
-                    Expression,
-                    parser_module.Always,
-                ])
+                cursor = ExpressionParser.parse(cursor) or cursor
 
                 if isinstance(cursor.last_symbol, Expression):
                     initializer = cursor.last_symbol
@@ -1012,7 +1001,7 @@ class Comma(Operator):
 
 
 @attr.s(frozen=True, slots=True)
-class OperatorParser(parser_module.Parser):
+class ExpressionParser(parser_module.Parser):
     """Parse an expression according to the rules of operator precedence.
     """
     operands: typing.Sequence[typing.Type[Expression]] = (
@@ -1027,3 +1016,4 @@ class OperatorParser(parser_module.Parser):
     def parse(cls, cursor):
         """Parse an expression according to the rules of operator precedence.
         """
+        return Variable.parse(cursor)  # placeholder
