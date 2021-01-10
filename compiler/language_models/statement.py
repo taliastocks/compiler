@@ -44,10 +44,9 @@ class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
         for lvalue in self.receivers:
             if isinstance(lvalue, expression_module.Variable):
                 yield lvalue
-            if isinstance(lvalue, expression_module.Unpack):
-                yield from lvalue.variable_assignments
 
-        # TODO: get variable assignments from expression_module.Assignment
+        for expr in self.expressions:
+            yield from expr.variable_assignments
 
         for statement in self.statements:
             yield from statement.variable_assignments

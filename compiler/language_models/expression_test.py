@@ -324,15 +324,15 @@ class UnpackTestCase(unittest.TestCase):
         ])
 
         self.assertEqual(
-            [
+            {
                 expression_module.Variable('a'),
                 expression_module.Variable('b'),
                 expression_module.Variable('c'),
                 expression_module.Variable('d'),
                 expression_module.Variable('e'),
                 expression_module.Variable('f'),
-            ],
-            list(unpack.variable_assignments)
+            },
+            set(unpack.variable_assignments)
         )
 
 
@@ -619,7 +619,47 @@ class LambdaTestCase(unittest.TestCase):
 
 class AssignmentTestCase(unittest.TestCase):
     def test_expressions(self):
-        pass
+        assignment = expression_module.Assignment(
+            left=expression_module.Variable('foo'),
+            right=expression_module.Variable('bar'),
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('foo'),
+                expression_module.Variable('bar'),
+            ],
+            list(assignment.expressions)
+        )
+
+    def test_variable_assignments(self):
+        assignment = expression_module.Assignment(
+            left=expression_module.Variable('foo'),
+            right=expression_module.Variable('bar'),
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('foo')
+            ],
+            list(assignment.variable_assignments)
+        )
+
+        assignment = expression_module.Assignment(
+            left=expression_module.Unpack([
+                expression_module.Variable('foo'),
+                expression_module.Variable('bar'),
+            ]),
+            right=expression_module.Variable('baz'),
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('foo'),
+                expression_module.Variable('bar'),
+            ],
+            list(assignment.variable_assignments)
+        )
 
 
 class YieldTestCase(unittest.TestCase):

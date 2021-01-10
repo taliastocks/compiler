@@ -24,13 +24,13 @@ class StatementTestCase(unittest.TestCase):
 
         # Nested statements with unpacking return nested variables.
         self.assertEqual(
-            [
+            {
                 expression.Variable('receiver_1'),
                 expression.Variable('receiver_2'),
                 expression.Variable('receiver_3'),
                 expression.Variable('receiver_4'),
-            ],
-            list(statement.For(
+            },
+            set(statement.For(
                 iterable=expression.Variable('iterable'),
                 receiver=expression.Unpack([
                     expression.Variable('receiver_1'),
@@ -52,7 +52,22 @@ class StatementTestCase(unittest.TestCase):
             ).variable_assignments)
         )
 
-        # TODO: assignments from expression.Assignment
+        # Assignments from expression.Assignment.
+        self.assertEqual(
+            [
+                expression.Variable('assigned')
+            ],
+            list(statement.If(
+                condition=expression.Equal(
+                    left=expression.Assignment(
+                        left=expression.Variable('assigned'),
+                        right=expression.Variable('eq_left'),
+                    ),
+                    right=expression.Variable('eq_right'),
+                ),
+                body=statement.Block(),
+            ).variable_assignments)
+        )
 
     def test_nonlocal_variables(self):
         # Simple.
