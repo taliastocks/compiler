@@ -71,7 +71,7 @@ class Variable(declarable.Declarable, LValue):
               allowed_annotations: typing.Sequence[typing.Type[Variable.Annotation]] = (),
               parse_initializer=False):
         # pylint: disable=unused-argument, arguments-differ
-        cursor = cursor.parse([
+        cursor = cursor.parse_one_symbol([
             parser_module.Identifier,
         ])
         if isinstance(cursor.last_symbol, parser_module.Identifier):
@@ -81,14 +81,14 @@ class Variable(declarable.Declarable, LValue):
 
         annotations = []  # noqa
         if allowed_annotations:
-            cursor = cursor.parse([
+            cursor = cursor.parse_one_symbol([
                 parser_module.Characters[':'],
                 parser_module.Always,
             ])
 
             if not isinstance(cursor.last_symbol, parser_module.Always):
                 while not isinstance(cursor.last_symbol, parser_module.Always):
-                    cursor = cursor.parse([*allowed_annotations, parser_module.Always])
+                    cursor = cursor.parse_one_symbol([*allowed_annotations, parser_module.Always])
                     if isinstance(cursor.last_symbol, Variable.Annotation):
                         annotations.append(cursor.last_symbol)
 
@@ -100,7 +100,7 @@ class Variable(declarable.Declarable, LValue):
 
         initializer = None
         if parse_initializer:
-            cursor = cursor.parse([
+            cursor = cursor.parse_one_symbol([
                 parser_module.Characters['='],
                 parser_module.Always,
             ])
@@ -257,81 +257,75 @@ class Operator(Expression, metaclass=abc.ABCMeta):
 
 
 @attr.s(frozen=True, slots=True)
-class Call(Operator):
-    """A function call, i.e. ``foo(...args...)``.
-    """
-    function: Expression = attr.ib()
-    # TODO: arguments
-
-    @classmethod
-    def parse(cls, cursor):
-        pass
-
-    @property
-    def expressions(self):
-        yield self.function
-        # TODO: get expressions from arguments
-
-
-@attr.s(frozen=True, slots=True)
-class Dot(Operator, LValue):
-    """The dot operator, i.e. ``my_instance.my_member``.
-    """
-    operand: Expression = attr.ib()
-    member: str = attr.ib()
-
-    @classmethod
-    def parse(cls, cursor):
-        pass
-
-    @property
-    def expressions(self):
-        yield self.operand
-
-
-@attr.s(frozen=True, slots=True)
-class Subscript(Operator, LValue):
-    """An array subscript, i.e. ``my_array[3]``.
-    """
-    operand: Expression = attr.ib()
-    subscript: Expression = attr.ib()
-
-    @classmethod
-    def parse(cls, cursor):
-        pass
-
-    @property
-    def expressions(self):
-        yield self.operand
-        yield self.subscript
-
-
-@attr.s(frozen=True, slots=True)
-class Await(Operator):
-    """Await a promise. This can only be used from within an async function
-    or async generator.
+class UnaryOperator(Operator, metaclass=abc.ABCMeta):
+    """An operator which takes exactly one argument.
     """
     expression: typing.Optional[Expression] = attr.ib(default=None)
 
+    @property
+    def expressions(self):
+        if self.expression:
+            yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class BinaryOperator(Operator, metaclass=abc.ABCMeta):
+    """An operator which takes exactly one argument.
+    """
+    left: typing.Optional[Expression] = attr.ib(default=None)
+    right: typing.Optional[Expression] = attr.ib(default=None)
+
+    @property
+    def expressions(self):
+        if self.left is not None:
+            yield self.left
+        if self.right is not None:
+            yield self.right
+
+
+@attr.s(frozen=True, slots=True)
+class Call(BinaryOperator):
+    """A function call, i.e. ``foo(...args...)``.
+    """
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+
+@attr.s(frozen=True, slots=True)
+class Dot(BinaryOperator, LValue):
+    """The dot operator, i.e. ``my_instance.my_member``.
+    """
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+
+@attr.s(frozen=True, slots=True)
+class Subscript(BinaryOperator, LValue):
+    """An array subscript, i.e. ``my_array[3]``.
+    """
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+
+@attr.s(frozen=True, slots=True)
+class Await(UnaryOperator):
+    """Await a promise. This can only be used from within an async function
+    or async generator.
+    """
     higher_precedence_operators = Call.higher_precedence_operators | {Call, Dot, Subscript}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        if self.expression is not None:
-            yield self.expression
-
 
 @attr.s(frozen=True, slots=True)
-class Exponentiation(Operator):
+class Exponentiation(BinaryOperator):
     """a ** b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Await.higher_precedence_operators | {Await}
 
     @classmethod
@@ -344,165 +338,99 @@ class Exponentiation(Operator):
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class Positive(Operator):
+class Positive(UnaryOperator):
     """+expr
     """
-    expression: Expression = attr.ib()
-
     higher_precedence_operators = Exponentiation.higher_precedence_operators | {Exponentiation}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.expression
-
 
 @attr.s(frozen=True, slots=True)
-class Negative(Operator):
+class Negative(UnaryOperator):
     """-expr
     """
-    expression: Expression = attr.ib()
-
     higher_precedence_operators = Positive.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.expression
-
 
 @attr.s(frozen=True, slots=True)
-class BitInverse(Operator):
+class BitInverse(UnaryOperator):
     """~expr
     """
-    expression: Expression = attr.ib()
-
     higher_precedence_operators = Positive.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.expression
-
 
 @attr.s(frozen=True, slots=True)
-class Multiply(Operator):
+class Multiply(BinaryOperator):
     """a * b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Positive.higher_precedence_operators | {Positive, Negative, BitInverse}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class MatrixMultiply(Operator):
+class MatrixMultiply(BinaryOperator):
     """a @ b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Multiply.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class Divide(Operator):
+class Divide(BinaryOperator):
     """a / b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Multiply.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class FloorDivide(Operator):
+class FloorDivide(BinaryOperator):
     """a // b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Multiply.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class Modulo(Operator):
+class Modulo(BinaryOperator):
     """a % b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Multiply.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class Add(Operator):
+class Add(BinaryOperator):
     """a + b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Multiply.higher_precedence_operators | {
         Multiply, MatrixMultiply, Divide, FloorDivide, Modulo}
 
@@ -510,322 +438,187 @@ class Add(Operator):
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class Subtract(Operator):
+class Subtract(BinaryOperator):
     """a - b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Add.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class ShiftLeft(Operator):
+class ShiftLeft(BinaryOperator):
     """a << b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Add.higher_precedence_operators | {Add, Subtract}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class ShiftRight(Operator):
+class ShiftRight(BinaryOperator):
     """a >> b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = ShiftLeft.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class BitAnd(Operator):
+class BitAnd(BinaryOperator):
     """a & b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = ShiftLeft.higher_precedence_operators | {ShiftLeft, ShiftRight}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class BitXor(Operator):
+class BitXor(BinaryOperator):
     """a ^ b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = BitAnd.higher_precedence_operators | {BitAnd}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class BitOr(Operator):
+class BitOr(BinaryOperator):
     """a | b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = BitXor.higher_precedence_operators | {BitXor}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class In(Operator):
+class In(BinaryOperator):
     """a in b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = BitOr.higher_precedence_operators | {BitOr}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class NotIn(Operator):
+class NotIn(BinaryOperator):
     """a not in b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = In.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class Is(Operator):
+class Is(BinaryOperator):
     """a is b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = In.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class IsNot(Operator):
+class IsNot(BinaryOperator):
     """a is not b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = In.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class LessThan(Operator):
+class LessThan(BinaryOperator):
     """a < b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = In.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class LessThanOrEqual(Operator):
+class LessThanOrEqual(BinaryOperator):
     """a <= b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = In.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class GreaterThan(Operator):
+class GreaterThan(BinaryOperator):
     """a > b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = In.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class GreaterThanOrEqual(Operator):
+class GreaterThanOrEqual(BinaryOperator):
     """a >= b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = In.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class NotEqual(Operator):
+class NotEqual(BinaryOperator):
     """a != b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = In.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class Equal(Operator):
+class Equal(BinaryOperator):
     """a == b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = In.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class Not(Operator):
+class Not(UnaryOperator):
     """not expr
     """
-    expression: Expression = attr.ib()
-
     higher_precedence_operators = In.higher_precedence_operators | {
         In, NotIn, Is, IsNot, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual, NotEqual, Equal}
 
@@ -833,47 +626,27 @@ class Not(Operator):
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.expression
-
 
 @attr.s(frozen=True, slots=True)
-class And(Operator):
+class And(BinaryOperator):
     """a and b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Not.higher_precedence_operators | {Not}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
-
 
 @attr.s(frozen=True, slots=True)
-class Or(Operator):
+class Or(BinaryOperator):
     """a or b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = And.higher_precedence_operators | {And}
 
     @classmethod
     def parse(cls, cursor):
         pass
-
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
 
 
 @attr.s(frozen=True, slots=True)
@@ -881,8 +654,8 @@ class IfElse(Operator):
     """Choose between expressions to evaluate.
     """
     condition: Expression = attr.ib()
-    value: Expression = attr.ib()
-    else_value: Expression = attr.ib()
+    true_value: typing.Optional[Expression] = attr.ib()
+    false_value: typing.Optional[Expression] = attr.ib()
 
     higher_precedence_operators = Or.higher_precedence_operators | {Or}
 
@@ -893,43 +666,32 @@ class IfElse(Operator):
     @property
     def expressions(self):
         yield self.condition
-        yield self.value
-        yield self.else_value
+        if self.true_value is not None:
+            yield self.true_value
+        if self.false_value is not None:
+            yield self.false_value
 
 
 @attr.s(frozen=True, slots=True)
-class Lambda(Operator):
+class Lambda(UnaryOperator):
     """Inline function definition.
     """
-
     higher_precedence_operators = IfElse.higher_precedence_operators | {IfElse}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield from []  # TODO
-
 
 @attr.s(frozen=True, slots=True)
-class Assignment(Operator):
+class Assignment(BinaryOperator):
     """a := b
     """
-    left: LValue = attr.ib()
-    right: Expression = attr.ib()
-
     higher_precedence_operators = Lambda.higher_precedence_operators | {Lambda}
 
     @classmethod
     def parse(cls, cursor):
         pass
-
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
 
     @property
     def variable_assignments(self):
@@ -941,32 +703,24 @@ class Assignment(Operator):
 
 
 @attr.s(frozen=True, slots=True)
-class Yield(Operator):
+class Yield(UnaryOperator):
     """Yield a single value from a generator.
     """
-    expression: typing.Optional[Expression] = attr.ib(default=None)
-
     higher_precedence_operators = Assignment.higher_precedence_operators | {Assignment}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        if self.expression is not None:
-            yield self.expression
-
 
 @attr.s(frozen=True, slots=True)
-class YieldFrom(Operator):
+class YieldFrom(UnaryOperator):
     """Yield all the values of an iterable. This can only be used from within
     a generator.
 
         is_async: Await each promise in the iterable before yielding it. This
             option can only be used from within an async generator.
     """
-    expression: typing.Optional[Expression] = attr.ib(default=None)
     is_async: bool = attr.ib(default=False)
 
     higher_precedence_operators = Yield.higher_precedence_operators
@@ -975,63 +729,38 @@ class YieldFrom(Operator):
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        if self.expression is not None:
-            yield self.expression
-
 
 @attr.s(frozen=True, slots=True)
-class Star(Operator):
-    """*iterable
+class StarStar(UnaryOperator):
+    """**mapping
     """
-    expression: Expression = attr.ib()
-
     higher_precedence_operators = Yield.higher_precedence_operators | {Yield, YieldFrom}
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.expression
-
 
 @attr.s(frozen=True, slots=True)
-class StarStar(Operator):
-    """**mapping
+class Star(UnaryOperator):
+    """*iterable
     """
-    expression: Expression = attr.ib()
-
-    higher_precedence_operators = Star.higher_precedence_operators
+    higher_precedence_operators = StarStar.higher_precedence_operators
 
     @classmethod
     def parse(cls, cursor):
         pass
 
-    @property
-    def expressions(self):
-        yield self.expression
-
 
 @attr.s(frozen=True, slots=True)
-class Comma(Operator):
+class Comma(BinaryOperator):
     """a, b
     """
-    left: Expression = attr.ib()
-    right: Expression = attr.ib()
-
-    higher_precedence_operators = Star.higher_precedence_operators | {Star, StarStar}
+    higher_precedence_operators = StarStar.higher_precedence_operators | {StarStar, Star}
 
     @classmethod
     def parse(cls, cursor):
         pass
-
-    @property
-    def expressions(self):
-        yield self.left
-        yield self.right
 
 
 @attr.s(frozen=True, slots=True)
@@ -1044,6 +773,13 @@ class ExpressionParser(parser_module.Parser):
         Dictionary,
         Set,
         List,
+    )
+    operators: typing.Sequence[typing.Type[Operator]] = (
+        Call, Dot, Subscript, Await, Exponentiation, Positive, Negative, BitInverse,
+        Multiply, MatrixMultiply, Divide, FloorDivide, Modulo, Add, Subtract,
+        ShiftLeft, ShiftRight, BitAnd, BitXor, BitOr, In, NotIn, Is, IsNot, LessThan,
+        LessThanOrEqual, GreaterThan, GreaterThanOrEqual, NotEqual, Equal, Not, And,
+        Or, IfElse, Lambda, Assignment, Yield, YieldFrom, StarStar, Star, Comma,
     )
 
     @classmethod

@@ -63,7 +63,7 @@ class Cursor:
             block_depth=block_depth,
         )
 
-    def parse(self, one_of: typing.Sequence[typing.Type[Symbol]]) -> Cursor:
+    def parse_one_symbol(self, one_of: typing.Sequence[typing.Type[Symbol]]) -> Cursor:
         """Parse one Symbol, returning a new Cursor object.
 
         Tries to parse the symbols in ``one_of`` in order, returning after the

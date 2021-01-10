@@ -127,7 +127,7 @@ class ParserTestCase(unittest.TestCase):
         cursor = parser_module.Cursor([
             ''
         ])
-        next_cursor = cursor.parse([
+        next_cursor = cursor.parse_one_symbol([
             parser_module.BlankLine,
             parser_module.EndLine,
         ])
@@ -147,7 +147,7 @@ class ParserTestCase(unittest.TestCase):
             ],
             column=3,
         )
-        next_cursor = cursor.parse([
+        next_cursor = cursor.parse_one_symbol([
             parser_module.BlankLine,
             parser_module.EndLine,
         ])
@@ -169,7 +169,7 @@ class ParserTestCase(unittest.TestCase):
         )
 
         with self.assertRaises(parser_module.NoMatchError):
-            cursor.parse([
+            cursor.parse_one_symbol([
                 parser_module.BlankLine,
                 parser_module.EndLine,
             ])
@@ -181,7 +181,7 @@ class ParserTestCase(unittest.TestCase):
             ],
         )
 
-        new_cursor = cursor.parse([
+        new_cursor = cursor.parse_one_symbol([
             parser_module.BlankLine,
             parser_module.EndLine,
             parser_module.Always,
@@ -195,8 +195,8 @@ class ParserTestCase(unittest.TestCase):
     def test_parse_recursive_no_match(self):
         class MySymbol(parser_module.Symbol):
             @classmethod
-            def parse(cls, cursor):
-                cursor.parse([  # Should raise NoMatchError
+            def parse(cls, cursor):  # noqa
+                cursor.parse_one_symbol([  # Should raise NoMatchError
                     parser_module.BeginBlock,
                 ])
 
@@ -207,12 +207,12 @@ class ParserTestCase(unittest.TestCase):
         )
 
         with self.assertRaises(parser_module.NoMatchError):
-            cursor.parse([
+            cursor.parse_one_symbol([
                 MySymbol
             ])
 
         # This case should succeed.
-        cursor.parse([
+        cursor.parse_one_symbol([
             MySymbol,
             parser_module.BlankLine,  # matches
         ])
