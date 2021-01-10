@@ -9,6 +9,7 @@ from . import declarable
 from .. import parser as parser_module
 
 # pylint: disable=fixme
+# pylint: disable=too-many-lines
 
 
 @attr.s(frozen=True, slots=True)

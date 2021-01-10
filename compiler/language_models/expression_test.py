@@ -764,6 +764,7 @@ class YieldFromTestCase(unittest.TestCase):
             list(yield_from_expr.expressions)
         )
 
+
 class CommaTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
