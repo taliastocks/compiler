@@ -764,6 +764,16 @@ class YieldFromTestCase(unittest.TestCase):
         )
 
 
+class StarTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class StarStarTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
 class CommaTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
