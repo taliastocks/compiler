@@ -154,7 +154,7 @@ class Unpack(LValue):
         """Iterate over all the variables which unpacking would assign to.
         """
         # https://github.com/python-attrs/attrs/issues/652
-        yield from super(Unpack, self).variable_assignments
+        yield from super(Unpack, self).variable_assignments  # pylint: disable=super-with-arguments
 
         for lvalue in self.lvalues:
             if isinstance(lvalue, Variable):
@@ -855,7 +855,7 @@ class Assignment(Expression):
     @property
     def variable_assignments(self):
         # https://github.com/python-attrs/attrs/issues/652
-        yield from super(Assignment, self).variable_assignments
+        yield from super(Assignment, self).variable_assignments  # pylint: disable=super-with-arguments
 
         if isinstance(self.left, Variable):
             yield self.left
