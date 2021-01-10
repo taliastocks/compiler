@@ -414,6 +414,7 @@ class OperatorTestCase(unittest.TestCase):
             (expression_module.Lambda,),
             (expression_module.Assignment,),
             (expression_module.Yield, expression_module.YieldFrom),
+            (expression_module.Star, expression_module.StarStar),
             (expression_module.Comma,),
         )
 
