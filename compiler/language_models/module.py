@@ -38,7 +38,7 @@ class Module(parser_module.Symbol):
         variables = []
 
         while not isinstance(cursor.last_symbol, parser_module.EndFile):
-            cursor = cursor.parse([
+            cursor = cursor.parse_one_symbol([
                 parser_module.EndFile,
                 Import,
                 function_module.Function,
