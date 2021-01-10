@@ -71,7 +71,7 @@ class Function(declarable.Declarable):
                                                             repr=False)
 
     @classmethod
-    def parse(cls, parser):
+    def parse(cls, cursor):
         pass  # Placeholder until I get around to writing a real implementation.
 
     @arguments.validator

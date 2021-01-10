@@ -32,6 +32,13 @@ class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
         yield from []
 
     @property
+    def variable_assignments(self) -> typing.Iterable[Variable]:
+        """Get all the variable assignments that result from executing this expression.
+        """
+        for expression in self.expressions:
+            yield from expression.variable_assignments
+
+    @property
     def has_yield(self) -> bool:
         """True if this expression yields, otherwise False
         """
@@ -129,6 +136,8 @@ class Variable(declarable.Declarable, LValue):
 @attr.s(frozen=True, slots=True)
 class Unpack(LValue):
     """On assignment, unpack an iterable into a collection of LValues.
+
+    ``Unpack`` should only ever be used as the target of an assignment.
     """
     lvalues: typing.Sequence[LValue] = attr.ib(converter=tuple)
 
@@ -144,11 +153,12 @@ class Unpack(LValue):
     def variable_assignments(self) -> typing.Iterable[Variable]:
         """Iterate over all the variables which unpacking would assign to.
         """
+        # https://github.com/python-attrs/attrs/issues/652
+        yield from super(Unpack, self).variable_assignments  # pylint: disable=super-with-arguments
+
         for lvalue in self.lvalues:
             if isinstance(lvalue, Variable):
                 yield lvalue
-            elif isinstance(lvalue, Unpack):
-                yield from lvalue.variable_assignments
 
 
 @attr.s(frozen=True, slots=True)
@@ -841,6 +851,14 @@ class Assignment(Expression):
     def expressions(self):
         yield self.left
         yield self.right
+
+    @property
+    def variable_assignments(self):
+        # https://github.com/python-attrs/attrs/issues/652
+        yield from super(Assignment, self).variable_assignments  # pylint: disable=super-with-arguments
+
+        if isinstance(self.left, Variable):
+            yield self.left
 
 
 @attr.s(frozen=True, slots=True)
