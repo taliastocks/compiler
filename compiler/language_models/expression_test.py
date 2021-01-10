@@ -392,6 +392,67 @@ class ListTestCase(unittest.TestCase):
         pass
 
 
+class OperatorTestCase(unittest.TestCase):
+    def test_operator_precedence(self):
+        expected_precedence = (
+            (expression_module.Call, expression_module.Dot, expression_module.Subscript),
+            (expression_module.Await,),
+            (expression_module.Exponentiation,),
+            (expression_module.Positive, expression_module.Negative, expression_module.BitInverse),
+            (expression_module.Multiply, expression_module.MatrixMultiply, expression_module.Divide,
+                expression_module.FloorDivide, expression_module.Modulo),
+            (expression_module.Add, expression_module.Subtract),
+            (expression_module.ShiftLeft, expression_module.ShiftRight),
+            (expression_module.BitAnd,),
+            (expression_module.BitXor,),
+            (expression_module.BitOr,),
+            (expression_module.In, expression_module.NotIn, expression_module.Is, expression_module.IsNot,
+                expression_module.LessThan, expression_module.LessThanOrEqual, expression_module.GreaterThan,
+                expression_module.GreaterThanOrEqual, expression_module.NotEqual, expression_module.Equal),
+            (expression_module.Not,),
+            (expression_module.And,),
+            (expression_module.Or,),
+            (expression_module.IfElse,),
+            (expression_module.Lambda,),
+            (expression_module.Assignment,),
+            (expression_module.Yield, expression_module.YieldFrom),
+            (expression_module.Comma,),
+        )
+
+        expected_higher_precedence_operators = set()
+        for precedence_level in expected_precedence:
+            for symbol_type in precedence_level:
+                self.assertEqual(
+                    expected_higher_precedence_operators,
+                    symbol_type.higher_precedence_operators
+                )
+
+            expected_higher_precedence_operators.update(set(precedence_level))
+
+    def test_precedes_on_right(self):
+        # This behavior comes from the operator precedence rules, so just test a sample of cases.
+        self.assertIs(
+            True,
+            expression_module.Call.precedes_on_right(expression_module.Await)
+        )
+        self.assertIs(
+            False,
+            expression_module.Await.precedes_on_right(expression_module.Call)
+        )
+
+        # Most operators should evaluate left to right.
+        self.assertIs(
+            False,
+            expression_module.Await.precedes_on_right(expression_module.Await)
+        )
+
+        # ...with the exception of exponentiation...
+        self.assertIs(
+            True,
+            expression_module.Exponentiation.precedes_on_right(expression_module.Exponentiation)
+        )
+
+
 class CallTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
@@ -702,3 +763,11 @@ class YieldFromTestCase(unittest.TestCase):
             ],
             list(yield_from_expr.expressions)
         )
+
+class CommaTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class OperatorParser(unittest.TestCase):
+    pass
