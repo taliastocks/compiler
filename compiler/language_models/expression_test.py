@@ -61,9 +61,7 @@ class VariableTestCase(unittest.TestCase):
 
             @classmethod
             def parse(cls, cursor):
-                cursor = cursor.parse([
-                    expression_module.Expression
-                ])
+                cursor = expression_module.ExpressionParser.parse(cursor)
                 if isinstance(cursor.last_symbol, expression_module.Expression):
                     return cursor.new_from_symbol(cls(
                         expression=cursor.last_symbol
@@ -770,5 +768,5 @@ class CommaTestCase(unittest.TestCase):
         pass
 
 
-class OperatorParser(unittest.TestCase):
+class ExpressionParser(unittest.TestCase):
     pass
