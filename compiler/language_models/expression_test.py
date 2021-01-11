@@ -5,6 +5,8 @@ import attr
 from . import expression as expression_module
 from .. import parser as parser_module
 
+# pylint: disable=fixme
+
 
 class ExpressionTestCase(unittest.TestCase):
     def test_has_yield(self):
@@ -62,6 +64,8 @@ class VariableTestCase(unittest.TestCase):
             @classmethod
             def parse(cls, cursor):
                 cursor = expression_module.ExpressionParser.parse(cursor)
+                if not cursor:
+                    return None
                 if isinstance(cursor.last_symbol, expression_module.Expression):
                     return cursor.new_from_symbol(cls(
                         expression=cursor.last_symbol
@@ -781,4 +785,5 @@ class CommaTestCase(unittest.TestCase):
 
 
 class ExpressionParser(unittest.TestCase):
-    pass
+    def test_parse(self):
+        pass  # TODO: thoroughly test operator precedence parsing

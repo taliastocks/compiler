@@ -93,6 +93,12 @@ class Cursor:
             expected_symbols=one_of,
         )
 
+    def __str__(self):
+        heading = '{}, {}: '.format(self.line, self.column)
+        line_text = self.line_text()
+        pointer_indent = ' ' * (len(heading) + self.column)
+        return '{}{}\n{}^'.format(heading, line_text, pointer_indent)
+
 
 @attr.s(frozen=True, slots=True)
 class ParseError(Exception):
@@ -100,7 +106,7 @@ class ParseError(Exception):
     cursor: Cursor = attr.ib()
 
     def __str__(self):
-        return self.message
+        return '{}\n{}'.format(self.message, self.cursor)
 
 
 @attr.s(frozen=True, slots=True)
