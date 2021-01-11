@@ -106,7 +106,7 @@ class Variable(declarable.Declarable, LValue):
             ])
 
             if not isinstance(cursor.last_symbol, parser_module.Always):
-                cursor = ExpressionParser.parse(cursor) or cursor
+                cursor = ExpressionParser.parse(cursor, allow_comma=False, allow_newline=False) or cursor
 
                 if isinstance(cursor.last_symbol, Expression):
                     initializer = cursor.last_symbol
@@ -255,6 +255,10 @@ class Operator(Expression, metaclass=abc.ABCMeta):
         """
         return cls in other.higher_precedence_operators
 
+    @abc.abstractmethod
+    def new_from_operand_stack(self, cursor: parser_module.Cursor, operands: typing.MutableSequence) -> Operator:
+        pass
+
 
 @attr.s(frozen=True, slots=True)
 class UnaryOperator(Operator, metaclass=abc.ABCMeta):
@@ -267,6 +271,12 @@ class UnaryOperator(Operator, metaclass=abc.ABCMeta):
         if self.expression:
             yield self.expression
 
+    def new_from_operand_stack(self, cursor, operands):
+        if not operands:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        return type(self)(expression=operands.pop())  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class BinaryOperator(Operator, metaclass=abc.ABCMeta):
@@ -274,6 +284,13 @@ class BinaryOperator(Operator, metaclass=abc.ABCMeta):
     """
     left: typing.Optional[Expression] = attr.ib(default=None)
     right: typing.Optional[Expression] = attr.ib(default=None)
+
+    def new_from_operand_stack(self, cursor, operands):
+        if len(operands) < 2:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        # Instantiate left and right in reverse order because we're popping from a stack.
+        return type(self)(right=operands.pop(), left=operands.pop())  # noqa
 
     @property
     def expressions(self):
@@ -663,6 +680,13 @@ class IfElse(Operator):
     def parse(cls, cursor):
         pass
 
+    def new_from_operand_stack(self, cursor, operands):
+        if len(operands) < 2:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        # Instantiate false_value and true_value in reverse order because we're popping from a stack.
+        return IfElse(condition=self.condition, false_value=operands.pop(), true_value=operands.pop())
+
     @property
     def expressions(self):
         yield self.condition
@@ -773,17 +797,83 @@ class ExpressionParser(parser_module.Parser):
         Dictionary,
         Set,
         List,
+        parser_module.Always,
     )
-    operators: typing.Sequence[typing.Type[Operator]] = (
-        Call, Dot, Subscript, Await, Exponentiation, Positive, Negative, BitInverse,
-        Multiply, MatrixMultiply, Divide, FloorDivide, Modulo, Add, Subtract,
-        ShiftLeft, ShiftRight, BitAnd, BitXor, BitOr, In, NotIn, Is, IsNot, LessThan,
-        LessThanOrEqual, GreaterThan, GreaterThanOrEqual, NotEqual, Equal, Not, And,
-        Or, IfElse, Lambda, Assignment, Yield, YieldFrom, StarStar, Star, Comma,
+    prefix_operators: typing.Sequence[typing.Type[UnaryOperator]] = (
+        Await, Positive, Negative, BitInverse, Not, Lambda, Yield, YieldFrom, StarStar, Star,
+        parser_module.Always,
+    )
+    infix_operators: typing.Sequence[typing.Type[Operator]] = (
+        Call, Dot, Subscript, Await, Exponentiation, Multiply, MatrixMultiply, Divide,
+        FloorDivide, Modulo, Add, Subtract, ShiftLeft, ShiftRight, BitAnd, BitXor, BitOr,
+        In, NotIn, Is, IsNot, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual,
+        NotEqual, Equal, Not, And, Or, IfElse, Lambda, Assignment, Yield, YieldFrom,
+        StarStar, Star, Comma, parser_module.Always,
     )
 
     @classmethod
-    def parse(cls, cursor):
+    def parse(cls, cursor, allow_comma: bool = True, allow_newline: bool = True):  # pylint: disable=arguments-differ
         """Parse an expression according to the rules of operator precedence.
+
+        :param cursor:
+        :param allow_comma: whether or not the comma operator is allowed in this context
+        :param allow_newline: whether or not a newline is allowed to follow an operand in this context
+            (newlines are always allowed to follow operators, as this is unambiguous)
         """
-        return Variable.parse(cursor)  # placeholder
+        # pylint: disable=too-many-branches; todo: factor out some of this logic
+        operators: list[Operator] = []
+        operands: list[Expression] = []
+
+        while True:
+            # Consume all the leading prefix operators.
+            while True:
+                cursor = cursor.parse_one_symbol(cls.prefix_operators)
+                if isinstance(cursor.last_symbol, Operator):
+                    operators.append(cursor.last_symbol)
+                else:
+                    break
+
+            # Consume an operand.
+            cursor = cursor.parse_one_symbol(cls.operands)
+            if isinstance(cursor.last_symbol, Expression):
+                operands.append(cursor.last_symbol)
+            elif not operators and not operands:
+                # If we haven't consumed anything at all, this is a non-match. Return nothing.
+                return None
+            else:
+                raise parser_module.ParseError('expected an operand', cursor)
+
+            if not allow_newline:
+                # End the expression at the first newline if allow_newline=False.
+                new_cursor = cursor.parse_one_symbol([parser_module.EndLine, parser_module.Always])
+                if isinstance(new_cursor.last_symbol, parser_module.EndLine):
+                    break
+
+            # Consume an infix operator.
+            new_cursor = cursor.parse_one_symbol(cls.infix_operators)
+            if not allow_comma and isinstance(new_cursor.last_symbol, Comma):
+                # End the expression at the first comma operator if allow_comma=False.
+                break
+            if isinstance(new_cursor.last_symbol, Operator):
+                # Evaluate all the operators in the stack this operator binds less tightly than.
+                while operators and not new_cursor.last_symbol.precedes_on_right(type(operators[-1])):
+                    operands.append(operators.pop().new_from_operand_stack(cursor, operands))
+
+                # Consume the operator.
+                operators.append(new_cursor.last_symbol)
+                cursor = new_cursor
+            else:
+                # End the expression.
+                break
+
+        # Evaluate all remaining operators on the stack.
+        while operators:
+            operands.append(operators.pop().new_from_operand_stack(cursor, operands))
+
+        # There should be exactly one operand left if all went well.
+        if len(operands) > 1:
+            raise parser_module.ParseError('too many operands', cursor)
+        if not operands:
+            raise parser_module.ParseError('no operands', cursor)
+
+        return cursor.new_from_symbol(operands[-1])
