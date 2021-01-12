@@ -777,10 +777,21 @@ class Star(UnaryOperator):
 
 
 @attr.s(frozen=True, slots=True)
+class Slice(BinaryOperator):
+    """a:b
+    """
+    higher_precedence_operators = StarStar.higher_precedence_operators | {StarStar, Star}
+
+    @classmethod
+    def parse(cls, cursor):
+        pass
+
+
+@attr.s(frozen=True, slots=True)
 class Comma(BinaryOperator):
     """a, b
     """
-    higher_precedence_operators = StarStar.higher_precedence_operators | {StarStar, Star}
+    higher_precedence_operators = Slice.higher_precedence_operators | {Slice}
 
     @classmethod
     def parse(cls, cursor):
@@ -804,11 +815,15 @@ class ExpressionParser(parser_module.Parser):
         parser_module.Always,
     )
     infix_operators: typing.Sequence[typing.Type[Operator]] = (
-        Call, Dot, Subscript, Await, Exponentiation, Multiply, MatrixMultiply, Divide,
-        FloorDivide, Modulo, Add, Subtract, ShiftLeft, ShiftRight, BitAnd, BitXor, BitOr,
-        In, NotIn, Is, IsNot, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual,
-        NotEqual, Equal, Not, And, Or, IfElse, Lambda, Assignment, Yield, YieldFrom,
-        StarStar, Star, Comma, parser_module.Always,
+        Dot, Exponentiation, Multiply, MatrixMultiply, Divide, FloorDivide, Modulo, Add, Subtract,
+        ShiftLeft, ShiftRight, BitAnd, BitXor, BitOr, In, NotIn, Is, IsNot,
+        LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual,
+        NotEqual, Equal, And, Or, IfElse, Lambda, Assignment, Slice, Comma,
+        parser_module.Always,
+    )
+    call_operators: typing.Sequence[typing.Type[Operator]] = (
+        Call, Subscript,
+        parser_module.Always,
     )
 
     @classmethod
