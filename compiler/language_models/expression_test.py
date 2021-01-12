@@ -419,6 +419,7 @@ class OperatorTestCase(unittest.TestCase):
             (expression_module.Assignment,),
             (expression_module.Yield, expression_module.YieldFrom),
             (expression_module.Star, expression_module.StarStar),
+            (expression_module.Slice,),
             (expression_module.Comma,),
         )
 
@@ -775,6 +776,11 @@ class StarStarTestCase(unittest.TestCase):
 
 
 class StarTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class SliceTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
 
