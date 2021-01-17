@@ -6,6 +6,7 @@ from . import expression as expression_module
 from .. import parser as parser_module
 
 # pylint: disable=fixme
+# pylint: disable=too-many-lines
 
 
 class ExpressionTestCase(unittest.TestCase):
@@ -63,7 +64,7 @@ class VariableTestCase(unittest.TestCase):
 
             @classmethod
             def parse(cls, cursor):
-                cursor = expression_module.ExpressionParser.parse(cursor)
+                cursor = expression_module.ExpressionParser.parse(cursor, allow_comma=False)
                 if not cursor:
                     return None
                 if isinstance(cursor.last_symbol, expression_module.Expression):
@@ -79,7 +80,7 @@ class VariableTestCase(unittest.TestCase):
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
-            ),
+            ).last_symbol,
             parser_module.Cursor(
                 lines=['variable: annotation1, annotation2 = other_variable'],
                 column=51,
@@ -101,7 +102,7 @@ class VariableTestCase(unittest.TestCase):
                         name='other_variable',
                     ),
                 ),
-            )
+            ).last_symbol
         )
 
         # No spaces.
@@ -434,14 +435,14 @@ class OperatorTestCase(unittest.TestCase):
             (expression_module.Await,),
             (expression_module.Exponentiation,),
             (expression_module.Positive, expression_module.Negative, expression_module.BitInverse),
-            (expression_module.Multiply, expression_module.MatrixMultiply, expression_module.Divide,
-                expression_module.FloorDivide, expression_module.Modulo),
+            (expression_module.Multiply, expression_module.MatrixMultiply, expression_module.FloorDivide,
+                expression_module.Divide, expression_module.Modulo),
             (expression_module.Add, expression_module.Subtract),
             (expression_module.ShiftLeft, expression_module.ShiftRight),
             (expression_module.BitAnd,),
             (expression_module.BitXor,),
             (expression_module.BitOr,),
-            (expression_module.In, expression_module.NotIn, expression_module.Is, expression_module.IsNot,
+            (expression_module.In, expression_module.NotIn, expression_module.IsNot, expression_module.Is,
                 expression_module.LessThan, expression_module.LessThanOrEqual, expression_module.GreaterThan,
                 expression_module.GreaterThanOrEqual, expression_module.NotEqual, expression_module.Equal),
             (expression_module.Not,),
@@ -604,12 +605,12 @@ class MatrixMultiplyTestCase(unittest.TestCase):
         pass
 
 
-class DivideTestCase(unittest.TestCase):
+class FloorDivideTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
 
 
-class FloorDivideTestCase(unittest.TestCase):
+class DivideTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
 
@@ -664,17 +665,12 @@ class NotInTestCase(unittest.TestCase):
         pass
 
 
-class IsTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
-
-
 class IsNotTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
 
 
-class LessThanTestCase(unittest.TestCase):
+class IsTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
 
@@ -684,12 +680,17 @@ class LessThanOrEqualTestCase(unittest.TestCase):
         pass
 
 
-class GreaterThanTestCase(unittest.TestCase):
+class LessThanTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
 
 
 class GreaterThanOrEqualTestCase(unittest.TestCase):
+    def test_expressions(self):
+        pass
+
+
+class GreaterThanTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
 
@@ -922,6 +923,212 @@ class ExpressionParser(unittest.TestCase):
                 expression_module.Variable('foo')
             ),
             self.parse_expression('*foo')
+        )
+
+    def test_parse_infix_operators(self):
+        self.assertEqual(
+            expression_module.Exponentiation(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a ** b')
+        )
+        self.assertEqual(
+            expression_module.Multiply(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a * b')
+        )
+        self.assertEqual(
+            expression_module.MatrixMultiply(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a @ b')
+        )
+        self.assertEqual(
+            expression_module.Divide(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a / b')
+        )
+        self.assertEqual(
+            expression_module.FloorDivide(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a // b')
+        )
+        self.assertEqual(
+            expression_module.Modulo(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a % b')
+        )
+        self.assertEqual(
+            expression_module.Add(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a + b')
+        )
+        self.assertEqual(
+            expression_module.Subtract(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a - b')
+        )
+        self.assertEqual(
+            expression_module.ShiftLeft(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a << b')
+        )
+        self.assertEqual(
+            expression_module.ShiftRight(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a >> b')
+        )
+        self.assertEqual(
+            expression_module.BitAnd(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a & b')
+        )
+        self.assertEqual(
+            expression_module.BitXor(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a ^ b')
+        )
+        self.assertEqual(
+            expression_module.BitOr(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a | b')
+        )
+        self.assertEqual(
+            expression_module.In(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a in b')
+        )
+        self.assertEqual(
+            expression_module.NotIn(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a not in b')
+        )
+        self.assertEqual(
+            expression_module.Is(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a is b')
+        )
+        self.assertEqual(
+            expression_module.IsNot(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a is not b')
+        )
+        self.assertEqual(
+            expression_module.LessThan(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a < b')
+        )
+        self.assertEqual(
+            expression_module.LessThanOrEqual(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a <= b')
+        )
+        self.assertEqual(
+            expression_module.GreaterThan(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a > b')
+        )
+        self.assertEqual(
+            expression_module.GreaterThanOrEqual(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a >= b')
+        )
+        self.assertEqual(
+            expression_module.NotEqual(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a != b')
+        )
+        self.assertEqual(
+            expression_module.Equal(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a == b')
+        )
+        self.assertEqual(
+            expression_module.And(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a and b')
+        )
+        self.assertEqual(
+            expression_module.Or(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a or b')
+        )
+        self.assertEqual(
+            expression_module.IfElse(
+                condition=expression_module.Variable('condition'),
+                true_value=expression_module.Variable('true_value'),
+                false_value=expression_module.Variable('false_value'),
+            ),
+            self.parse_expression('true_value if condition else false_value')
+        )
+        self.assertEqual(
+            expression_module.Assignment(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a := b')
+        )
+        self.assertEqual(
+            expression_module.Slice(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a : b')
+        )
+        self.assertEqual(
+            expression_module.Comma(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a, b')
         )
 
     # TODO: thoroughly test operator precedence parsing
