@@ -4,6 +4,7 @@ import abc
 import typing
 
 import attr
+import immutabledict
 
 from . import declarable
 from .. import parser as parser_module
@@ -91,6 +92,10 @@ class Variable(declarable.Declarable, LValue):
                     cursor = cursor.parse_one_symbol([*allowed_annotations, parser_module.Always])
                     if isinstance(cursor.last_symbol, Variable.Annotation):
                         annotations.append(cursor.last_symbol)
+                        cursor = cursor.parse_one_symbol([
+                            parser_module.Characters[','],
+                            parser_module.Always,
+                        ])
 
                 if not annotations:
                     raise parser_module.ParseError(
@@ -266,6 +271,14 @@ class UnaryOperator(Operator, metaclass=abc.ABCMeta):
     """
     expression: typing.Optional[Expression] = attr.ib(default=None)
 
+    token: typing.Type[parser_module.Token] = None  # override in subclass
+
+    @classmethod
+    def parse(cls, cursor):
+        return cursor.parse_one_symbol([
+            cls.token
+        ]).new_from_symbol(cls())
+
     @property
     def expressions(self):
         if self.expression:
@@ -285,12 +298,13 @@ class BinaryOperator(Operator, metaclass=abc.ABCMeta):
     left: typing.Optional[Expression] = attr.ib(default=None)
     right: typing.Optional[Expression] = attr.ib(default=None)
 
-    def new_from_operand_stack(self, cursor, operands):
-        if len(operands) < 2:
-            raise parser_module.ParseError('not enough operands', cursor)
+    token: typing.Type[parser_module.Token] = None  # override in subclass
 
-        # Instantiate left and right in reverse order because we're popping from a stack.
-        return type(self)(right=operands.pop(), left=operands.pop())  # noqa
+    @classmethod
+    def parse(cls, cursor):
+        return cursor.parse_one_symbol([
+            cls.token
+        ]).new_from_symbol(cls())
 
     @property
     def expressions(self):
@@ -299,32 +313,104 @@ class BinaryOperator(Operator, metaclass=abc.ABCMeta):
         if self.right is not None:
             yield self.right
 
+    def new_from_operand_stack(self, cursor, operands):
+        if len(operands) < 2:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        # Instantiate left and right in reverse order because we're popping from a stack.
+        return type(self)(right=operands.pop(), left=operands.pop())  # noqa
+
 
 @attr.s(frozen=True, slots=True)
-class Call(BinaryOperator):
+class Call(Operator):
     """A function call, i.e. ``foo(...args...)``.
     """
+    callable: typing.Optional[Expression] = attr.ib(default=None)
+    expression_arguments: typing.Sequence[Expression] = attr.ib(converter=tuple, default=())
+    keyword_arguments: typing.Mapping[str, Expression] = attr.ib(converter=immutabledict.immutabledict,
+                                                                 default=immutabledict.immutabledict())
+
     @classmethod
     def parse(cls, cursor):
         pass
 
+    @property
+    def expressions(self):
+        if self.callable is not None:
+            yield self.callable
+        for argument in self.expression_arguments:
+            yield argument
+        for argument in self.keyword_arguments.values():
+            yield argument
+
+    def new_from_operand_stack(self, cursor, operands):
+        if len(operands) < 1:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        return Call(
+            callable=operands.pop(),
+            expression_arguments=self.expression_arguments,
+            keyword_arguments=self.keyword_arguments,
+        )
+
 
 @attr.s(frozen=True, slots=True)
-class Dot(BinaryOperator, LValue):
+class Dot(Operator, LValue):
     """The dot operator, i.e. ``my_instance.my_member``.
     """
+    object: typing.Optional[Expression] = attr.ib(default=None)
+    member_name: typing.Optional[str] = attr.ib(default=None)
+
     @classmethod
     def parse(cls, cursor):
         pass
+
+    @property
+    def expressions(self):
+        if self.object is not None:
+            yield self.object
+
+    def new_from_operand_stack(self, cursor, operands):
+        if len(operands) < 1:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        return Dot(
+            object=operands.pop(),
+            member_name=self.member_name,
+        )
 
 
 @attr.s(frozen=True, slots=True)
-class Subscript(BinaryOperator, LValue):
+class Subscript(Operator, LValue):
     """An array subscript, i.e. ``my_array[3]``.
     """
+    subscriptable: typing.Optional[Expression] = attr.ib(default=None)
+    expression_arguments: typing.Sequence[Expression] = attr.ib(converter=tuple, default=())
+    keyword_arguments: typing.Mapping[str, Expression] = attr.ib(converter=immutabledict.immutabledict,
+                                                                 default=immutabledict.immutabledict())
+
     @classmethod
     def parse(cls, cursor):
         pass
+
+    @property
+    def expressions(self):
+        if self.subscriptable is not None:
+            yield self.subscriptable
+        for argument in self.expression_arguments:
+            yield argument
+        for argument in self.keyword_arguments.values():
+            yield argument
+
+    def new_from_operand_stack(self, cursor, operands):
+        if len(operands) < 1:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        return Subscript(
+            subscriptable=operands.pop(),
+            expression_arguments=self.expression_arguments,
+            keyword_arguments=self.keyword_arguments,
+        )
 
 
 @attr.s(frozen=True, slots=True)
@@ -334,9 +420,7 @@ class Await(UnaryOperator):
     """
     higher_precedence_operators = Call.higher_precedence_operators | {Call, Dot, Subscript}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['await']
 
 
 @attr.s(frozen=True, slots=True)
@@ -344,6 +428,8 @@ class Exponentiation(BinaryOperator):
     """a ** b
     """
     higher_precedence_operators = Await.higher_precedence_operators | {Await}
+
+    token = parser_module.Characters['**']
 
     @classmethod
     def precedes_on_right(cls, other: typing.Type[Operator]) -> bool:
@@ -362,9 +448,7 @@ class Positive(UnaryOperator):
     """
     higher_precedence_operators = Exponentiation.higher_precedence_operators | {Exponentiation}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['+']
 
 
 @attr.s(frozen=True, slots=True)
@@ -373,9 +457,7 @@ class Negative(UnaryOperator):
     """
     higher_precedence_operators = Positive.higher_precedence_operators
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['-']
 
 
 @attr.s(frozen=True, slots=True)
@@ -384,9 +466,7 @@ class BitInverse(UnaryOperator):
     """
     higher_precedence_operators = Positive.higher_precedence_operators
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['~']
 
 
 @attr.s(frozen=True, slots=True)
@@ -394,6 +474,8 @@ class Multiply(BinaryOperator):
     """a * b
     """
     higher_precedence_operators = Positive.higher_precedence_operators | {Positive, Negative, BitInverse}
+
+    token = parser_module.Characters['*']
 
     @classmethod
     def parse(cls, cursor):
@@ -406,6 +488,8 @@ class MatrixMultiply(BinaryOperator):
     """
     higher_precedence_operators = Multiply.higher_precedence_operators
 
+    token = parser_module.Characters['@']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -416,6 +500,8 @@ class Divide(BinaryOperator):
     """a / b
     """
     higher_precedence_operators = Multiply.higher_precedence_operators
+
+    token = parser_module.Characters['/']
 
     @classmethod
     def parse(cls, cursor):
@@ -428,6 +514,8 @@ class FloorDivide(BinaryOperator):
     """
     higher_precedence_operators = Multiply.higher_precedence_operators
 
+    token = parser_module.Characters['//']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -438,6 +526,8 @@ class Modulo(BinaryOperator):
     """a % b
     """
     higher_precedence_operators = Multiply.higher_precedence_operators
+
+    token = parser_module.Characters['%']
 
     @classmethod
     def parse(cls, cursor):
@@ -451,6 +541,8 @@ class Add(BinaryOperator):
     higher_precedence_operators = Multiply.higher_precedence_operators | {
         Multiply, MatrixMultiply, Divide, FloorDivide, Modulo}
 
+    token = parser_module.Characters['+']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -461,6 +553,8 @@ class Subtract(BinaryOperator):
     """a - b
     """
     higher_precedence_operators = Add.higher_precedence_operators
+
+    token = parser_module.Characters['-']
 
     @classmethod
     def parse(cls, cursor):
@@ -473,6 +567,8 @@ class ShiftLeft(BinaryOperator):
     """
     higher_precedence_operators = Add.higher_precedence_operators | {Add, Subtract}
 
+    token = parser_module.Characters['<<']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -483,6 +579,8 @@ class ShiftRight(BinaryOperator):
     """a >> b
     """
     higher_precedence_operators = ShiftLeft.higher_precedence_operators
+
+    token = parser_module.Characters['>>']
 
     @classmethod
     def parse(cls, cursor):
@@ -495,6 +593,8 @@ class BitAnd(BinaryOperator):
     """
     higher_precedence_operators = ShiftLeft.higher_precedence_operators | {ShiftLeft, ShiftRight}
 
+    token = parser_module.Characters['&']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -505,6 +605,8 @@ class BitXor(BinaryOperator):
     """a ^ b
     """
     higher_precedence_operators = BitAnd.higher_precedence_operators | {BitAnd}
+
+    token = parser_module.Characters['^']
 
     @classmethod
     def parse(cls, cursor):
@@ -517,6 +619,8 @@ class BitOr(BinaryOperator):
     """
     higher_precedence_operators = BitXor.higher_precedence_operators | {BitXor}
 
+    token = parser_module.Characters['|']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -527,6 +631,8 @@ class In(BinaryOperator):
     """a in b
     """
     higher_precedence_operators = BitOr.higher_precedence_operators | {BitOr}
+
+    token = parser_module.Characters['in']
 
     @classmethod
     def parse(cls, cursor):
@@ -539,6 +645,8 @@ class NotIn(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
 
+    token = parser_module.Regex['not +in']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -549,6 +657,8 @@ class Is(BinaryOperator):
     """a is b
     """
     higher_precedence_operators = In.higher_precedence_operators
+
+    token = parser_module.Characters['is']
 
     @classmethod
     def parse(cls, cursor):
@@ -561,6 +671,8 @@ class IsNot(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
 
+    token = parser_module.Regex['is +not']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -571,6 +683,8 @@ class LessThan(BinaryOperator):
     """a < b
     """
     higher_precedence_operators = In.higher_precedence_operators
+
+    token = parser_module.Characters['<']
 
     @classmethod
     def parse(cls, cursor):
@@ -583,6 +697,8 @@ class LessThanOrEqual(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
 
+    token = parser_module.Characters['<=']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -593,6 +709,8 @@ class GreaterThan(BinaryOperator):
     """a > b
     """
     higher_precedence_operators = In.higher_precedence_operators
+
+    token = parser_module.Characters['>']
 
     @classmethod
     def parse(cls, cursor):
@@ -605,6 +723,8 @@ class GreaterThanOrEqual(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
 
+    token = parser_module.Characters['>=']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -616,6 +736,8 @@ class NotEqual(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
 
+    token = parser_module.Characters['!=']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -626,6 +748,8 @@ class Equal(BinaryOperator):
     """a == b
     """
     higher_precedence_operators = In.higher_precedence_operators
+
+    token = parser_module.Characters['==']
 
     @classmethod
     def parse(cls, cursor):
@@ -639,9 +763,7 @@ class Not(UnaryOperator):
     higher_precedence_operators = In.higher_precedence_operators | {
         In, NotIn, Is, IsNot, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual, NotEqual, Equal}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['not']
 
 
 @attr.s(frozen=True, slots=True)
@@ -649,6 +771,8 @@ class And(BinaryOperator):
     """a and b
     """
     higher_precedence_operators = Not.higher_precedence_operators | {Not}
+
+    token = parser_module.Characters['and']
 
     @classmethod
     def parse(cls, cursor):
@@ -660,6 +784,8 @@ class Or(BinaryOperator):
     """a or b
     """
     higher_precedence_operators = And.higher_precedence_operators | {And}
+
+    token = parser_module.Characters['or']
 
     @classmethod
     def parse(cls, cursor):
@@ -702,9 +828,7 @@ class Lambda(UnaryOperator):
     """
     higher_precedence_operators = IfElse.higher_precedence_operators | {IfElse}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['lambda:']  # TODO: arguments; this is oversimplified
 
 
 @attr.s(frozen=True, slots=True)
@@ -712,6 +836,8 @@ class Assignment(BinaryOperator):
     """a := b
     """
     higher_precedence_operators = Lambda.higher_precedence_operators | {Lambda}
+
+    token = parser_module.Characters[':=']
 
     @classmethod
     def parse(cls, cursor):
@@ -732,9 +858,7 @@ class Yield(UnaryOperator):
     """
     higher_precedence_operators = Assignment.higher_precedence_operators | {Assignment}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['yield']
 
 
 @attr.s(frozen=True, slots=True)
@@ -749,9 +873,7 @@ class YieldFrom(UnaryOperator):
 
     higher_precedence_operators = Yield.higher_precedence_operators
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Regex['yield +from']
 
 
 @attr.s(frozen=True, slots=True)
@@ -760,9 +882,7 @@ class StarStar(UnaryOperator):
     """
     higher_precedence_operators = Yield.higher_precedence_operators | {Yield, YieldFrom}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['**']
 
 
 @attr.s(frozen=True, slots=True)
@@ -771,9 +891,7 @@ class Star(UnaryOperator):
     """
     higher_precedence_operators = StarStar.higher_precedence_operators
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['*']
 
 
 @attr.s(frozen=True, slots=True)
@@ -781,6 +899,8 @@ class Slice(BinaryOperator):
     """a:b
     """
     higher_precedence_operators = StarStar.higher_precedence_operators | {StarStar, Star}
+
+    token = parser_module.Characters[':']
 
     @classmethod
     def parse(cls, cursor):
@@ -792,6 +912,8 @@ class Comma(BinaryOperator):
     """a, b
     """
     higher_precedence_operators = Slice.higher_precedence_operators | {Slice}
+
+    token = parser_module.Characters[',']
 
     @classmethod
     def parse(cls, cursor):
@@ -815,14 +937,14 @@ class ExpressionParser(parser_module.Parser):
         parser_module.Always,
     )
     infix_operators: typing.Sequence[typing.Type[Operator]] = (
-        Dot, Exponentiation, Multiply, MatrixMultiply, Divide, FloorDivide, Modulo, Add, Subtract,
+        Exponentiation, Multiply, MatrixMultiply, Divide, FloorDivide, Modulo, Add, Subtract,
         ShiftLeft, ShiftRight, BitAnd, BitXor, BitOr, In, NotIn, Is, IsNot,
         LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual,
         NotEqual, Equal, And, Or, IfElse, Lambda, Assignment, Slice, Comma,
         parser_module.Always,
     )
-    call_operators: typing.Sequence[typing.Type[Operator]] = (
-        Call, Subscript,
+    immediate_operators: typing.Sequence[typing.Type[Operator]] = (
+        Call, Dot, Subscript,
         parser_module.Always,
     )
 

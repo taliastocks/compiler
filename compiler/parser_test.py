@@ -2,6 +2,8 @@ import unittest
 
 from . import parser as parser_module
 
+# pylint: disable=too-many-lines
+
 
 class ParserTestCase(unittest.TestCase):
     def test_line_text(self):
@@ -818,29 +820,225 @@ class TokenTestCase(unittest.TestCase):
             )
         )
 
-    def test_characters(self):
+    def test_regex(self):
         self.assertEqual(
-            parser_module.Characters['&&'].parse(
+            parser_module.Regex['a+'].parse(
                 parser_module.Cursor(
-                    lines=[' && '],
+                    lines=[' aaaa '],
                 )
             ),
             parser_module.Cursor(
-                lines=[' && '],
-                column=3,
-                last_symbol=parser_module.Characters['&&'](
+                lines=[' aaaa '],
+                column=5,
+                last_symbol=parser_module.Regex['a+'](
                     first_line=0,
                     next_line=0,
-                    first_column=0,
+                    first_column=1,
+                    next_column=5,
+                ),
+            )
+        )
+        self.assertIsNone(
+            parser_module.Regex['a+'].parse(
+                parser_module.Cursor(
+                    lines=[' b '],
+                )
+            )
+        )
+
+    def test_regex_boundary(self):
+        # A non-word character after a word character ends the token.
+        self.assertEqual(
+            parser_module.Regex['a+'].parse(
+                parser_module.Cursor(
+                    lines=[' aa* '],
+                )
+            ),
+            parser_module.Cursor(
+                lines=[' aa* '],
+                column=3,
+                last_symbol=parser_module.Regex['a+'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=1,
+                    next_column=3,
+                ),
+            )
+        )
+
+        # A word-character after a word character cancels the token.
+        self.assertIsNone(
+            parser_module.Regex['a+'].parse(
+                parser_module.Cursor(
+                    lines=[' ab '],
+                )
+            )
+        )
+        self.assertIsNone(
+            parser_module.Regex['a+'].parse(
+                parser_module.Cursor(
+                    lines=[' a6 '],
+                )
+            )
+        )
+
+        # A word character after a non-word character ends the token.
+        self.assertEqual(
+            parser_module.Regex['[*]+'].parse(
+                parser_module.Cursor(
+                    lines=[' **a '],
+                )
+            ),
+            parser_module.Cursor(
+                lines=[' **a '],
+                column=3,
+                last_symbol=parser_module.Regex['[*]+'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=1,
+                    next_column=3,
+                ),
+            )
+        )
+
+        # A space after a non-word character ends the token.
+        self.assertEqual(
+            parser_module.Regex['[*]+'].parse(
+                parser_module.Cursor(
+                    lines=[' ** '],
+                )
+            ),
+            parser_module.Cursor(
+                lines=[' ** '],
+                column=3,
+                last_symbol=parser_module.Regex['[*]+'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=1,
+                    next_column=3,
+                ),
+            )
+        )
+
+        # An end of line ends the token.
+        self.assertEqual(
+            parser_module.Regex['[*]+'].parse(
+                parser_module.Cursor(
+                    lines=[' **'],
+                )
+            ),
+            parser_module.Cursor(
+                lines=[' **'],
+                column=3,
+                last_symbol=parser_module.Regex['[*]+'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=1,
+                    next_column=3,
+                ),
+            )
+        )
+
+        # A non-word character after a non-word character ends the token.
+        self.assertEqual(
+            parser_module.Regex['[*]+'].parse(
+                parser_module.Cursor(
+                    lines=[' **( '],
+                )
+            ),
+            parser_module.Cursor(
+                lines=[' **( '],
+                column=3,
+                last_symbol=parser_module.Regex['[*]+'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=1,
+                    next_column=3,
+                ),
+            )
+        )
+
+    def test_characters(self):
+        self.assertEqual(
+            parser_module.Characters['..'].parse(
+                parser_module.Cursor(
+                    lines=[' .. '],
+                )
+            ),
+            parser_module.Cursor(
+                lines=[' .. '],
+                column=3,
+                last_symbol=parser_module.Characters['..'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=1,
+                    next_column=3,
+                ),
+            )
+        )
+        self.assertEqual(
+            parser_module.Characters['..'].parse(
+                parser_module.Cursor(
+                    lines=[' ..a'],
+                )
+            ),
+            parser_module.Cursor(
+                lines=[' ..a'],
+                column=3,
+                last_symbol=parser_module.Characters['..'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=1,
                     next_column=3,
                 ),
             )
         )
         self.assertIsNone(
-            parser_module.Characters['&&'].parse(
+            parser_module.Characters['..'].parse(
                 parser_module.Cursor(
                     lines=[' || '],
                 )
+            )
+        )
+        self.assertIsNone(
+            parser_module.Characters['await'].parse(
+                parser_module.Cursor(
+                    lines=[' awaiting '],
+                )
+            )
+        )
+        self.assertEqual(
+            parser_module.Characters['await'].parse(
+                parser_module.Cursor(
+                    lines=['await'],
+                )
+            ),
+            parser_module.Cursor(
+                lines=['await'],
+                column=5,
+                last_symbol=parser_module.Characters['await'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=0,
+                    next_column=5,
+                ),
+            )
+        )
+        self.assertEqual(
+            parser_module.Characters['await'].parse(
+                parser_module.Cursor(
+                    lines=['await('],
+                )
+            ),
+            parser_module.Cursor(
+                lines=['await('],
+                column=5,
+                last_symbol=parser_module.Characters['await'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=0,
+                    next_column=5,
+                ),
             )
         )
 

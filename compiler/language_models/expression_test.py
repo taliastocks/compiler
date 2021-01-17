@@ -31,8 +31,8 @@ class ExpressionTestCase(unittest.TestCase):
             expression_module.Unpack([
                 expression_module.Variable('a'),
                 expression_module.Subscript(
-                    left=expression_module.Yield(),
-                    right=expression_module.Variable('foo'),
+                    subscriptable=expression_module.Yield(),
+                    expression_arguments=[expression_module.Variable('foo')],
                 ),
             ]).has_yield
         )
@@ -43,11 +43,11 @@ class ExpressionTestCase(unittest.TestCase):
             expression_module.Unpack([
                 expression_module.Variable('a'),
                 expression_module.Subscript(
-                    left=expression_module.Variable('foo'),
-                    right=expression_module.Subscript(
-                        left=expression_module.Variable('bar'),
-                        right=expression_module.YieldFrom(),
-                    ),
+                    subscriptable=expression_module.Variable('foo'),
+                    expression_arguments=[expression_module.Subscript(
+                        subscriptable=expression_module.Variable('bar'),
+                        expression_arguments=[expression_module.YieldFrom()],
+                    )],
                 ),
             ]).has_yield
         )
@@ -75,14 +75,14 @@ class VariableTestCase(unittest.TestCase):
         self.assertEqual(
             expression_module.Variable.parse(
                 parser_module.Cursor(
-                    lines=['variable: annotation1 annotation2 = other_variable']
+                    lines=['variable: annotation1, annotation2 = other_variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
             parser_module.Cursor(
-                lines=['variable: annotation1 annotation2 = other_variable'],
-                column=50,
+                lines=['variable: annotation1, annotation2 = other_variable'],
+                column=51,
                 last_symbol=expression_module.Variable(
                     name='variable',
                     annotations=(
@@ -108,14 +108,47 @@ class VariableTestCase(unittest.TestCase):
         self.assertEqual(
             expression_module.Variable.parse(
                 parser_module.Cursor(
-                    lines=['variable:annotation1 annotation2=other_variable']
+                    lines=['variable:annotation1,annotation2=other_variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
             parser_module.Cursor(
-                lines=['variable:annotation1 annotation2=other_variable'],
+                lines=['variable:annotation1,annotation2=other_variable'],
                 column=47,
+                last_symbol=expression_module.Variable(
+                    name='variable',
+                    annotations=(
+                        ExpressionAnnotation(
+                            expression=expression_module.Variable(
+                                name='annotation1'
+                            )
+                        ),
+                        ExpressionAnnotation(
+                            expression=expression_module.Variable(
+                                name='annotation2'
+                            )
+                        ),
+                    ),
+                    initializer=expression_module.Variable(
+                        name='other_variable',
+                    ),
+                ),
+            )
+        )
+
+        # Trailing comma.
+        self.assertEqual(
+            expression_module.Variable.parse(
+                parser_module.Cursor(
+                    lines=['variable: annotation1, annotation2, = other_variable']
+                ),
+                allowed_annotations=[ExpressionAnnotation],
+                parse_initializer=True,
+            ),
+            parser_module.Cursor(
+                lines=['variable: annotation1, annotation2, = other_variable'],
+                column=52,
                 last_symbol=expression_module.Variable(
                     name='variable',
                     annotations=(
@@ -141,14 +174,14 @@ class VariableTestCase(unittest.TestCase):
         self.assertEqual(
             expression_module.Variable.parse(
                 parser_module.Cursor(
-                    lines=['variable  :  annotation1  annotation2  =  other_variable']
+                    lines=['variable  :  annotation1 , annotation2  =  other_variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
             parser_module.Cursor(
-                lines=['variable  :  annotation1  annotation2  =  other_variable'],
-                column=56,
+                lines=['variable  :  annotation1 , annotation2  =  other_variable'],
+                column=57,
                 last_symbol=expression_module.Variable(
                     name='variable',
                     annotations=(
@@ -195,14 +228,14 @@ class VariableTestCase(unittest.TestCase):
         self.assertEqual(
             expression_module.Variable.parse(
                 parser_module.Cursor(
-                    lines=['variable: annotation1 annotation2']
+                    lines=['variable: annotation1, annotation2']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
             parser_module.Cursor(
-                lines=['variable: annotation1 annotation2'],
-                column=33,
+                lines=['variable: annotation1, annotation2'],
+                column=34,
                 last_symbol=expression_module.Variable(
                     name='variable',
                     annotations=(
@@ -459,20 +492,38 @@ class OperatorTestCase(unittest.TestCase):
 
 class CallTestCase(unittest.TestCase):
     def test_expressions(self):
-        pass
+        call = expression_module.Call(
+            callable=expression_module.Variable('my_function'),
+            expression_arguments=[
+                expression_module.Variable('arg_1'),
+                expression_module.Variable('arg_2'),
+            ],
+            keyword_arguments={
+                'foo': expression_module.Variable('foo_arg'),
+            },
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('my_function'),
+                expression_module.Variable('arg_1'),
+                expression_module.Variable('arg_2'),
+                expression_module.Variable('foo_arg'),
+            ],
+            list(call.expressions)
+        )
 
 
 class DotTestCase(unittest.TestCase):
     def test_expressions(self):
         dot = expression_module.Dot(
-            left=expression_module.Variable('my_object'),
-            right=expression_module.Variable('foo'),
+            object=expression_module.Variable('my_object'),
+            member_name='foo',
         )
 
         self.assertEqual(
             [
                 expression_module.Variable('my_object'),
-                expression_module.Variable('foo'),
             ],
             list(dot.expressions)
         )
@@ -481,14 +532,22 @@ class DotTestCase(unittest.TestCase):
 class SubscriptTestCase(unittest.TestCase):
     def test_expressions(self):
         subscript = expression_module.Subscript(
-            left=expression_module.Variable('my_array'),
-            right=expression_module.Variable('my_index'),
+            subscriptable=expression_module.Variable('my_function'),
+            expression_arguments=[
+                expression_module.Variable('arg_1'),
+                expression_module.Variable('arg_2'),
+            ],
+            keyword_arguments={
+                'foo': expression_module.Variable('foo_arg'),
+            },
         )
 
         self.assertEqual(
             [
-                expression_module.Variable('my_array'),
-                expression_module.Variable('my_index'),
+                expression_module.Variable('my_function'),
+                expression_module.Variable('arg_1'),
+                expression_module.Variable('arg_2'),
+                expression_module.Variable('foo_arg'),
             ],
             list(subscript.expressions)
         )
