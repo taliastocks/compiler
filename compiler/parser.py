@@ -324,25 +324,36 @@ class Identifier(Token):
 
 
 @generic.Generic
-def Characters(characters):  # noqa
+def Regex(pattern):  # noqa
     # pylint: disable=invalid-name
-    characters_regex = regex.compile(r'^ *({})'.format(regex.escape(characters)))
+    compiled_pattern = regex.compile(r'^ *({})($|\b|(?=\W))'.format(pattern))
 
-    class Characters(Token):  # noqa
+    class Regex(Token):  # noqa
         # pylint: disable=redefined-outer-name
         @classmethod
         def parse(cls, cursor: Cursor):
-            match = characters_regex.match(cursor.line_text()[cursor.column:])
+            match = compiled_pattern.match(cursor.line_text()[cursor.column:])
 
             if match:
                 return cursor.new_from_symbol(cls(
                     first_line=cursor.line,
                     next_line=cursor.line,
-                    first_column=cursor.column,
-                    next_column=cursor.column + match.end(),
+                    first_column=cursor.column + match.start(1),
+                    next_column=cursor.column + match.end(1),
                 ))
 
             return None
+
+    return Regex
+
+
+@generic.Generic
+def Characters(characters):  # noqa
+    # pylint: disable=invalid-name
+
+    class Characters(Regex[regex.escape(characters)]):  # noqa
+        # pylint: disable=redefined-outer-name
+        pass
 
     return Characters
 

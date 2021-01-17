@@ -271,6 +271,14 @@ class UnaryOperator(Operator, metaclass=abc.ABCMeta):
     """
     expression: typing.Optional[Expression] = attr.ib(default=None)
 
+    token: typing.Type[parser_module.Token] = None  # override in subclass
+
+    @classmethod
+    def parse(cls, cursor):
+        return cursor.parse_one_symbol([
+            cls.token
+        ]).new_from_symbol(cls())
+
     @property
     def expressions(self):
         if self.expression:
@@ -289,6 +297,14 @@ class BinaryOperator(Operator, metaclass=abc.ABCMeta):
     """
     left: typing.Optional[Expression] = attr.ib(default=None)
     right: typing.Optional[Expression] = attr.ib(default=None)
+
+    token: typing.Type[parser_module.Token] = None  # override in subclass
+
+    @classmethod
+    def parse(cls, cursor):
+        return cursor.parse_one_symbol([
+            cls.token
+        ]).new_from_symbol(cls())
 
     @property
     def expressions(self):
@@ -389,9 +405,7 @@ class Await(UnaryOperator):
     """
     higher_precedence_operators = Call.higher_precedence_operators | {Call, Dot, Subscript}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['await']
 
 
 @attr.s(frozen=True, slots=True)
@@ -399,6 +413,8 @@ class Exponentiation(BinaryOperator):
     """a ** b
     """
     higher_precedence_operators = Await.higher_precedence_operators | {Await}
+
+    token = parser_module.Characters['**']
 
     @classmethod
     def precedes_on_right(cls, other: typing.Type[Operator]) -> bool:
@@ -417,9 +433,7 @@ class Positive(UnaryOperator):
     """
     higher_precedence_operators = Exponentiation.higher_precedence_operators | {Exponentiation}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['+']
 
 
 @attr.s(frozen=True, slots=True)
@@ -428,9 +442,7 @@ class Negative(UnaryOperator):
     """
     higher_precedence_operators = Positive.higher_precedence_operators
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['-']
 
 
 @attr.s(frozen=True, slots=True)
@@ -439,9 +451,7 @@ class BitInverse(UnaryOperator):
     """
     higher_precedence_operators = Positive.higher_precedence_operators
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['~']
 
 
 @attr.s(frozen=True, slots=True)
@@ -449,6 +459,8 @@ class Multiply(BinaryOperator):
     """a * b
     """
     higher_precedence_operators = Positive.higher_precedence_operators | {Positive, Negative, BitInverse}
+
+    token = parser_module.Characters['*']
 
     @classmethod
     def parse(cls, cursor):
@@ -461,6 +473,8 @@ class MatrixMultiply(BinaryOperator):
     """
     higher_precedence_operators = Multiply.higher_precedence_operators
 
+    token = parser_module.Characters['@']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -471,6 +485,8 @@ class Divide(BinaryOperator):
     """a / b
     """
     higher_precedence_operators = Multiply.higher_precedence_operators
+
+    token = parser_module.Characters['/']
 
     @classmethod
     def parse(cls, cursor):
@@ -483,6 +499,8 @@ class FloorDivide(BinaryOperator):
     """
     higher_precedence_operators = Multiply.higher_precedence_operators
 
+    token = parser_module.Characters['//']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -493,6 +511,8 @@ class Modulo(BinaryOperator):
     """a % b
     """
     higher_precedence_operators = Multiply.higher_precedence_operators
+
+    token = parser_module.Characters['%']
 
     @classmethod
     def parse(cls, cursor):
@@ -506,6 +526,8 @@ class Add(BinaryOperator):
     higher_precedence_operators = Multiply.higher_precedence_operators | {
         Multiply, MatrixMultiply, Divide, FloorDivide, Modulo}
 
+    token = parser_module.Characters['+']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -516,6 +538,8 @@ class Subtract(BinaryOperator):
     """a - b
     """
     higher_precedence_operators = Add.higher_precedence_operators
+
+    token = parser_module.Characters['-']
 
     @classmethod
     def parse(cls, cursor):
@@ -528,6 +552,8 @@ class ShiftLeft(BinaryOperator):
     """
     higher_precedence_operators = Add.higher_precedence_operators | {Add, Subtract}
 
+    token = parser_module.Characters['<<']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -538,6 +564,8 @@ class ShiftRight(BinaryOperator):
     """a >> b
     """
     higher_precedence_operators = ShiftLeft.higher_precedence_operators
+
+    token = parser_module.Characters['>>']
 
     @classmethod
     def parse(cls, cursor):
@@ -550,6 +578,8 @@ class BitAnd(BinaryOperator):
     """
     higher_precedence_operators = ShiftLeft.higher_precedence_operators | {ShiftLeft, ShiftRight}
 
+    token = parser_module.Characters['&']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -560,6 +590,8 @@ class BitXor(BinaryOperator):
     """a ^ b
     """
     higher_precedence_operators = BitAnd.higher_precedence_operators | {BitAnd}
+
+    token = parser_module.Characters['^']
 
     @classmethod
     def parse(cls, cursor):
@@ -572,6 +604,8 @@ class BitOr(BinaryOperator):
     """
     higher_precedence_operators = BitXor.higher_precedence_operators | {BitXor}
 
+    token = parser_module.Characters['|']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -582,6 +616,8 @@ class In(BinaryOperator):
     """a in b
     """
     higher_precedence_operators = BitOr.higher_precedence_operators | {BitOr}
+
+    token = parser_module.Characters['in']
 
     @classmethod
     def parse(cls, cursor):
@@ -594,6 +630,8 @@ class NotIn(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
 
+    token = parser_module.Regex['not +in']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -604,6 +642,8 @@ class Is(BinaryOperator):
     """a is b
     """
     higher_precedence_operators = In.higher_precedence_operators
+
+    token = parser_module.Characters['is']
 
     @classmethod
     def parse(cls, cursor):
@@ -616,6 +656,8 @@ class IsNot(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
 
+    token = parser_module.Regex['is +not']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -626,6 +668,8 @@ class LessThan(BinaryOperator):
     """a < b
     """
     higher_precedence_operators = In.higher_precedence_operators
+
+    token = parser_module.Characters['<']
 
     @classmethod
     def parse(cls, cursor):
@@ -638,6 +682,8 @@ class LessThanOrEqual(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
 
+    token = parser_module.Characters['<=']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -648,6 +694,8 @@ class GreaterThan(BinaryOperator):
     """a > b
     """
     higher_precedence_operators = In.higher_precedence_operators
+
+    token = parser_module.Characters['>']
 
     @classmethod
     def parse(cls, cursor):
@@ -660,6 +708,8 @@ class GreaterThanOrEqual(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
 
+    token = parser_module.Characters['>=']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -671,6 +721,8 @@ class NotEqual(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
 
+    token = parser_module.Characters['!=']
+
     @classmethod
     def parse(cls, cursor):
         pass
@@ -681,6 +733,8 @@ class Equal(BinaryOperator):
     """a == b
     """
     higher_precedence_operators = In.higher_precedence_operators
+
+    token = parser_module.Characters['==']
 
     @classmethod
     def parse(cls, cursor):
@@ -694,9 +748,7 @@ class Not(UnaryOperator):
     higher_precedence_operators = In.higher_precedence_operators | {
         In, NotIn, Is, IsNot, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual, NotEqual, Equal}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['not']
 
 
 @attr.s(frozen=True, slots=True)
@@ -704,6 +756,8 @@ class And(BinaryOperator):
     """a and b
     """
     higher_precedence_operators = Not.higher_precedence_operators | {Not}
+
+    token = parser_module.Characters['and']
 
     @classmethod
     def parse(cls, cursor):
@@ -715,6 +769,8 @@ class Or(BinaryOperator):
     """a or b
     """
     higher_precedence_operators = And.higher_precedence_operators | {And}
+
+    token = parser_module.Characters['or']
 
     @classmethod
     def parse(cls, cursor):
@@ -757,9 +813,7 @@ class Lambda(UnaryOperator):
     """
     higher_precedence_operators = IfElse.higher_precedence_operators | {IfElse}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['lambda:']  # TODO: arguments; this is oversimplified
 
 
 @attr.s(frozen=True, slots=True)
@@ -767,6 +821,8 @@ class Assignment(BinaryOperator):
     """a := b
     """
     higher_precedence_operators = Lambda.higher_precedence_operators | {Lambda}
+
+    token = parser_module.Characters[':=']
 
     @classmethod
     def parse(cls, cursor):
@@ -787,9 +843,7 @@ class Yield(UnaryOperator):
     """
     higher_precedence_operators = Assignment.higher_precedence_operators | {Assignment}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['yield']
 
 
 @attr.s(frozen=True, slots=True)
@@ -804,9 +858,7 @@ class YieldFrom(UnaryOperator):
 
     higher_precedence_operators = Yield.higher_precedence_operators
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Regex['yield +from']
 
 
 @attr.s(frozen=True, slots=True)
@@ -815,9 +867,7 @@ class StarStar(UnaryOperator):
     """
     higher_precedence_operators = Yield.higher_precedence_operators | {Yield, YieldFrom}
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['**']
 
 
 @attr.s(frozen=True, slots=True)
@@ -826,9 +876,7 @@ class Star(UnaryOperator):
     """
     higher_precedence_operators = StarStar.higher_precedence_operators
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    token = parser_module.Characters['*']
 
 
 @attr.s(frozen=True, slots=True)
@@ -836,6 +884,8 @@ class Slice(BinaryOperator):
     """a:b
     """
     higher_precedence_operators = StarStar.higher_precedence_operators | {StarStar, Star}
+
+    token = parser_module.Characters[':']
 
     @classmethod
     def parse(cls, cursor):
@@ -847,6 +897,8 @@ class Comma(BinaryOperator):
     """a, b
     """
     higher_precedence_operators = Slice.higher_precedence_operators | {Slice}
+
+    token = parser_module.Characters[',']
 
     @classmethod
     def parse(cls, cursor):
