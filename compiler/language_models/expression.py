@@ -326,12 +326,22 @@ class Call(Operator):
     """A function call, i.e. ``foo(...args...)``.
     """
     callable: typing.Optional[Expression] = attr.ib(default=None)
-    expression_arguments: typing.Sequence[Expression] = attr.ib(default=())
-    keyword_arguments: typing.Mapping[str, Expression] = attr.ib(default=immutabledict.immutabledict())
+    expression_arguments: typing.Sequence[Expression] = attr.ib(converter=tuple, default=())
+    keyword_arguments: typing.Mapping[str, Expression] = attr.ib(converter=immutabledict.immutabledict,
+                                                                 default=immutabledict.immutabledict())
 
     @classmethod
     def parse(cls, cursor):
         pass
+
+    @property
+    def expressions(self):
+        if self.callable is not None:
+            yield self.callable
+        for argument in self.expression_arguments:
+            yield argument
+        for argument in self.keyword_arguments.values():
+            yield argument
 
     def new_from_operand_stack(self, cursor, operands):
         if len(operands) < 1:
@@ -375,7 +385,9 @@ class Subscript(Operator, LValue):
     """An array subscript, i.e. ``my_array[3]``.
     """
     subscriptable: typing.Optional[Expression] = attr.ib(default=None)
-    subscript: typing.Optional[Expression] = attr.ib(default=None)
+    expression_arguments: typing.Sequence[Expression] = attr.ib(converter=tuple, default=())
+    keyword_arguments: typing.Mapping[str, Expression] = attr.ib(converter=immutabledict.immutabledict,
+                                                                 default=immutabledict.immutabledict())
 
     @classmethod
     def parse(cls, cursor):
@@ -385,8 +397,10 @@ class Subscript(Operator, LValue):
     def expressions(self):
         if self.subscriptable is not None:
             yield self.subscriptable
-        if self.subscript is not None:
-            yield self.subscript
+        for argument in self.expression_arguments:
+            yield argument
+        for argument in self.keyword_arguments.values():
+            yield argument
 
     def new_from_operand_stack(self, cursor, operands):
         if len(operands) < 1:
@@ -394,7 +408,8 @@ class Subscript(Operator, LValue):
 
         return Subscript(
             subscriptable=operands.pop(),
-            subscript=self.subscript,
+            expression_arguments=self.expression_arguments,
+            keyword_arguments=self.keyword_arguments,
         )
 
 

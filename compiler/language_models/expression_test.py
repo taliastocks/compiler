@@ -32,7 +32,7 @@ class ExpressionTestCase(unittest.TestCase):
                 expression_module.Variable('a'),
                 expression_module.Subscript(
                     subscriptable=expression_module.Yield(),
-                    subscript=expression_module.Variable('foo'),
+                    expression_arguments=[expression_module.Variable('foo')],
                 ),
             ]).has_yield
         )
@@ -44,10 +44,10 @@ class ExpressionTestCase(unittest.TestCase):
                 expression_module.Variable('a'),
                 expression_module.Subscript(
                     subscriptable=expression_module.Variable('foo'),
-                    subscript=expression_module.Subscript(
+                    expression_arguments=[expression_module.Subscript(
                         subscriptable=expression_module.Variable('bar'),
-                        subscript=expression_module.YieldFrom(),
-                    ),
+                        expression_arguments=[expression_module.YieldFrom()],
+                    )],
                 ),
             ]).has_yield
         )
@@ -492,7 +492,26 @@ class OperatorTestCase(unittest.TestCase):
 
 class CallTestCase(unittest.TestCase):
     def test_expressions(self):
-        pass
+        call = expression_module.Call(
+            callable=expression_module.Variable('my_function'),
+            expression_arguments=[
+                expression_module.Variable('arg_1'),
+                expression_module.Variable('arg_2'),
+            ],
+            keyword_arguments={
+                'foo': expression_module.Variable('foo_arg'),
+            },
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('my_function'),
+                expression_module.Variable('arg_1'),
+                expression_module.Variable('arg_2'),
+                expression_module.Variable('foo_arg'),
+            ],
+            list(call.expressions)
+        )
 
 
 class DotTestCase(unittest.TestCase):
@@ -513,14 +532,22 @@ class DotTestCase(unittest.TestCase):
 class SubscriptTestCase(unittest.TestCase):
     def test_expressions(self):
         subscript = expression_module.Subscript(
-            subscriptable=expression_module.Variable('my_array'),
-            subscript=expression_module.Variable('my_index'),
+            subscriptable=expression_module.Variable('my_function'),
+            expression_arguments=[
+                expression_module.Variable('arg_1'),
+                expression_module.Variable('arg_2'),
+            ],
+            keyword_arguments={
+                'foo': expression_module.Variable('foo_arg'),
+            },
         )
 
         self.assertEqual(
             [
-                expression_module.Variable('my_array'),
-                expression_module.Variable('my_index'),
+                expression_module.Variable('my_function'),
+                expression_module.Variable('arg_1'),
+                expression_module.Variable('arg_2'),
+                expression_module.Variable('foo_arg'),
             ],
             list(subscript.expressions)
         )
