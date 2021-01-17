@@ -4,6 +4,7 @@ import abc
 import typing
 
 import attr
+import immutabledict
 
 from . import declarable
 from .. import parser as parser_module
@@ -289,13 +290,6 @@ class BinaryOperator(Operator, metaclass=abc.ABCMeta):
     left: typing.Optional[Expression] = attr.ib(default=None)
     right: typing.Optional[Expression] = attr.ib(default=None)
 
-    def new_from_operand_stack(self, cursor, operands):
-        if len(operands) < 2:
-            raise parser_module.ParseError('not enough operands', cursor)
-
-        # Instantiate left and right in reverse order because we're popping from a stack.
-        return type(self)(right=operands.pop(), left=operands.pop())  # noqa
-
     @property
     def expressions(self):
         if self.left is not None:
@@ -303,32 +297,89 @@ class BinaryOperator(Operator, metaclass=abc.ABCMeta):
         if self.right is not None:
             yield self.right
 
+    def new_from_operand_stack(self, cursor, operands):
+        if len(operands) < 2:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        # Instantiate left and right in reverse order because we're popping from a stack.
+        return type(self)(right=operands.pop(), left=operands.pop())  # noqa
+
 
 @attr.s(frozen=True, slots=True)
-class Call(BinaryOperator):
+class Call(Operator):
     """A function call, i.e. ``foo(...args...)``.
     """
+    callable: typing.Optional[Expression] = attr.ib(default=None)
+    expression_arguments: typing.Sequence[Expression] = attr.ib(default=())
+    keyword_arguments: typing.Mapping[str, Expression] = attr.ib(default=immutabledict.immutabledict())
+
     @classmethod
     def parse(cls, cursor):
         pass
 
+    def new_from_operand_stack(self, cursor, operands):
+        if len(operands) < 1:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        return Call(
+            callable=operands.pop(),
+            expression_arguments=self.expression_arguments,
+            keyword_arguments=self.keyword_arguments,
+        )
+
 
 @attr.s(frozen=True, slots=True)
-class Dot(BinaryOperator, LValue):
+class Dot(Operator, LValue):
     """The dot operator, i.e. ``my_instance.my_member``.
     """
+    object: typing.Optional[Expression] = attr.ib(default=None)
+    member_name: typing.Optional[str] = attr.ib(default=None)
+
     @classmethod
     def parse(cls, cursor):
         pass
+
+    @property
+    def expressions(self):
+        if self.object is not None:
+            yield self.object
+
+    def new_from_operand_stack(self, cursor, operands):
+        if len(operands) < 1:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        return Dot(
+            object=operands.pop(),
+            member_name=self.member_name,
+        )
 
 
 @attr.s(frozen=True, slots=True)
-class Subscript(BinaryOperator, LValue):
+class Subscript(Operator, LValue):
     """An array subscript, i.e. ``my_array[3]``.
     """
+    subscriptable: typing.Optional[Expression] = attr.ib(default=None)
+    subscript: typing.Optional[Expression] = attr.ib(default=None)
+
     @classmethod
     def parse(cls, cursor):
         pass
+
+    @property
+    def expressions(self):
+        if self.subscriptable is not None:
+            yield self.subscriptable
+        if self.subscript is not None:
+            yield self.subscript
+
+    def new_from_operand_stack(self, cursor, operands):
+        if len(operands) < 1:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        return Subscript(
+            subscriptable=operands.pop(),
+            subscript=self.subscript,
+        )
 
 
 @attr.s(frozen=True, slots=True)
@@ -819,14 +870,14 @@ class ExpressionParser(parser_module.Parser):
         parser_module.Always,
     )
     infix_operators: typing.Sequence[typing.Type[Operator]] = (
-        Dot, Exponentiation, Multiply, MatrixMultiply, Divide, FloorDivide, Modulo, Add, Subtract,
+        Exponentiation, Multiply, MatrixMultiply, Divide, FloorDivide, Modulo, Add, Subtract,
         ShiftLeft, ShiftRight, BitAnd, BitXor, BitOr, In, NotIn, Is, IsNot,
         LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual,
         NotEqual, Equal, And, Or, IfElse, Lambda, Assignment, Slice, Comma,
         parser_module.Always,
     )
-    call_operators: typing.Sequence[typing.Type[Operator]] = (
-        Call, Subscript,
+    immediate_operators: typing.Sequence[typing.Type[Operator]] = (
+        Call, Dot, Subscript,
         parser_module.Always,
     )
 

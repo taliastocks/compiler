@@ -31,8 +31,8 @@ class ExpressionTestCase(unittest.TestCase):
             expression_module.Unpack([
                 expression_module.Variable('a'),
                 expression_module.Subscript(
-                    left=expression_module.Yield(),
-                    right=expression_module.Variable('foo'),
+                    subscriptable=expression_module.Yield(),
+                    subscript=expression_module.Variable('foo'),
                 ),
             ]).has_yield
         )
@@ -43,10 +43,10 @@ class ExpressionTestCase(unittest.TestCase):
             expression_module.Unpack([
                 expression_module.Variable('a'),
                 expression_module.Subscript(
-                    left=expression_module.Variable('foo'),
-                    right=expression_module.Subscript(
-                        left=expression_module.Variable('bar'),
-                        right=expression_module.YieldFrom(),
+                    subscriptable=expression_module.Variable('foo'),
+                    subscript=expression_module.Subscript(
+                        subscriptable=expression_module.Variable('bar'),
+                        subscript=expression_module.YieldFrom(),
                     ),
                 ),
             ]).has_yield
@@ -498,14 +498,13 @@ class CallTestCase(unittest.TestCase):
 class DotTestCase(unittest.TestCase):
     def test_expressions(self):
         dot = expression_module.Dot(
-            left=expression_module.Variable('my_object'),
-            right=expression_module.Variable('foo'),
+            object=expression_module.Variable('my_object'),
+            member_name='foo',
         )
 
         self.assertEqual(
             [
                 expression_module.Variable('my_object'),
-                expression_module.Variable('foo'),
             ],
             list(dot.expressions)
         )
@@ -514,8 +513,8 @@ class DotTestCase(unittest.TestCase):
 class SubscriptTestCase(unittest.TestCase):
     def test_expressions(self):
         subscript = expression_module.Subscript(
-            left=expression_module.Variable('my_array'),
-            right=expression_module.Variable('my_index'),
+            subscriptable=expression_module.Variable('my_array'),
+            subscript=expression_module.Variable('my_index'),
         )
 
         self.assertEqual(
