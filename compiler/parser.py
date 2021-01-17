@@ -73,23 +73,32 @@ class Cursor:
         :return: A new Cursor object with ``cursor.last_symbol`` set.
         :raises NoMatchError: if none of the symbols match.
         """
-        for i, symbol_type in enumerate(one_of):
-            try:
-                next_cursor = symbol_type.parse(self)
-            except NoMatchError as exc:
-                if i == len(one_of) - 1:
-                    raise NoMatchError(
-                        message='none of the expected symbols were found',
-                        cursor=self,
-                        expected_symbols=one_of,
-                    ) from exc
+        cursor = self
+        while True:
+            for i, symbol_type in enumerate(one_of):
+                try:
+                    next_cursor = symbol_type.parse(cursor)
+                except NoMatchError as exc:
+                    if i == len(one_of) - 1:
+                        raise NoMatchError(
+                            message='none of the expected symbols were found',
+                            cursor=cursor,
+                            expected_symbols=one_of,
+                        ) from exc
+                else:
+                    if next_cursor is not None:
+                        return next_cursor
+
+            # If nothing matches, try to eat a newline.
+            next_cursor = EndLine.parse(cursor)
+            if next_cursor is not None and next_cursor.line != cursor.line:
+                cursor = next_cursor
             else:
-                if next_cursor is not None:
-                    return next_cursor
+                break
 
         raise NoMatchError(
             message='none of the expected symbols were found',
-            cursor=self,
+            cursor=cursor,
             expected_symbols=one_of,
         )
 

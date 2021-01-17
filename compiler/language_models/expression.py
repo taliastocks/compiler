@@ -111,7 +111,11 @@ class Variable(declarable.Declarable, LValue):
             ])
 
             if not isinstance(cursor.last_symbol, parser_module.Always):
-                cursor = ExpressionParser.parse(cursor, allow_comma=False, allow_newline=False) or cursor
+                cursor = ExpressionParser.parse(
+                    cursor=cursor,
+                    allow_comma=False,
+                    allow_newline=False,
+                ) or cursor
 
                 if isinstance(cursor.last_symbol, Expression):
                     initializer = cursor.last_symbol
@@ -330,9 +334,66 @@ class Call(Operator):
     keyword_arguments: typing.Mapping[str, Expression] = attr.ib(converter=immutabledict.immutabledict,
                                                                  default=immutabledict.immutabledict())
 
+    begin_token = parser_module.Characters['(']
+    end_token = parser_module.Characters[')']
+
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            cls.begin_token
+        ])
+        expression_arguments: list[Expression] = []
+        keyword_arguments: dict[str, Expression] = {}
+
+        while not isinstance(cursor.last_symbol, cls.end_token):
+            # First try to parse the optional keyword name.
+            keyword_name: typing.Optional[str] = None
+            maybe_keyword_cursor = cursor.parse_one_symbol([
+                parser_module.Identifier,
+                parser_module.Always,
+            ])
+            if isinstance(maybe_keyword_cursor.last_symbol, parser_module.Identifier):
+                maybe_keyword_name = maybe_keyword_cursor.last_symbol.identifier
+                maybe_keyword_cursor = maybe_keyword_cursor.parse_one_symbol([
+                    parser_module.Characters['='],
+                    parser_module.Always,
+                ])
+                if isinstance(maybe_keyword_cursor.last_symbol, parser_module.Characters['=']):
+                    cursor = maybe_keyword_cursor  # Consume the identifier and "=".
+                    keyword_name = maybe_keyword_name
+
+            # Parse the argument value.
+            cursor = ExpressionParser.parse(
+                cursor=cursor,
+                allow_comma=False,
+            ) or cursor
+
+            if isinstance(cursor.last_symbol, Expression):
+                if keyword_name is not None:
+                    keyword_arguments[keyword_name] = cursor.last_symbol
+                else:
+                    expression_arguments.append(cursor.last_symbol)
+            else:
+                raise parser_module.ParseError(
+                    message='expected expression',
+                    cursor=cursor,
+                )
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters[','],
+                cls.end_token,
+            ])
+            if isinstance(cursor.last_symbol, parser_module.Characters[',']):
+                # Allow for a trailing comma in the argument list.
+                cursor = cursor.parse_one_symbol([
+                    cls.end_token,
+                    parser_module.Always,
+                ])
+
+        return cursor.new_from_symbol(cls(
+            expression_arguments=expression_arguments,
+            keyword_arguments=keyword_arguments,
+        ))
 
     @property
     def expressions(self):
@@ -363,7 +424,18 @@ class Dot(Operator, LValue):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['.']
+        ]).parse_one_symbol([
+            parser_module.Identifier
+        ])
+
+        if isinstance(cursor.last_symbol, parser_module.Identifier):
+            return cursor.new_from_symbol(cls(
+                member_name=cursor.last_symbol.identifier
+            ))
+
+        raise RuntimeError('this should be unreachable')
 
     @property
     def expressions(self):
@@ -381,7 +453,7 @@ class Dot(Operator, LValue):
 
 
 @attr.s(frozen=True, slots=True)
-class Subscript(Operator, LValue):
+class Subscript(Call, LValue):
     """An array subscript, i.e. ``my_array[3]``.
     """
     subscriptable: typing.Optional[Expression] = attr.ib(default=None)
@@ -389,9 +461,8 @@ class Subscript(Operator, LValue):
     keyword_arguments: typing.Mapping[str, Expression] = attr.ib(converter=immutabledict.immutabledict,
                                                                  default=immutabledict.immutabledict())
 
-    @classmethod
-    def parse(cls, cursor):
-        pass
+    begin_token = parser_module.Characters['[']
+    end_token = parser_module.Characters[']']
 
     @property
     def expressions(self):
@@ -707,7 +778,7 @@ class IfElse(Operator):
         cursor = cursor.parse_one_symbol([
             parser_module.Characters['if']
         ])
-        cursor = ExpressionParser.parse(cursor)
+        cursor = ExpressionParser.parse(cursor) or cursor
 
         if isinstance(cursor.last_symbol, Expression):
             condition = cursor.last_symbol
@@ -720,7 +791,10 @@ class IfElse(Operator):
                 condition=condition
             ))
 
-        return None
+        raise parser_module.ParseError(
+            message='expected expression',
+            cursor=cursor,
+        )
 
     def new_from_operand_stack(self, cursor, operands):
         if len(operands) < 2:
@@ -870,11 +944,13 @@ class ExpressionParser(parser_module.Parser):
     @classmethod
     def parse(cls, cursor,  # pylint: disable=arguments-differ
               allow_comma: bool = True,
+              allow_slice: bool = True,
               allow_newline: bool = True):
         """Parse an expression according to the rules of operator precedence.
 
         :param cursor:
         :param allow_comma: whether or not the comma operator is allowed in this context
+        :param allow_slice: whether or not the slice operator is allowed in this context
         :param allow_newline: whether or not a newline is allowed to follow an operand in this context
             (newlines are always allowed to follow operators, as this is unambiguous)
         """
@@ -884,41 +960,29 @@ class ExpressionParser(parser_module.Parser):
 
         while True:
             # Consume all the leading prefix operators.
-            while True:
-                cursor = cursor.parse_one_symbol(cls.prefix_operators)
-                if isinstance(cursor.last_symbol, Operator):
-                    operators.append(cursor.last_symbol)
-                else:
-                    break
+            cursor = cls._consume_prefix_operators(cursor, operators)
 
             # Consume an operand.
-            cursor = cursor.parse_one_symbol(cls.operands)
-            if isinstance(cursor.last_symbol, Expression):
-                operands.append(cursor.last_symbol)
-            elif not operators and not operands:
-                # If we haven't consumed anything at all, this is a non-match. Return nothing.
+            new_cursor = cls._consume_operand(cursor, operands)
+            if new_cursor is None:  # No operand could be matched.
+                if operators or operands:
+                    raise parser_module.ParseError('expected an operand', cursor)
                 return None
-            else:
-                raise parser_module.ParseError('expected an operand', cursor)
+            cursor = new_cursor
 
-            if not allow_newline:
-                # End the expression at the first newline if allow_newline=False.
-                new_cursor = cursor.parse_one_symbol([parser_module.EndLine, parser_module.Always])
-                if isinstance(new_cursor.last_symbol, parser_module.EndLine):
-                    break
+            # Consume all the immediate operators.
+            cursor = cls._consume_immediate_operators(cursor, operators, operands, allow_newline)
 
             # Consume an infix operator.
-            new_cursor = cursor.parse_one_symbol(cls.infix_operators)
-            if not allow_comma and isinstance(new_cursor.last_symbol, Comma):
-                # End the expression at the first comma operator if allow_comma=False.
-                break
-            if isinstance(new_cursor.last_symbol, Operator):
-                # Evaluate all the operators in the stack this operator binds less tightly than.
-                while operators and not new_cursor.last_symbol.precedes_on_right(type(operators[-1])):
-                    operands.append(operators.pop().new_from_operand_stack(cursor, operands))
-
-                # Consume the operator.
-                operators.append(new_cursor.last_symbol)
+            new_cursor = cls._consume_infix_operator(
+                cursor,
+                operators,
+                operands,
+                allow_comma,
+                allow_slice,
+                allow_newline,
+            )
+            if new_cursor is not None:
                 cursor = new_cursor
             else:
                 # End the expression.
@@ -935,3 +999,82 @@ class ExpressionParser(parser_module.Parser):
             raise parser_module.ParseError('no operands', cursor)
 
         return cursor.new_from_symbol(operands[-1])
+
+    @classmethod
+    def _consume_prefix_operators(cls, cursor, operators):
+        while True:
+            cursor = cursor.parse_one_symbol(cls.prefix_operators)
+            if isinstance(cursor.last_symbol, Operator):
+                operators.append(cursor.last_symbol)
+            else:
+                return cursor
+
+    @classmethod
+    def _consume_infix_operator(cls,  # pylint: disable=too-many-arguments
+                                cursor,
+                                operators,
+                                operands,
+                                allow_comma,
+                                allow_slice,
+                                allow_newline):
+        if cls._newline_ends_expression(cursor, allow_newline):
+            # If newlines aren't allowed, they can't precede an infix operator.
+            return None
+
+        new_cursor = cursor.parse_one_symbol(cls.infix_operators)
+
+        if not allow_comma and isinstance(new_cursor.last_symbol, Comma):
+            # End the expression at the first comma operator if allow_comma=False.
+            return None
+        if not allow_slice and isinstance(new_cursor.last_symbol, Slice):
+            # End the expression at the first slice operator if allow_slice=False.
+            return None
+
+        if isinstance(new_cursor.last_symbol, Operator):
+            # Evaluate all the operators in the stack which bind more tightly.
+            while operators and not new_cursor.last_symbol.precedes_on_right(type(operators[-1])):
+                operands.append(operators.pop().new_from_operand_stack(cursor, operands))
+
+            # Consume the operator.
+            operators.append(new_cursor.last_symbol)
+            return new_cursor
+
+        # End the expression.
+        return None
+
+    @classmethod
+    def _consume_immediate_operators(cls, cursor, operators, operands, allow_newline):
+        while True:
+            if cls._newline_ends_expression(cursor, allow_newline):
+                # If newlines aren't allowed, they can't precede an immediate operator.
+                return cursor
+
+            new_cursor = cursor.parse_one_symbol(cls.immediate_operators)
+
+            if isinstance(new_cursor.last_symbol, Operator):
+                # Evaluate all the operators in the stack which bind more tightly.
+                while operators and not new_cursor.last_symbol.precedes_on_right(type(operators[-1])):
+                    operands.append(operators.pop().new_from_operand_stack(cursor, operands))
+
+                # Consume the operator.
+                operators.append(new_cursor.last_symbol)
+                cursor = new_cursor
+            else:
+                return new_cursor
+
+    @classmethod
+    def _consume_operand(cls, cursor, operands):
+        cursor = cursor.parse_one_symbol(cls.operands)
+        if isinstance(cursor.last_symbol, Expression):
+            operands.append(cursor.last_symbol)
+            return cursor
+        return None
+
+    @staticmethod
+    def _newline_ends_expression(cursor, allow_newlines):
+        if not allow_newlines:
+            # End the expression at the first newline if allow_newline=False.
+            new_cursor = cursor.parse_one_symbol([parser_module.EndLine, parser_module.Always])
+            if isinstance(new_cursor.last_symbol, parser_module.EndLine):
+                return True
+        return False

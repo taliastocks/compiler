@@ -125,7 +125,7 @@ class ParserTestCase(unittest.TestCase):
             new_cursor
         )
 
-    def test_parse_one_of(self):
+    def test_parse_one_symbol(self):
         cursor = parser_module.Cursor([
             ''
         ])
@@ -163,7 +163,44 @@ class ParserTestCase(unittest.TestCase):
             next_cursor.last_symbol
         )
 
-    def test_parse_no_match(self):
+    def test_parse_one_symbol_eat_newlines(self):
+        cursor = parser_module.Cursor(
+            lines=[
+                '',
+                '',
+                '',
+                'foo',
+            ],
+        )
+        next_cursor = cursor.parse_one_symbol([
+            parser_module.Identifier,
+        ])
+        self.assertEqual(
+            parser_module.Identifier(
+                first_line=3,
+                next_line=3,
+                first_column=0,
+                next_column=3,
+                identifier='foo',
+            ),
+            next_cursor.last_symbol
+        )
+
+        next_cursor = cursor.parse_one_symbol([
+            parser_module.EndLine,  # This one should win.
+            parser_module.Identifier,
+        ])
+        self.assertEqual(
+            parser_module.EndLine(
+                first_line=0,
+                next_line=1,
+                first_column=0,
+                next_column=0,
+            ),
+            next_cursor.last_symbol
+        )
+
+    def test_parse_one_symbol_no_match(self):
         cursor = parser_module.Cursor(
             lines=[
                 'foo'
@@ -176,7 +213,7 @@ class ParserTestCase(unittest.TestCase):
                 parser_module.EndLine,
             ])
 
-    def test_parse_always(self):
+    def test_parse_one_symbol_always(self):
         cursor = parser_module.Cursor(
             lines=[
                 'foo'
@@ -194,7 +231,7 @@ class ParserTestCase(unittest.TestCase):
             parser_module.Always
         )
 
-    def test_parse_recursive_no_match(self):
+    def test_parse_one_symbol_recursive_no_match(self):
         class MySymbol(parser_module.Symbol):
             @classmethod
             def parse(cls, cursor):  # noqa
