@@ -326,10 +326,13 @@ class Identifier(Token):
 @generic.Generic
 def Regex(pattern):  # noqa
     # pylint: disable=invalid-name
-    compiled_pattern = regex.compile(r'^ *({})($|\b|(?=\W))'.format(pattern))
+    compiled_pattern = regex.compile(r'^ *({})(?:$|\b|(?=\W))'.format(pattern))
 
+    @attr.s(frozen=True, slots=True)
     class Regex(Token):  # noqa
         # pylint: disable=redefined-outer-name
+        groups: typing.Sequence[typing.Optional[str]] = attr.ib(converter=tuple, default=())
+
         @classmethod
         def parse(cls, cursor: Cursor):
             match = compiled_pattern.match(cursor.line_text()[cursor.column:])
@@ -340,6 +343,7 @@ def Regex(pattern):  # noqa
                     next_line=cursor.line,
                     first_column=cursor.column + match.start(1),
                     next_column=cursor.column + match.end(1),
+                    groups=match.groups(),
                 ))
 
             return None
@@ -351,6 +355,7 @@ def Regex(pattern):  # noqa
 def Characters(characters):  # noqa
     # pylint: disable=invalid-name
 
+    @attr.s(frozen=True, slots=True)
     class Characters(Regex[regex.escape(characters)]):  # noqa
         # pylint: disable=redefined-outer-name
         pass
