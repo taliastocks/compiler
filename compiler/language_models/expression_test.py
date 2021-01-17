@@ -75,14 +75,14 @@ class VariableTestCase(unittest.TestCase):
         self.assertEqual(
             expression_module.Variable.parse(
                 parser_module.Cursor(
-                    lines=['variable: annotation1 annotation2 = other_variable']
+                    lines=['variable: annotation1, annotation2 = other_variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
             parser_module.Cursor(
-                lines=['variable: annotation1 annotation2 = other_variable'],
-                column=50,
+                lines=['variable: annotation1, annotation2 = other_variable'],
+                column=51,
                 last_symbol=expression_module.Variable(
                     name='variable',
                     annotations=(
@@ -108,14 +108,47 @@ class VariableTestCase(unittest.TestCase):
         self.assertEqual(
             expression_module.Variable.parse(
                 parser_module.Cursor(
-                    lines=['variable:annotation1 annotation2=other_variable']
+                    lines=['variable:annotation1,annotation2=other_variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
             parser_module.Cursor(
-                lines=['variable:annotation1 annotation2=other_variable'],
+                lines=['variable:annotation1,annotation2=other_variable'],
                 column=47,
+                last_symbol=expression_module.Variable(
+                    name='variable',
+                    annotations=(
+                        ExpressionAnnotation(
+                            expression=expression_module.Variable(
+                                name='annotation1'
+                            )
+                        ),
+                        ExpressionAnnotation(
+                            expression=expression_module.Variable(
+                                name='annotation2'
+                            )
+                        ),
+                    ),
+                    initializer=expression_module.Variable(
+                        name='other_variable',
+                    ),
+                ),
+            )
+        )
+
+        # Trailing comma.
+        self.assertEqual(
+            expression_module.Variable.parse(
+                parser_module.Cursor(
+                    lines=['variable: annotation1, annotation2, = other_variable']
+                ),
+                allowed_annotations=[ExpressionAnnotation],
+                parse_initializer=True,
+            ),
+            parser_module.Cursor(
+                lines=['variable: annotation1, annotation2, = other_variable'],
+                column=52,
                 last_symbol=expression_module.Variable(
                     name='variable',
                     annotations=(
@@ -141,14 +174,14 @@ class VariableTestCase(unittest.TestCase):
         self.assertEqual(
             expression_module.Variable.parse(
                 parser_module.Cursor(
-                    lines=['variable  :  annotation1  annotation2  =  other_variable']
+                    lines=['variable  :  annotation1 , annotation2  =  other_variable']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
             parser_module.Cursor(
-                lines=['variable  :  annotation1  annotation2  =  other_variable'],
-                column=56,
+                lines=['variable  :  annotation1 , annotation2  =  other_variable'],
+                column=57,
                 last_symbol=expression_module.Variable(
                     name='variable',
                     annotations=(
@@ -195,14 +228,14 @@ class VariableTestCase(unittest.TestCase):
         self.assertEqual(
             expression_module.Variable.parse(
                 parser_module.Cursor(
-                    lines=['variable: annotation1 annotation2']
+                    lines=['variable: annotation1, annotation2']
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
             ),
             parser_module.Cursor(
-                lines=['variable: annotation1 annotation2'],
-                column=33,
+                lines=['variable: annotation1, annotation2'],
+                column=34,
                 last_symbol=expression_module.Variable(
                     name='variable',
                     annotations=(

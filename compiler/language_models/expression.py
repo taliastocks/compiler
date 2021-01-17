@@ -91,6 +91,10 @@ class Variable(declarable.Declarable, LValue):
                     cursor = cursor.parse_one_symbol([*allowed_annotations, parser_module.Always])
                     if isinstance(cursor.last_symbol, Variable.Annotation):
                         annotations.append(cursor.last_symbol)
+                        cursor = cursor.parse_one_symbol([
+                            parser_module.Characters[','],
+                            parser_module.Always,
+                        ])
 
                 if not annotations:
                     raise parser_module.ParseError(
