@@ -2,7 +2,7 @@ import unittest
 
 from . import parser as parser_module
 
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines, too-many-public-methods
 
 
 class ParserTestCase(unittest.TestCase):
@@ -835,6 +835,7 @@ class TokenTestCase(unittest.TestCase):
                     next_line=0,
                     first_column=1,
                     next_column=5,
+                    groups=['aaaa'],
                 ),
             )
         )
@@ -843,6 +844,44 @@ class TokenTestCase(unittest.TestCase):
                 parser_module.Cursor(
                     lines=[' b '],
                 )
+            )
+        )
+
+    def test_regex_capture(self):
+        self.assertEqual(
+            parser_module.Regex['(b)?a+'].parse(
+                parser_module.Cursor(
+                    lines=[' aaaa '],
+                )
+            ),
+            parser_module.Cursor(
+                lines=[' aaaa '],
+                column=5,
+                last_symbol=parser_module.Regex['(b)?a+'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=1,
+                    next_column=5,
+                    groups=['aaaa', None],
+                ),
+            )
+        )
+        self.assertEqual(
+            parser_module.Regex['(b)?a+'].parse(
+                parser_module.Cursor(
+                    lines=[' baaa '],
+                )
+            ),
+            parser_module.Cursor(
+                lines=[' baaa '],
+                column=5,
+                last_symbol=parser_module.Regex['(b)?a+'](
+                    first_line=0,
+                    next_line=0,
+                    first_column=1,
+                    next_column=5,
+                    groups=['baaa', 'b'],
+                ),
             )
         )
 
@@ -862,6 +901,7 @@ class TokenTestCase(unittest.TestCase):
                     next_line=0,
                     first_column=1,
                     next_column=3,
+                    groups=['aa'],
                 ),
             )
         )
@@ -897,6 +937,7 @@ class TokenTestCase(unittest.TestCase):
                     next_line=0,
                     first_column=1,
                     next_column=3,
+                    groups=['**'],
                 ),
             )
         )
@@ -916,6 +957,7 @@ class TokenTestCase(unittest.TestCase):
                     next_line=0,
                     first_column=1,
                     next_column=3,
+                    groups=['**'],
                 ),
             )
         )
@@ -935,6 +977,7 @@ class TokenTestCase(unittest.TestCase):
                     next_line=0,
                     first_column=1,
                     next_column=3,
+                    groups=['**'],
                 ),
             )
         )
@@ -954,6 +997,7 @@ class TokenTestCase(unittest.TestCase):
                     next_line=0,
                     first_column=1,
                     next_column=3,
+                    groups=['**'],
                 ),
             )
         )
@@ -973,6 +1017,7 @@ class TokenTestCase(unittest.TestCase):
                     next_line=0,
                     first_column=1,
                     next_column=3,
+                    groups=['..'],
                 ),
             )
         )
@@ -990,6 +1035,7 @@ class TokenTestCase(unittest.TestCase):
                     next_line=0,
                     first_column=1,
                     next_column=3,
+                    groups=['..'],
                 ),
             )
         )
@@ -1021,6 +1067,7 @@ class TokenTestCase(unittest.TestCase):
                     next_line=0,
                     first_column=0,
                     next_column=5,
+                    groups=['await'],
                 ),
             )
         )
@@ -1038,6 +1085,7 @@ class TokenTestCase(unittest.TestCase):
                     next_line=0,
                     first_column=0,
                     next_column=5,
+                    groups=['await'],
                 ),
             )
         )

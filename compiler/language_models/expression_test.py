@@ -450,7 +450,7 @@ class OperatorTestCase(unittest.TestCase):
             (expression_module.IfElse,),
             (expression_module.Lambda,),
             (expression_module.Assignment,),
-            (expression_module.Yield, expression_module.YieldFrom),
+            (expression_module.YieldFrom, expression_module.Yield),
             (expression_module.Star, expression_module.StarStar),
             (expression_module.Slice,),
             (expression_module.Comma,),
@@ -787,27 +787,6 @@ class AssignmentTestCase(unittest.TestCase):
         )
 
 
-class YieldTestCase(unittest.TestCase):
-    def test_expressions(self):
-        yield_expr = expression_module.Yield()
-
-        self.assertEqual(
-            [],
-            list(yield_expr.expressions)
-        )
-
-        yield_expr = expression_module.Yield(
-            expression=expression_module.Variable('foo')
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Variable('foo')
-            ],
-            list(yield_expr.expressions)
-        )
-
-
 class YieldFromTestCase(unittest.TestCase):
     def test_expressions(self):
         yield_from_expr = expression_module.YieldFrom()
@@ -826,6 +805,27 @@ class YieldFromTestCase(unittest.TestCase):
                 expression_module.Variable('foo')
             ],
             list(yield_from_expr.expressions)
+        )
+
+
+class YieldTestCase(unittest.TestCase):
+    def test_expressions(self):
+        yield_expr = expression_module.Yield()
+
+        self.assertEqual(
+            [],
+            list(yield_expr.expressions)
+        )
+
+        yield_expr = expression_module.Yield(
+            expression=expression_module.Variable('foo')
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('foo')
+            ],
+            list(yield_expr.expressions)
         )
 
 
@@ -850,5 +850,78 @@ class CommaTestCase(unittest.TestCase):
 
 
 class ExpressionParser(unittest.TestCase):
-    def test_parse(self):
-        pass  # TODO: thoroughly test operator precedence parsing
+    def parse_expression(self, expression_text):
+        return expression_module.ExpressionParser.parse(
+            cursor=parser_module.Cursor([expression_text])
+        ).last_symbol
+
+    def test_parse_prefix_operators(self):
+        self.assertEqual(
+            expression_module.Await(
+                expression_module.Variable('foo')
+            ),
+            self.parse_expression('await foo')
+        )
+        self.assertEqual(
+            expression_module.Positive(
+                expression_module.Variable('foo')
+            ),
+            self.parse_expression('+foo')
+        )
+        self.assertEqual(
+            expression_module.Negative(
+                expression_module.Variable('foo')
+            ),
+            self.parse_expression('-foo')
+        )
+        self.assertEqual(
+            expression_module.BitInverse(
+                expression_module.Variable('foo')
+            ),
+            self.parse_expression('~foo')
+        )
+        self.assertEqual(
+            expression_module.Not(
+                expression_module.Variable('foo')
+            ),
+            self.parse_expression('not foo')
+        )
+        self.assertEqual(  # TODO: this is oversimplified
+            expression_module.Lambda(
+                expression_module.Variable('foo')
+            ),
+            self.parse_expression('lambda: foo')
+        )
+        self.assertEqual(
+            expression_module.YieldFrom(
+                expression_module.Variable('foo')
+            ),
+            self.parse_expression('yield from foo')
+        )
+        self.assertEqual(
+            expression_module.YieldFrom(
+                expression_module.Variable('foo'),
+                is_async=True,
+            ),
+            self.parse_expression('async yield from foo')
+        )
+        self.assertEqual(
+            expression_module.Yield(
+                expression_module.Variable('foo')
+            ),
+            self.parse_expression('yield foo')
+        )
+        self.assertEqual(
+            expression_module.StarStar(
+                expression_module.Variable('foo')
+            ),
+            self.parse_expression('**foo')
+        )
+        self.assertEqual(
+            expression_module.Star(
+                expression_module.Variable('foo')
+            ),
+            self.parse_expression('*foo')
+        )
+
+    # TODO: thoroughly test operator precedence parsing

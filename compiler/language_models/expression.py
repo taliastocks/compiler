@@ -853,15 +853,6 @@ class Assignment(BinaryOperator):
 
 
 @attr.s(frozen=True, slots=True)
-class Yield(UnaryOperator):
-    """Yield a single value from a generator.
-    """
-    higher_precedence_operators = Assignment.higher_precedence_operators | {Assignment}
-
-    token = parser_module.Characters['yield']
-
-
-@attr.s(frozen=True, slots=True)
 class YieldFrom(UnaryOperator):
     """Yield all the values of an iterable. This can only be used from within
     a generator.
@@ -871,16 +862,40 @@ class YieldFrom(UnaryOperator):
     """
     is_async: bool = attr.ib(default=False)
 
-    higher_precedence_operators = Yield.higher_precedence_operators
+    higher_precedence_operators = Assignment.higher_precedence_operators | {Assignment}
 
-    token = parser_module.Regex['yield +from']
+    token = parser_module.Regex['(async +)?yield +from']
+
+    @classmethod
+    def parse(cls, cursor):
+        cursor = cursor.parse_one_symbol([
+            cls.token
+        ])
+        return cursor.new_from_symbol(cls(
+            is_async=cursor.last_symbol.groups[1] is not None  # noqa
+        ))
+
+    def new_from_operand_stack(self, cursor, operands):
+        if not operands:
+            raise parser_module.ParseError('not enough operands', cursor)
+
+        return type(self)(expression=operands.pop(), is_async=self.is_async)  # noqa
+
+
+@attr.s(frozen=True, slots=True)
+class Yield(UnaryOperator):
+    """Yield a single value from a generator.
+    """
+    higher_precedence_operators = YieldFrom.higher_precedence_operators
+
+    token = parser_module.Characters['yield']
 
 
 @attr.s(frozen=True, slots=True)
 class StarStar(UnaryOperator):
     """**mapping
     """
-    higher_precedence_operators = Yield.higher_precedence_operators | {Yield, YieldFrom}
+    higher_precedence_operators = Yield.higher_precedence_operators | {YieldFrom, Yield}
 
     token = parser_module.Characters['**']
 
@@ -933,7 +948,7 @@ class ExpressionParser(parser_module.Parser):
         parser_module.Always,
     )
     prefix_operators: typing.Sequence[typing.Type[UnaryOperator]] = (
-        Await, Positive, Negative, BitInverse, Not, Lambda, Yield, YieldFrom, StarStar, Star,
+        Await, Positive, Negative, BitInverse, Not, Lambda, YieldFrom, Yield, StarStar, Star,
         parser_module.Always,
     )
     infix_operators: typing.Sequence[typing.Type[Operator]] = (
