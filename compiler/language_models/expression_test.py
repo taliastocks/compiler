@@ -80,7 +80,7 @@ class VariableTestCase(unittest.TestCase):
                 ),
                 allowed_annotations=[ExpressionAnnotation],
                 parse_initializer=True,
-            ).last_symbol,
+            ),
             parser_module.Cursor(
                 lines=['variable: annotation1, annotation2 = other_variable'],
                 column=51,
@@ -102,7 +102,7 @@ class VariableTestCase(unittest.TestCase):
                         name='other_variable',
                     ),
                 ),
-            ).last_symbol
+            )
         )
 
         # No spaces.
@@ -851,7 +851,8 @@ class CommaTestCase(unittest.TestCase):
 
 
 class ExpressionParser(unittest.TestCase):
-    def parse_expression(self, expression_text):
+    @staticmethod
+    def parse_expression(expression_text):
         return expression_module.ExpressionParser.parse(
             cursor=parser_module.Cursor([expression_text])
         ).last_symbol
@@ -1129,6 +1130,41 @@ class ExpressionParser(unittest.TestCase):
                 expression_module.Variable('b'),
             ),
             self.parse_expression('a, b')
+        )
+
+    def test_immediate_operators(self):
+        self.assertEqual(
+            expression_module.Call(
+                callable=expression_module.Variable('callable'),
+                expression_arguments=[
+                    expression_module.Variable('arg_1'),
+                    expression_module.Variable('arg_2'),
+                ],
+                keyword_arguments={
+                    'kwarg': expression_module.Variable('foo'),
+                },
+            ),
+            self.parse_expression('callable(arg_1, arg_2, kwarg=foo)')
+        )
+        self.assertEqual(
+            expression_module.Dot(
+                object=expression_module.Variable('foo'),
+                member_name='bar',
+            ),
+            self.parse_expression('foo.bar')
+        )
+        self.assertEqual(
+            expression_module.Subscript(
+                subscriptable=expression_module.Variable('subscriptable'),
+                expression_arguments=[
+                    expression_module.Variable('arg_1'),
+                    expression_module.Variable('arg_2'),
+                ],
+                keyword_arguments={
+                    'kwarg': expression_module.Variable('foo'),
+                },
+            ),
+            self.parse_expression('subscriptable[arg_1, arg_2, kwarg=foo]')
         )
 
     # TODO: thoroughly test operator precedence parsing
