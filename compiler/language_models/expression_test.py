@@ -742,6 +742,9 @@ class LambdaTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
 
+    def test_parse(self):
+        pass  # TODO: thoroughly test parsing lambda
+
 
 class AssignmentTestCase(unittest.TestCase):
     def test_expressions(self):
@@ -889,9 +892,9 @@ class ExpressionParser(unittest.TestCase):
             ),
             self.parse_expression('not foo')
         )
-        self.assertEqual(  # TODO: this is oversimplified
+        self.assertEqual(
             expression_module.Lambda(
-                expression_module.Variable('foo')
+                expression=expression_module.Variable('foo'),
             ),
             self.parse_expression('lambda: foo')
         )
