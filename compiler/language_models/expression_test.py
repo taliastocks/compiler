@@ -852,9 +852,10 @@ class CommaTestCase(unittest.TestCase):
 
 class ExpressionParser(unittest.TestCase):
     @staticmethod
-    def parse_expression(expression_text):
+    def parse_expression(expression_text, **kwds):
         return expression_module.ExpressionParser.parse(
-            cursor=parser_module.Cursor([expression_text])
+            cursor=parser_module.Cursor(expression_text.splitlines()),
+            **kwds
         ).last_symbol
 
     def test_parse_prefix_operators(self):
@@ -1132,7 +1133,7 @@ class ExpressionParser(unittest.TestCase):
             self.parse_expression('a, b')
         )
 
-    def test_immediate_operators(self):
+    def test_parse_immediate_operators(self):
         self.assertEqual(
             expression_module.Call(
                 callable=expression_module.Variable('callable'),
@@ -1167,4 +1168,287 @@ class ExpressionParser(unittest.TestCase):
             self.parse_expression('subscriptable[arg_1, arg_2, kwarg=foo]')
         )
 
-    # TODO: thoroughly test operator precedence parsing
+    def test_precedence_prefix(self):
+        # Prefix operators should be evaluated right to left.
+        self.assertEqual(
+            expression_module.Negative(
+                expression_module.Await(
+                    expression_module.Variable('a')
+                )
+            ),
+            self.parse_expression('-await a')
+        )
+        self.assertEqual(
+            expression_module.Await(
+                expression_module.Negative(
+                    expression_module.Variable('a')
+                )
+            ),
+            self.parse_expression('await -a')
+        )
+
+    def test_precedence_infix_equal_precedence(self):
+        self.assertEqual(
+            expression_module.Add(
+                expression_module.Add(
+                    expression_module.Variable('a'),
+                    expression_module.Variable('b'),
+                ),
+                expression_module.Variable('c'),
+            ),
+            self.parse_expression('a + b + c')
+        )
+        self.assertEqual(
+            expression_module.Multiply(
+                expression_module.Multiply(
+                    expression_module.Variable('a'),
+                    expression_module.Variable('b'),
+                ),
+                expression_module.Variable('c'),
+            ),
+            self.parse_expression('a * b * c')
+        )
+
+    def test_precedence_infix_unequal_precedence(self):
+        self.assertEqual(
+            expression_module.Add(
+                expression_module.Variable('a'),
+                expression_module.Multiply(
+                    expression_module.Variable('b'),
+                    expression_module.Variable('c'),
+                ),
+            ),
+            self.parse_expression('a + b * c')
+        )
+        self.assertEqual(
+            expression_module.Add(
+                expression_module.Multiply(
+                    expression_module.Variable('a'),
+                    expression_module.Variable('b'),
+                ),
+                expression_module.Variable('c'),
+            ),
+            self.parse_expression('a * b + c')
+        )
+
+    def test_precedence_infix_right_to_left(self):
+        # The exponentiation operator evaluates right to left.
+        self.assertEqual(
+            expression_module.Exponentiation(
+                expression_module.Variable('a'),
+                expression_module.Exponentiation(
+                    expression_module.Variable('b'),
+                    expression_module.Variable('c'),
+                ),
+            ),
+            self.parse_expression('a ** b ** c')
+        )
+
+        # If the right-most operator is lower precedence, evaluate
+        # left to right.
+        self.assertEqual(
+            expression_module.Multiply(
+                expression_module.Exponentiation(
+                    expression_module.Variable('a'),
+                    expression_module.Variable('b'),
+                ),
+                expression_module.Variable('c'),
+            ),
+            self.parse_expression('a ** b * c')
+        )
+
+    def test_precedence_infix_prefix(self):
+        # The infix operator is higher precedence.
+        self.assertEqual(
+            expression_module.Negative(
+                expression_module.Exponentiation(
+                    expression_module.Variable('a'),
+                    expression_module.Variable('b'),
+                )
+            ),
+            self.parse_expression('-a**b')
+        )
+
+        # The prefix operator wins when placed before the second operand.
+        self.assertEqual(
+            expression_module.Exponentiation(
+                expression_module.Variable('a'),
+                expression_module.Negative(
+                    expression_module.Variable('b'),
+                )
+            ),
+            self.parse_expression('a ** -b')
+        )
+        self.assertEqual(
+            expression_module.Subtract(
+                expression_module.Variable('a'),
+                expression_module.Negative(
+                    expression_module.Variable('b'),
+                )
+            ),
+            self.parse_expression('a - -b')
+        )
+
+        # The infix operator is lower precedence.
+        self.assertEqual(
+            expression_module.Multiply(
+                expression_module.Negative(
+                    expression_module.Variable('a')
+                ),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('-a * b')
+        )
+        self.assertEqual(
+            expression_module.Multiply(
+                expression_module.Variable('a'),
+                expression_module.Negative(
+                    expression_module.Variable('b')
+                ),
+            ),
+            self.parse_expression('a * -b')
+        )
+
+    def test_precedence_immediate(self):
+        # Immediate operators are evaluated left to right.
+        self.assertEqual(
+            expression_module.Dot(
+                object=expression_module.Subscript(
+                    subscriptable=expression_module.Call(
+                        callable=expression_module.Variable('a'),
+                        expression_arguments=[expression_module.Variable('b')],
+                    ),
+                    expression_arguments=[expression_module.Variable('c')],
+                ),
+                member_name='foo',
+            ),
+            self.parse_expression('a(b)[c].foo')
+        )
+
+        # Or inner-most to outer-most.
+        self.assertEqual(
+            expression_module.Call(
+                callable=expression_module.Variable('a'),
+                expression_arguments=[expression_module.Subscript(
+                    subscriptable=expression_module.Variable('b'),
+                    expression_arguments=[expression_module.Dot(
+                        object=expression_module.Variable('c'),
+                        member_name='foo',
+                    )],
+                )],
+            ),
+            self.parse_expression('a(b[c.foo])')
+        )
+
+    def test_precedence_immediate_prefix(self):
+        self.assertEqual(
+            expression_module.BitInverse(
+                expression_module.Dot(
+                    expression_module.Variable('a'),
+                    member_name='foo',
+                )
+            ),
+            self.parse_expression('~a.foo')
+        )
+
+    def test_precedence_immediate_infix(self):
+        self.assertEqual(
+            expression_module.Add(
+                expression_module.Dot(
+                    expression_module.Variable('a'),
+                    member_name='foo',
+                ),
+                expression_module.Dot(
+                    expression_module.Variable('b'),
+                    member_name='bar',
+                ),
+            ),
+            self.parse_expression('a.foo + b.bar')
+        )
+
+    def test_allow_newline(self):
+        # Allow newlines by default.
+        self.assertEqual(
+            expression_module.Add(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('\n'.join([
+                'a',
+                '+',
+                'b',
+            ]))
+        )
+
+        # Stop the expression on the first newline if allow_newline=False.
+        self.assertEqual(
+            expression_module.Variable('a'),
+            self.parse_expression('\n'.join([
+                'a',
+                '+',
+                'b',
+            ]), allow_newline=False)
+        )
+
+        # However, if we've just consumed a prefix operator, continue to parse.
+        self.assertEqual(
+            expression_module.Negative(
+                expression_module.Variable('a')
+            ),
+            self.parse_expression('\n'.join([
+                '-',
+                'a',  # stop parsing here
+                'b',  # ignore
+            ]), allow_newline=False)
+        )
+
+        # Same with an infix operator.
+        self.assertEqual(
+            expression_module.Add(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('\n'.join([
+                'a +',
+                'b',
+            ]), allow_newline=False)
+        )
+
+    def test_allow_slice(self):
+        # By default, allow slice.
+        self.assertEqual(
+            expression_module.Slice(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a:b')
+        )
+
+        # Stop parsing at ":" if allow_slice=False.
+        self.assertEqual(
+            expression_module.Variable('a'),
+            self.parse_expression('a:b', allow_slice=False)
+        )
+
+    def test_allow_comma(self):
+        # By default, allow comma.
+        self.assertEqual(
+            expression_module.Comma(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a, b')
+        )
+
+        # Stop parsing at "," if allow_comma=False.
+        self.assertEqual(
+            expression_module.Variable('a'),
+            self.parse_expression('a, b', allow_comma=False)
+        )
+
+    def test_expected_an_operand(self):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected an operand'):
+            self.parse_expression('a + +')
+
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected an operand'):
+            self.parse_expression('a +')
