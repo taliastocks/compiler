@@ -954,7 +954,6 @@ class ExpressionParser(parser_module.Parser):
         :param allow_newline: whether or not a newline is allowed to follow an operand in this context
             (newlines are always allowed to follow operators, as this is unambiguous)
         """
-        # pylint: disable=too-many-branches; todo: factor out some of this logic
         operators: list[Operator] = []
         operands: list[Expression] = []
 
@@ -993,10 +992,8 @@ class ExpressionParser(parser_module.Parser):
             operands.append(operators.pop().new_from_operand_stack(cursor, operands))
 
         # There should be exactly one operand left if all went well.
-        if len(operands) > 1:
-            raise parser_module.ParseError('too many operands', cursor)
-        if not operands:
-            raise parser_module.ParseError('no operands', cursor)
+        if len(operands) != 1:
+            raise RuntimeError('this should be unreachable')
 
         return cursor.new_from_symbol(operands[-1])
 
