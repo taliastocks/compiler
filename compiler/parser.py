@@ -63,38 +63,32 @@ class Cursor:
             block_depth=block_depth,
         )
 
-    def parse_one_symbol(self, one_of: typing.Sequence[typing.Type[Symbol]]) -> Cursor:
+    def parse_one_symbol(self, one_of: typing.Sequence[typing.Type[Symbol]], fail=False) -> Cursor:
         """Parse one Symbol, returning a new Cursor object.
 
         Tries to parse the symbols in ``one_of`` in order, returning after the
         first success.
 
         :param one_of: Parse one of these Symbols.
+        :param fail: Fail rather than backtracking if none of the symbols match.
         :return: A new Cursor object with ``cursor.last_symbol`` set.
         :raises NoMatchError: if none of the symbols match.
         """
         cursor = self
-        while True:
-            for i, symbol_type in enumerate(one_of):
-                try:
-                    next_cursor = symbol_type.parse(cursor)
-                except NoMatchError as exc:
-                    if i == len(one_of) - 1:
-                        raise NoMatchError(
-                            message='none of the expected symbols were found',
-                            cursor=cursor,
-                            expected_symbols=one_of,
-                        ) from exc
-                else:
-                    if next_cursor is not None:
-                        return next_cursor
-
-            # If nothing matches, try to eat a newline.
-            next_cursor = EndLine.parse(cursor)
-            if next_cursor is not None and next_cursor.line != cursor.line:
-                cursor = next_cursor
+        for symbol_type in one_of:
+            try:
+                next_cursor = symbol_type.parse(cursor)
+            except NoMatchError:
+                continue
             else:
-                break
+                if next_cursor is not None:
+                    return next_cursor
+
+        if fail:
+            raise ParseError(
+                message='expected one of ({})'.format(', '.join(symbol.symbol_name() for symbol in one_of)),
+                cursor=cursor,
+            )
 
         raise NoMatchError(
             message='none of the expected symbols were found',
@@ -132,7 +126,9 @@ class IndentationError(ParseError):  # noqa
 
 @attr.s(frozen=True, slots=True)
 class Symbol(Parser, metaclass=abc.ABCMeta):
-    pass
+    @classmethod
+    def symbol_name(cls):
+        return cls.__name__
 
 
 @attr.s(frozen=True, slots=True)
@@ -307,35 +303,10 @@ class MultilineWhitespace(Token):
         return None
 
 
-@attr.s(frozen=True, slots=True)
-class Identifier(Token):
-    """Token representing a valid variable name or reserved word.
-
-    An identifier must be a non-digit word character followed by zero or more
-    word characters.
-    """
-    identifier: str = attr.ib()
-
-    @classmethod
-    def parse(cls, cursor: Cursor):
-        match = _IDENTIFIER_REGEX.match(cursor.line_text()[cursor.column:])
-
-        if match:
-            return cursor.new_from_symbol(cls(
-                first_line=cursor.line,
-                next_line=cursor.line,
-                first_column=cursor.column,
-                next_column=cursor.column + match.end(),
-                identifier=match.group(1),
-            ))
-
-        return None
-
-
 @generic.Generic
 def Regex(pattern):  # noqa
     # pylint: disable=invalid-name
-    compiled_pattern = regex.compile(r'^ *({})(?:$|\b|(?=\W))'.format(pattern))
+    compiled_pattern = regex.compile(r'^ *({})(?:$|\b|(?=\W))'.format(pattern), regex.V1)
 
     @attr.s(frozen=True, slots=True)
     class Regex(Token):  # noqa
@@ -343,7 +314,17 @@ def Regex(pattern):  # noqa
         groups: typing.Sequence[typing.Optional[str]] = attr.ib(converter=tuple, default=())
 
         @classmethod
+        def symbol_name(cls):
+            return '{}[{!r}]'.format(cls.__name__, pattern)
+
+        @classmethod
         def parse(cls, cursor: Cursor):
+            while True:  # Eat newlines.
+                new_cursor = cursor.parse_one_symbol([EndLine, Always])
+                if new_cursor.line == cursor.line:
+                    break
+                cursor = new_cursor
+
             match = compiled_pattern.match(cursor.line_text()[cursor.column:])
 
             if match:
@@ -364,12 +345,26 @@ def Regex(pattern):  # noqa
 def Characters(characters):  # noqa
     # pylint: disable=invalid-name
 
-    @attr.s(frozen=True, slots=True)
+    @attr.s(frozen=True, slots=True, repr=False)
     class Characters(Regex[regex.escape(characters)]):  # noqa
         # pylint: disable=redefined-outer-name
-        pass
+        @classmethod
+        def symbol_name(cls):
+            return repr(characters)
 
     return Characters
+
+
+@attr.s(frozen=True, slots=True)
+class Identifier(Regex[r'[\w--\d]\w*']):
+    """Token representing a valid variable name or reserved word.
+
+    An identifier must be a non-digit word character followed by zero or more
+    word characters.
+    """
+    @property
+    def identifier(self):
+        return self.groups[0]
 
 
 def _measure_block_depth(cursor):
@@ -414,4 +409,3 @@ def _measure_block_depth(cursor):
 _END_LINE_REGEX = regex.compile(r'^ *$')
 _INDENT_REGEX = regex.compile(r'^( *)(\s*)')
 _WHITESPACE_REGEX = regex.compile(r'^\s+')
-_IDENTIFIER_REGEX = regex.compile(r'^ *([\w--\d]\w*)', regex.V1)

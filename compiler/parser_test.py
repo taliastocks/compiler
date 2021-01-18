@@ -163,7 +163,18 @@ class ParserTestCase(unittest.TestCase):
             next_cursor.last_symbol
         )
 
+    def test_parse_one_symbol_fail(self):
+        cursor = parser_module.Cursor(['foo'])
+
+        with self.assertRaisesRegex(parser_module.ParseError, r"expected one of \('\*', Regex\['a'\], EndLine\)"):
+            cursor.parse_one_symbol([
+                parser_module.Characters['*'],
+                parser_module.Regex['a'],
+                parser_module.EndLine,
+            ], fail=True)
+
     def test_parse_one_symbol_eat_newlines(self):
+        # Test a symbol that eats newlines.
         cursor = parser_module.Cursor(
             lines=[
                 '',
@@ -181,7 +192,7 @@ class ParserTestCase(unittest.TestCase):
                 next_line=3,
                 first_column=0,
                 next_column=3,
-                identifier='foo',
+                groups=['foo'],
             ),
             next_cursor.last_symbol
         )
@@ -793,83 +804,20 @@ class TokenTestCase(unittest.TestCase):
             )
         )
 
-    def test_identifier(self):
-        self.assertEqual(
-            parser_module.Identifier.parse(
-                parser_module.Cursor(
-                    lines=['foo1   bar'],
-                )
-            ),
-            parser_module.Cursor(
-                lines=['foo1   bar'],
-                column=4,
-                last_symbol=parser_module.Identifier(
-                    first_line=0,
-                    next_line=0,
-                    first_column=0,
-                    next_column=4,
-                    identifier='foo1',
-                ),
-            )
-        )
-        self.assertEqual(
-            parser_module.Identifier.parse(
-                parser_module.Cursor(
-                    lines=['foo   bar42'],
-                    column=6,
-                )
-            ),
-            parser_module.Cursor(
-                lines=['foo   bar42'],
-                column=11,
-                last_symbol=parser_module.Identifier(
-                    first_line=0,
-                    next_line=0,
-                    first_column=6,
-                    next_column=11,
-                    identifier='bar42',
-                ),
-            )
-        )
-        self.assertEqual(
-            parser_module.Identifier.parse(
-                parser_module.Cursor(
-                    lines=[' foo '],
-                )
-            ),
-            parser_module.Cursor(
-                lines=[' foo '],
-                column=4,
-                last_symbol=parser_module.Identifier(
-                    first_line=0,
-                    next_line=0,
-                    first_column=0,
-                    next_column=4,
-                    identifier='foo',
-                ),
-            )
-        )
-        self.assertIsNone(
-            parser_module.Identifier.parse(
-                parser_module.Cursor(
-                    lines=['1foo'],
-                )
-            )
-        )
-
     def test_regex(self):
         self.assertEqual(
             parser_module.Regex['a+'].parse(
-                parser_module.Cursor(
-                    lines=[' aaaa '],
+                parser_module.Cursor(  # eat newlines and spaces
+                    lines=['  ', ' aaaa '],
                 )
             ),
             parser_module.Cursor(
-                lines=[' aaaa '],
+                lines=['  ', ' aaaa '],
+                line=1,
                 column=5,
                 last_symbol=parser_module.Regex['a+'](
-                    first_line=0,
-                    next_line=0,
+                    first_line=1,
+                    next_line=1,
                     first_column=1,
                     next_column=5,
                     groups=['aaaa'],
@@ -1124,6 +1072,70 @@ class TokenTestCase(unittest.TestCase):
                     next_column=5,
                     groups=['await'],
                 ),
+            )
+        )
+
+    def test_identifier(self):
+        self.assertEqual(
+            parser_module.Identifier.parse(
+                parser_module.Cursor(
+                    lines=['foo1   bar'],
+                )
+            ),
+            parser_module.Cursor(
+                lines=['foo1   bar'],
+                column=4,
+                last_symbol=parser_module.Identifier(  # noqa
+                    first_line=0,
+                    next_line=0,
+                    first_column=0,
+                    next_column=4,
+                    groups=['foo1'],
+                ),
+            )
+        )
+        self.assertEqual(
+            parser_module.Identifier.parse(
+                parser_module.Cursor(
+                    lines=['foo   bar42'],
+                    column=6,
+                )
+            ),
+            parser_module.Cursor(
+                lines=['foo   bar42'],
+                column=11,
+                last_symbol=parser_module.Identifier(
+                    first_line=0,
+                    next_line=0,
+                    first_column=6,
+                    next_column=11,
+                    groups=['bar42'],
+                ),
+            )
+        )
+        self.assertEqual(
+            parser_module.Identifier.parse(
+                parser_module.Cursor(
+                    lines=[' foo '],
+                )
+            ),
+            parser_module.Cursor(
+                lines=[' foo '],
+                column=4,
+                last_symbol=parser_module.Identifier(
+                    first_line=0,
+                    next_line=0,
+                    first_column=1,
+                    next_column=4,
+                    groups=['foo'],
+                ),
+            )
+        )
+        self.assertIsNone(
+            parser_module.Identifier.parse(
+                parser_module.Cursor(
+                    lines=['1foo'],
+                )
             )
         )
 
