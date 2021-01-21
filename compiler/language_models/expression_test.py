@@ -1,7 +1,5 @@
 import unittest
 
-import attr
-
 from . import expression as expression_module
 from .. import parser as parser_module
 
@@ -56,46 +54,26 @@ class ExpressionTestCase(unittest.TestCase):
 
 class VariableTestCase(unittest.TestCase):
     def test_parse(self):
-        @attr.s(frozen=True, slots=True)
-        class ExpressionAnnotation(expression_module.Variable.Annotation):
-            """Annotation which holds arbitrary expressions.
-            """
-            expression: expression_module.Expression = attr.ib()
-
-            @classmethod
-            def parse(cls, cursor):
-                cursor = expression_module.ExpressionParser.parse(cursor, allow_comma=False)
-                if not cursor:
-                    return None
-                if isinstance(cursor.last_symbol, expression_module.Expression):
-                    return cursor.new_from_symbol(cls(
-                        expression=cursor.last_symbol
-                    ))
-                raise RuntimeError('this should be unreachable')
-
         self.assertEqual(
             expression_module.Variable.parse(
                 parser_module.Cursor(
                     lines=['variable: annotation1, annotation2 = other_variable']
                 ),
-                allowed_annotations=[ExpressionAnnotation],
+                parse_annotation=True,
                 parse_initializer=True,
+                allow_comma_in_annotations=True,
             ),
             parser_module.Cursor(
                 lines=['variable: annotation1, annotation2 = other_variable'],
                 column=51,
                 last_symbol=expression_module.Variable(
                     name='variable',
-                    annotations=(
-                        ExpressionAnnotation(
-                            expression=expression_module.Variable(
-                                name='annotation1'
-                            )
+                    annotation=expression_module.Comma(
+                        left=expression_module.Variable(
+                            name='annotation1'
                         ),
-                        ExpressionAnnotation(
-                            expression=expression_module.Variable(
-                                name='annotation2'
-                            )
+                        right=expression_module.Variable(
+                            name='annotation2'
                         ),
                     ),
                     initializer=expression_module.Variable(
@@ -111,24 +89,21 @@ class VariableTestCase(unittest.TestCase):
                 parser_module.Cursor(
                     lines=['variable:annotation1,annotation2=other_variable']
                 ),
-                allowed_annotations=[ExpressionAnnotation],
+                parse_annotation=True,
                 parse_initializer=True,
+                allow_comma_in_annotations=True,
             ),
             parser_module.Cursor(
                 lines=['variable:annotation1,annotation2=other_variable'],
                 column=47,
                 last_symbol=expression_module.Variable(
                     name='variable',
-                    annotations=(
-                        ExpressionAnnotation(
-                            expression=expression_module.Variable(
-                                name='annotation1'
-                            )
+                    annotation=expression_module.Comma(
+                        left=expression_module.Variable(
+                            name='annotation1'
                         ),
-                        ExpressionAnnotation(
-                            expression=expression_module.Variable(
-                                name='annotation2'
-                            )
+                        right=expression_module.Variable(
+                            name='annotation2'
                         ),
                     ),
                     initializer=expression_module.Variable(
@@ -144,24 +119,21 @@ class VariableTestCase(unittest.TestCase):
                 parser_module.Cursor(
                     lines=['variable: annotation1, annotation2, = other_variable']
                 ),
-                allowed_annotations=[ExpressionAnnotation],
+                parse_annotation=True,
                 parse_initializer=True,
+                allow_comma_in_annotations=True,
             ),
             parser_module.Cursor(
                 lines=['variable: annotation1, annotation2, = other_variable'],
                 column=52,
                 last_symbol=expression_module.Variable(
                     name='variable',
-                    annotations=(
-                        ExpressionAnnotation(
-                            expression=expression_module.Variable(
-                                name='annotation1'
-                            )
+                    annotation=expression_module.Comma(
+                        left=expression_module.Variable(
+                            name='annotation1'
                         ),
-                        ExpressionAnnotation(
-                            expression=expression_module.Variable(
-                                name='annotation2'
-                            )
+                        right=expression_module.Variable(
+                            name='annotation2'
                         ),
                     ),
                     initializer=expression_module.Variable(
@@ -177,24 +149,21 @@ class VariableTestCase(unittest.TestCase):
                 parser_module.Cursor(
                     lines=['variable  :  annotation1 , annotation2  =  other_variable']
                 ),
-                allowed_annotations=[ExpressionAnnotation],
+                parse_annotation=True,
                 parse_initializer=True,
+                allow_comma_in_annotations=True,
             ),
             parser_module.Cursor(
                 lines=['variable  :  annotation1 , annotation2  =  other_variable'],
                 column=57,
                 last_symbol=expression_module.Variable(
                     name='variable',
-                    annotations=(
-                        ExpressionAnnotation(
-                            expression=expression_module.Variable(
-                                name='annotation1'
-                            )
+                    annotation=expression_module.Comma(
+                        left=expression_module.Variable(
+                            name='annotation1'
                         ),
-                        ExpressionAnnotation(
-                            expression=expression_module.Variable(
-                                name='annotation2'
-                            )
+                        right=expression_module.Variable(
+                            name='annotation2'
                         ),
                     ),
                     initializer=expression_module.Variable(
@@ -210,8 +179,9 @@ class VariableTestCase(unittest.TestCase):
                 parser_module.Cursor(
                     lines=['variable = other_variable']
                 ),
-                allowed_annotations=[ExpressionAnnotation],
+                parse_annotation=True,
                 parse_initializer=True,
+                allow_comma_in_annotations=True,
             ),
             parser_module.Cursor(
                 lines=['variable = other_variable'],
@@ -231,24 +201,21 @@ class VariableTestCase(unittest.TestCase):
                 parser_module.Cursor(
                     lines=['variable: annotation1, annotation2']
                 ),
-                allowed_annotations=[ExpressionAnnotation],
+                parse_annotation=True,
                 parse_initializer=True,
+                allow_comma_in_annotations=True,
             ),
             parser_module.Cursor(
                 lines=['variable: annotation1, annotation2'],
                 column=34,
                 last_symbol=expression_module.Variable(
                     name='variable',
-                    annotations=(
-                        ExpressionAnnotation(
-                            expression=expression_module.Variable(
-                                name='annotation1'
-                            )
+                    annotation=expression_module.Comma(
+                        left=expression_module.Variable(
+                            name='annotation1'
                         ),
-                        ExpressionAnnotation(
-                            expression=expression_module.Variable(
-                                name='annotation2'
-                            )
+                        right=expression_module.Variable(
+                            name='annotation2'
                         ),
                     ),
                 ),
@@ -261,8 +228,9 @@ class VariableTestCase(unittest.TestCase):
                 parser_module.Cursor(
                     lines=['variable']
                 ),
-                allowed_annotations=[ExpressionAnnotation],
+                parse_annotation=True,
                 parse_initializer=True,
+                allow_comma_in_annotations=True,
             ),
             parser_module.Cursor(
                 lines=['variable'],
@@ -1447,6 +1415,20 @@ class ExpressionParser(unittest.TestCase):
         self.assertEqual(
             expression_module.Variable('a'),
             self.parse_expression('a, b', allow_comma=False)
+        )
+
+    def test_ignore_trailing_comma(self):
+        self.assertEqual(
+            expression_module.Comma(
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ),
+            self.parse_expression('a, b,')
+        )
+
+        self.assertEqual(
+            expression_module.Variable('a'),
+            self.parse_expression('a,')
         )
 
     def test_expected_an_operand(self):

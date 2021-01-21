@@ -60,17 +60,18 @@ class Variable(declarable.Declarable, LValue):
     When used as an expression, evaluates to the value of the variable.
     """
     @attr.s(frozen=True, slots=True)
-    class Annotation(parser_module.Symbol, metaclass=abc.ABCMeta):
+    class Annotation(metaclass=abc.ABCMeta):
         pass
 
-    annotations: typing.Sequence[Annotation] = attr.ib(converter=tuple, default=(), repr=False)
+    annotation: typing.Optional[typing.Union[Expression, Annotation]] = attr.ib(default=None, repr=False)
     initializer: typing.Optional[Expression] = attr.ib(default=None, repr=False)
 
     @classmethod
     def parse(cls,
               cursor,
-              allowed_annotations: typing.Sequence[typing.Type[Variable.Annotation]] = (),
-              parse_initializer=False):
+              parse_annotation: bool = False,
+              parse_initializer: bool = False,
+              allow_comma_in_annotations: bool = False):
         # pylint: disable=arguments-differ
         cursor = cursor.parse_one_symbol([
             parser_module.Identifier,
@@ -81,26 +82,26 @@ class Variable(declarable.Declarable, LValue):
         else:
             return None
 
-        annotations = []  # noqa
-        if allowed_annotations:
+        annotation = None
+        if parse_annotation:
             cursor = cursor.parse_one_symbol([
                 parser_module.Characters[':'],
                 parser_module.Always,
             ])
 
-            if not isinstance(cursor.last_symbol, parser_module.Always):
-                while not isinstance(cursor.last_symbol, parser_module.Always):
-                    cursor = cursor.parse_one_symbol([*allowed_annotations, parser_module.Always])
-                    if isinstance(cursor.last_symbol, Variable.Annotation):
-                        annotations.append(cursor.last_symbol)
-                        cursor = cursor.parse_one_symbol([
-                            parser_module.Characters[','],
-                            parser_module.Always,
-                        ])
+            if isinstance(cursor.last_symbol, parser_module.Characters[':']):
+                cursor = ExpressionParser.parse(
+                    cursor,
+                    allow_comma=allow_comma_in_annotations,
+                    allow_slice=False,
+                    allow_newline=False,
+                )
 
-                if not annotations:
+                if isinstance(cursor.last_symbol, Expression):
+                    annotation = cursor.last_symbol
+                else:
                     raise parser_module.ParseError(
-                        message='expected annotations',
+                        message='expected variable annotation',
                         cursor=cursor,
                     )
 
@@ -129,7 +130,7 @@ class Variable(declarable.Declarable, LValue):
 
         return cursor.new_from_symbol(cls(
             name=name,
-            annotations=annotations,
+            annotation=annotation,
             initializer=initializer,
         ))
 
@@ -960,6 +961,10 @@ class ExpressionParser(parser_module.Parser):
             # Consume an operand.
             new_cursor = cls._consume_operand(cursor, operands)
             if new_cursor is None:  # No operand could be matched.
+                if operators and isinstance(operators[-1], Comma):
+                    # Don't worry about a trailing comma, but it ends the expression.
+                    operators.pop()
+                    break
                 if operators or operands:
                     raise parser_module.ParseError('expected an operand', cursor)
                 return None
