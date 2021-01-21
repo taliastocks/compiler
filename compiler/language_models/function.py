@@ -121,7 +121,7 @@ class Function(declarable.Declarable):
 
             var = expression.Variable(
                 name=argument.variable.name,
-                annotations=argument.variable.annotations,
+                annotation=argument.variable.annotation,
             )
             local_declarations[var.name] = var
 

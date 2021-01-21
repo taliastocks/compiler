@@ -13,9 +13,7 @@ class ArgumentList(parser_module.Symbol):
     arguments: typing.Sequence[Argument] = attr.ib(converter=tuple, default=())
 
     @classmethod
-    def parse(cls,
-              cursor,
-              allowed_annotations: typing.Sequence[typing.Type[expression.Variable.Annotation]] = ()):
+    def parse(cls, cursor):
         # pylint: disable=too-many-branches, arguments-differ
         arguments: list[Argument] = []
         saw_end_position_only_marker = False
@@ -33,7 +31,7 @@ class ArgumentList(parser_module.Symbol):
 
             new_cursor = expression.Variable.parse(
                 cursor=cursor,
-                allowed_annotations=allowed_annotations,
+                parse_annotation=True,
                 parse_initializer=True,
             )
 

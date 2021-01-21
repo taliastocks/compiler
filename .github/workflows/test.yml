@@ -17,7 +17,7 @@ jobs:
         python-version: [3.8, 3.9]
 
     env:
-      VIRTUAL_ENV: /tmp/virtualenv
+      VIRTUAL_ENV: /home/runner/virtualenv
 
     steps:
       - name: Check out test branch.
@@ -54,8 +54,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: |
-            /tmp/virtualenv
-            /tmp/pytest_cache
+            /home/runner/virtualenv
+            /home/runner/pytest_cache
           # runner.os
           #   Caches are not compatible across OSes.
           # virtualenv
@@ -119,4 +119,4 @@ jobs:
         run: |
           # Test with pytest.
           source $VIRTUAL_ENV/bin/activate
-          python -m pytest --pylint --flake8 -o cache_dir=/tmp/pytest_cache
+          python -m pytest --pylint --flake8 -o cache_dir=/home/runner/pytest_cache
