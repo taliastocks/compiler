@@ -798,9 +798,11 @@ class Lambda(Operator):
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
             parser_module.Characters['lambda']
-        ]).parse_one_symbol([
-            ArgumentList
         ])
+
+        # We can't have annotations in a Lambda because annotations are
+        # denoted by ":", which also denotes the body of the Lambda.
+        cursor = ArgumentList.parse(cursor, parse_annotations=False)
 
         if not isinstance(cursor.last_symbol, ArgumentList):
             raise RuntimeError('this should be unreachable')
@@ -1092,7 +1094,7 @@ class ArgumentList(parser_module.Symbol):
     arguments: typing.Sequence[Argument] = attr.ib(converter=tuple, default=())
 
     @classmethod
-    def parse(cls, cursor):
+    def parse(cls, cursor, parse_annotations: bool = True):
         # pylint: disable=too-many-branches, arguments-differ
         arguments: list[Argument] = []
         saw_end_position_only_marker = False
@@ -1110,7 +1112,7 @@ class ArgumentList(parser_module.Symbol):
 
             new_cursor = Variable.parse(
                 cursor=cursor,
-                parse_annotation=True,
+                parse_annotation=parse_annotations,
                 parse_initializer=True,
             )
 

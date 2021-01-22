@@ -710,8 +710,58 @@ class LambdaTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
 
-    def test_parse(self):
-        pass  # TODO: thoroughly test parsing lambda
+    def test_parse_no_arguments(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['lambda: foo'])
+            ).last_symbol,
+            expression_module.Lambda(
+                arguments=expression_module.ArgumentList([]),
+                expression=expression_module.Variable('foo'),
+            )
+        )
+
+    def test_parse_arguments(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['lambda a, b: foo'])
+            ).last_symbol,
+            expression_module.Lambda(
+                arguments=expression_module.ArgumentList([
+                    expression_module.Argument(
+                        expression_module.Variable('a'),
+                        is_positional=True,
+                        is_keyword=True,
+                    ),
+                    expression_module.Argument(
+                        expression_module.Variable('b'),
+                        is_positional=True,
+                        is_keyword=True,
+                    ),
+                ]),
+                expression=expression_module.Variable('foo'),
+            )
+        )
+
+    def test_parse_argument_defaults(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['lambda a=b: foo'])
+            ).last_symbol,
+            expression_module.Lambda(
+                arguments=expression_module.ArgumentList([
+                    expression_module.Argument(
+                        expression_module.Variable(
+                            'a',
+                            initializer=expression_module.Variable('b')
+                        ),
+                        is_positional=True,
+                        is_keyword=True,
+                    ),
+                ]),
+                expression=expression_module.Variable('foo'),
+            )
+        )
 
 
 class AssignmentTestCase(unittest.TestCase):
@@ -1614,6 +1664,23 @@ class ArgumentListTestCase(unittest.TestCase):
                     expression_module.Variable(
                         'a',
                         annotation=expression_module.Variable('b'),
+                    ),
+                    is_positional=True,
+                    is_keyword=True,
+                ),
+            ])
+        )
+
+    def test_parse_variable_no_annotations(self):
+        self.assertEqual(
+            expression_module.ArgumentList.parse(
+                parser_module.Cursor(['a: b']),
+                parse_annotations=False,
+            ).last_symbol,
+            expression_module.ArgumentList([
+                expression_module.Argument(
+                    expression_module.Variable(
+                        'a',  # parsing stopped at the ":"
                     ),
                     is_positional=True,
                     is_keyword=True,
