@@ -378,22 +378,134 @@ class ComprehensionTestCase(unittest.TestCase):
 
 class ParenthesizedTestCase(unittest.TestCase):
     def test_expressions(self):
-        pass
+        my_parenthesized = expression_module.Parenthesized(
+            expression=expression_module.Variable('foo'),
+        )
+        self.assertEqual(
+            [
+                expression_module.Variable('foo'),
+            ],
+            list(my_parenthesized.expressions)
+        )
+
+    def test_parse(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['(foo)'])
+            ).last_symbol,
+            expression_module.Parenthesized(
+                expression=expression_module.Variable('foo')
+            )
+        )
+
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['(foo, bar)'])
+            ).last_symbol,
+            expression_module.Parenthesized(
+                expression=expression_module.Comma(
+                    left=expression_module.Variable('foo'),
+                    right=expression_module.Variable('bar'),
+                )
+            )
+        )
+
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['()'])
+            ).last_symbol,
+            expression_module.Parenthesized()
+        )
+
+        # TODO: comprehension
 
 
-class DictionaryTestCase(unittest.TestCase):
+class DictionaryOrSetTestCase(unittest.TestCase):
     def test_expressions(self):
-        pass
+        dict_or_set = expression_module.DictionaryOrSet(
+            expression=expression_module.Variable('foo'),
+        )
+        self.assertEqual(
+            [
+                expression_module.Variable('foo'),
+            ],
+            list(dict_or_set.expressions)
+        )
 
+    def test_parse(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['{foo}'])
+            ).last_symbol,
+            expression_module.DictionaryOrSet(
+                expression=expression_module.Variable('foo')
+            )
+        )
 
-class SetTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['{foo, bar}'])
+            ).last_symbol,
+            expression_module.DictionaryOrSet(
+                expression=expression_module.Comma(
+                    left=expression_module.Variable('foo'),
+                    right=expression_module.Variable('bar'),
+                )
+            )
+        )
+
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['{}'])
+            ).last_symbol,
+            expression_module.DictionaryOrSet()
+        )
+
+        # TODO: comprehension
 
 
 class ListTestCase(unittest.TestCase):
     def test_expressions(self):
-        pass
+        my_list = expression_module.List(
+            expression=expression_module.Variable('foo'),
+        )
+        self.assertEqual(
+            [
+                expression_module.Variable('foo'),
+            ],
+            list(my_list.expressions)
+        )
+
+    def test_parse(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['[foo]'])
+            ).last_symbol,
+            expression_module.List(
+                expression=expression_module.Variable('foo')
+            )
+        )
+
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['[foo, bar]'])
+            ).last_symbol,
+            expression_module.List(
+                expression=expression_module.Comma(
+                    left=expression_module.Variable('foo'),
+                    right=expression_module.Variable('bar'),
+                )
+            )
+        )
+
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['[]'])
+            ).last_symbol,
+            expression_module.List()
+        )
+
+        # TODO: comprehension
 
 
 class OperatorTestCase(unittest.TestCase):
@@ -421,7 +533,7 @@ class OperatorTestCase(unittest.TestCase):
             (expression_module.Assignment,),
             (expression_module.YieldFrom, expression_module.Yield),
             (expression_module.Star, expression_module.StarStar),
-            (expression_module.Slice,),
+            (expression_module.Colon,),
             (expression_module.Comma,),
         )
 
@@ -861,7 +973,7 @@ class StarTestCase(unittest.TestCase):
         pass
 
 
-class SliceTestCase(unittest.TestCase):
+class ColonTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
 
@@ -1140,7 +1252,7 @@ class ExpressionParser(unittest.TestCase):
             self.parse_expression('a := b')
         )
         self.assertEqual(
-            expression_module.Slice(
+            expression_module.Colon(
                 expression_module.Variable('a'),
                 expression_module.Variable('b'),
             ),
@@ -1435,20 +1547,20 @@ class ExpressionParser(unittest.TestCase):
             ]), allow_newline=False)
         )
 
-    def test_allow_slice(self):
-        # By default, allow slice.
+    def test_allow_colon(self):
+        # By default, allow colon.
         self.assertEqual(
-            expression_module.Slice(
+            expression_module.Colon(
                 expression_module.Variable('a'),
                 expression_module.Variable('b'),
             ),
             self.parse_expression('a:b')
         )
 
-        # Stop parsing at ":" if allow_slice=False.
+        # Stop parsing at ":" if allow_colon=False.
         self.assertEqual(
             expression_module.Variable('a'),
-            self.parse_expression('a:b', allow_slice=False)
+            self.parse_expression('a:b', allow_colon=False)
         )
 
     def test_allow_comma(self):
