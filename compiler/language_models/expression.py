@@ -93,7 +93,7 @@ class Variable(declarable.Declarable, LValue):
                 cursor = ExpressionParser.parse(
                     cursor,
                     allow_comma=allow_comma_in_annotations,
-                    allow_slice=False,
+                    allow_colon=False,
                     allow_newline=False,
                 )
 
@@ -116,7 +116,7 @@ class Variable(declarable.Declarable, LValue):
                 cursor = ExpressionParser.parse(
                     cursor=cursor,
                     allow_comma=False,
-                    allow_slice=False,
+                    allow_colon=False,
                     allow_newline=False,
                 ) or cursor
 
@@ -197,60 +197,50 @@ class Comprehension(Expression):
 class Parenthesized(Expression):
     """Define a parenthesized expression.
     """
-    expression: Expression = attr.ib()
+    expression: typing.Optional[Expression] = attr.ib(default=None)
+
+    begin_token = parser_module.Characters['(']
+    end_token = parser_module.Characters[')']
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            cls.begin_token
+        ])
+        new_cursor = ExpressionParser.parse(cursor)
+
+        if new_cursor is not None and isinstance(new_cursor.last_symbol, Expression):
+            expression = new_cursor.last_symbol
+            cursor = new_cursor
+        else:
+            expression = None
+
+        cursor = cursor.parse_one_symbol([
+            cls.end_token
+        ])
+
+        return cursor.new_from_symbol(cls(expression=expression))
 
     @property
     def expressions(self):
-        yield self.expression
+        if self.expression is not None:
+            yield self.expression
 
 
 @attr.s(frozen=True, slots=True)
-class Dictionary(Expression):
-    """Define a dictionary literal or comprehension.
+class DictionaryOrSet(Parenthesized):
+    """Define a dictionary or set literal or comprehension.
     """
-    expression: Expression = attr.ib()
-
-    @classmethod
-    def parse(cls, cursor):
-        pass
-
-    @property
-    def expressions(self):
-        yield self.expression
+    begin_token = parser_module.Characters['{']
+    end_token = parser_module.Characters['}']
 
 
 @attr.s(frozen=True, slots=True)
-class Set(Expression):
-    """Define a set literal or comprehension.
-    """
-    expression: Expression = attr.ib()
-
-    @classmethod
-    def parse(cls, cursor):
-        pass
-
-    @property
-    def expressions(self):
-        yield self.expression
-
-
-@attr.s(frozen=True, slots=True)
-class List(Expression):
+class List(Parenthesized):
     """Define a list literal or comprehension.
     """
-    expression: Expression = attr.ib()
-
-    @classmethod
-    def parse(cls, cursor):
-        pass
-
-    @property
-    def expressions(self):
-        yield self.expression
+    begin_token = parser_module.Characters['[']
+    end_token = parser_module.Characters[']']
 
 
 @attr.s(frozen=True, slots=True, kw_only=True)  # https://youtrack.jetbrains.com/issue/PY-46406
@@ -897,7 +887,7 @@ class Star(UnaryOperator):
 
 
 @attr.s(frozen=True, slots=True)
-class Slice(BinaryOperator):
+class Colon(BinaryOperator):
     """a:b
     """
     higher_precedence_operators = StarStar.higher_precedence_operators | {StarStar, Star}
@@ -908,7 +898,7 @@ class Slice(BinaryOperator):
 class Comma(BinaryOperator):
     """a, b
     """
-    higher_precedence_operators = Slice.higher_precedence_operators | {Slice}
+    higher_precedence_operators = Colon.higher_precedence_operators | {Colon}
     token = parser_module.Characters[',']
 
 
@@ -919,8 +909,7 @@ class ExpressionParser(parser_module.Parser):
     operands: typing.Sequence[typing.Type[Expression]] = (
         Variable,
         Parenthesized,
-        Dictionary,
-        Set,
+        DictionaryOrSet,
         List,
         parser_module.Always,
     )
@@ -932,7 +921,7 @@ class ExpressionParser(parser_module.Parser):
         Exponentiation, Multiply, MatrixMultiply, FloorDivide, Divide, Modulo, Add, Subtract,
         ShiftLeft, ShiftRight, BitAnd, BitXor, BitOr, In, NotIn, IsNot, Is,
         LessThanOrEqual, LessThan, GreaterThanOrEqual, GreaterThan,
-        NotEqual, Equal, And, Or, IfElse, Assignment, Slice, Comma,
+        NotEqual, Equal, And, Or, IfElse, Assignment, Colon, Comma,
         parser_module.Always,
     )
     immediate_operators: typing.Sequence[typing.Type[Operator]] = (
@@ -943,13 +932,13 @@ class ExpressionParser(parser_module.Parser):
     @classmethod
     def parse(cls, cursor,  # pylint: disable=arguments-differ
               allow_comma: bool = True,
-              allow_slice: bool = True,
+              allow_colon: bool = True,
               allow_newline: bool = True):
         """Parse an expression according to the rules of operator precedence.
 
         :param cursor:
         :param allow_comma: whether or not the comma operator is allowed in this context
-        :param allow_slice: whether or not the slice operator is allowed in this context
+        :param allow_colon: whether or not the colon operator is allowed in this context
         :param allow_newline: whether or not a newline is allowed to follow an operand in this context
             (newlines are always allowed to follow operators, as this is unambiguous)
         """
@@ -981,7 +970,7 @@ class ExpressionParser(parser_module.Parser):
                 operators,
                 operands,
                 allow_comma,
-                allow_slice,
+                allow_colon,
                 allow_newline,
             )
             if new_cursor is not None:
@@ -1015,7 +1004,7 @@ class ExpressionParser(parser_module.Parser):
                                 operators,
                                 operands,
                                 allow_comma,
-                                allow_slice,
+                                allow_colon,
                                 allow_newline):
         if cls._newline_ends_expression(cursor, allow_newline):
             # If newlines aren't allowed, they can't precede an infix operator.
@@ -1026,8 +1015,8 @@ class ExpressionParser(parser_module.Parser):
         if not allow_comma and isinstance(new_cursor.last_symbol, Comma):
             # End the expression at the first comma operator if allow_comma=False.
             return None
-        if not allow_slice and isinstance(new_cursor.last_symbol, Slice):
-            # End the expression at the first slice operator if allow_slice=False.
+        if not allow_colon and isinstance(new_cursor.last_symbol, Colon):
+            # End the expression at the first colon operator if allow_colon=False.
             return None
 
         if isinstance(new_cursor.last_symbol, Operator):
