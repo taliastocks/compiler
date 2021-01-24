@@ -11,7 +11,6 @@ from .. import parser as parser_module
 
 # pylint: disable=fixme
 # pylint: disable=too-many-lines
-from ..parser import Cursor
 
 
 @attr.s
