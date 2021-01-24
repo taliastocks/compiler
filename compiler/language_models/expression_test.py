@@ -52,6 +52,81 @@ class ExpressionTestCase(unittest.TestCase):
         )
 
 
+class NumberTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['12.34e-56'])
+            ).last_symbol,
+            expression_module.Number(
+                digits_part=1234,
+                magnitude_part=-58,
+            )
+        )
+
+        # Integer.
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['1234'])
+            ).last_symbol,
+            expression_module.Number(
+                digits_part=1234,
+                magnitude_part=0,
+            )
+        )
+
+        # Float, no magnitude part.
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['12.34'])
+            ).last_symbol,
+            expression_module.Number(
+                digits_part=1234,
+                magnitude_part=-2,
+            )
+        )
+
+        # Float, magnitude, no fraction part.
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['12e34'])
+            ).last_symbol,
+            expression_module.Number(
+                digits_part=12,
+                magnitude_part=34,
+            )
+        )
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['12E34'])
+            ).last_symbol,
+            expression_module.Number(
+                digits_part=12,
+                magnitude_part=34,
+            )
+        )
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['12E+34'])
+            ).last_symbol,
+            expression_module.Number(
+                digits_part=12,
+                magnitude_part=34,
+            )
+        )
+
+        # Strip trailing zeros in fraction part.
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['12.100e34'])
+            ).last_symbol,
+            expression_module.Number(
+                digits_part=121,
+                magnitude_part=33,
+            )
+        )
+
+
 class LValueTestCase(unittest.TestCase):
     def test_from_expression(self):
         # Already an LValue.

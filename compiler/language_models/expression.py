@@ -11,6 +11,7 @@ from .. import parser as parser_module
 
 # pylint: disable=fixme
 # pylint: disable=too-many-lines
+from ..parser import Cursor
 
 
 @attr.s
@@ -44,6 +45,57 @@ class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
                 return True
 
         return False
+
+
+@attr.s
+class Literal(Expression, metaclass=abc.ABCMeta):
+    """A literal value.
+    """
+
+
+@attr.s(frozen=True, slots=True)
+class Number(Literal):
+    """Represents a number. Can represent integers and floating point values without rounding.
+    """
+    digits_part: int = attr.ib(default=0)
+    magnitude_part: int = attr.ib(default=0)
+
+    @classmethod
+    def parse(cls, cursor):
+        regex_class = parser_module.Regex[r'(\d[\d\']*)(?:\.(\d[\d\']*))?(?:[eE]([-+])?(\d[\d\']*))?']
+        cursor: regex_class = cursor.parse_one_symbol([
+            regex_class
+        ])
+        if not isinstance(cursor.last_symbol, regex_class):
+            raise RuntimeError('this should be unreachable')
+
+        whole_part, fraction_part, magnitude_sign, magnitude_part = cursor.last_symbol.groups[1:]  # noqa
+
+        # Remove any place markers.
+        whole_part = whole_part.replace("'", '')
+        fraction_part = (fraction_part or '').replace("'", '').rstrip('0')
+        magnitude_part = (magnitude_part or '0').replace("'", '')
+
+        digits_part = int(whole_part)
+
+        if magnitude_part:
+            magnitude_part = int(magnitude_part)
+        else:
+            magnitude_part = 0
+
+        if magnitude_sign == '-':
+            magnitude_part *= -1
+
+        if fraction_part:
+            magnitude_part -= len(fraction_part)
+            digits_part *= pow(10, len(fraction_part))
+            digits_part += int(fraction_part)
+
+        return cursor.new_from_symbol(cls(
+            digits_part=digits_part,
+            magnitude_part=magnitude_part,
+            cursor=cursor,
+        ))
 
 
 @attr.s
@@ -1053,6 +1105,7 @@ class ExpressionParser(parser_module.Parser):
     """Parse an expression according to the rules of operator precedence.
     """
     operands: typing.Sequence[typing.Type[Expression]] = (
+        Number,
         Variable,
         Parenthesized,
         DictionaryOrSet,
