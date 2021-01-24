@@ -5,7 +5,7 @@ import attr
 from .. import parser as parser_module
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s
 class Reference(parser_module.Symbol, metaclass=abc.ABCMeta):
     """Represents a path, e.g. to a module or declaration.
     """

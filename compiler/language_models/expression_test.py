@@ -105,7 +105,7 @@ class LValueTestCase(unittest.TestCase):
         )
 
         # Throw an exception if the Expression isn't an LValue.
-        with self.assertRaisesRegex(ValueError, 'expected LValue expression'):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected LValue expression'):
             expression_module.LValue.from_expression(
                 expression_module.Parenthesized(
                     expression_module.Comma(
@@ -118,15 +118,16 @@ class LValueTestCase(unittest.TestCase):
 
 class VariableTestCase(unittest.TestCase):
     def test_parse(self):
-        self.assertEqual(
-            expression_module.Variable.parse(
-                parser_module.Cursor(
-                    lines=['variable: annotation1, annotation2 = other_variable']
-                ),
-                parse_annotation=True,
-                parse_initializer=True,
-                allow_comma_in_annotations=True,
+        cursor = expression_module.Variable.parse(
+            parser_module.Cursor(
+                lines=['variable: annotation1, annotation2 = other_variable']
             ),
+            parse_annotation=True,
+            parse_initializer=True,
+            allow_comma_in_annotations=True,
+        )
+        self.assertEqual(
+            cursor,
             parser_module.Cursor(
                 lines=['variable: annotation1, annotation2 = other_variable'],
                 column=51,
@@ -445,8 +446,6 @@ class ParenthesizedTestCase(unittest.TestCase):
             expression_module.Parenthesized()
         )
 
-        # TODO: comprehension
-
 
 class DictionaryOrSetTestCase(unittest.TestCase):
     def test_expressions(self):
@@ -489,8 +488,6 @@ class DictionaryOrSetTestCase(unittest.TestCase):
             expression_module.DictionaryOrSet()
         )
 
-        # TODO: comprehension
-
 
 class ListTestCase(unittest.TestCase):
     def test_expressions(self):
@@ -532,8 +529,6 @@ class ListTestCase(unittest.TestCase):
             ).last_symbol,
             expression_module.List()
         )
-
-        # TODO: comprehension
 
 
 class OperatorTestCase(unittest.TestCase):
@@ -1191,13 +1186,6 @@ class ExpressionParser(unittest.TestCase):
                 expression_module.Variable('foo')
             ),
             self.parse_expression('yield from foo')
-        )
-        self.assertEqual(
-            expression_module.YieldFrom(
-                expression_module.Variable('foo'),
-                is_async=True,
-            ),
-            self.parse_expression('async yield from foo')
         )
         self.assertEqual(
             expression_module.Yield(

@@ -131,7 +131,8 @@ class Constructor(function.Function.Decorator, expression.Variable.Annotation):
     (or converters) for that attribute; that is, their return value is assigned to the attribute.
     Otherwise, constructors cannot return anything. TODO: validation
 
-    Constructor methods cannot be asynchronous. TODO: validation
+    Constructor methods cannot be asynchronous, unless they are factories/converters, in which case they
+    are interpreted as returning a Promise. TODO: validation
     Constructor methods may omit the method name.
 
     TODO: Figure out how to build the instance constructor (repeated argument names, etc).

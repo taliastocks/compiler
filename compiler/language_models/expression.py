@@ -13,7 +13,7 @@ from .. import parser as parser_module
 # pylint: disable=too-many-lines
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s
 class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
     """An Expression is a syntactic entity that may be evaluated to determine
     its value.
@@ -46,7 +46,7 @@ class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
         return False
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s
 class LValue(Expression, metaclass=abc.ABCMeta):
     """An LValue is an expression which can be assigned to, i.e. it can appear
     on the left-hand side of an `=` sign (thus "L" as in "Left").
@@ -62,7 +62,7 @@ class LValue(Expression, metaclass=abc.ABCMeta):
             return Unpack([
                 LValue.from_expression(expr)
                 for expr in expression.to_expression_list()
-            ])
+            ], cursor=expression.cursor)
 
         if isinstance(expression, Parenthesized):
             inner_expression = expression.expression
@@ -72,9 +72,12 @@ class LValue(Expression, metaclass=abc.ABCMeta):
                 return LValue.from_expression(inner_expression)
 
             # If there's only one value, wrap it in Unpack.
-            return Unpack([LValue.from_expression(inner_expression)])
+            return Unpack(
+                [LValue.from_expression(inner_expression)],
+                cursor=inner_expression.cursor,
+            )
 
-        raise ValueError('expected LValue expression')  # todo: ParseError with cursor
+        raise parser_module.ParseError('expected LValue expression', expression.cursor)
 
 
 @attr.s(frozen=True, slots=True)
@@ -83,7 +86,7 @@ class Variable(declarable.Declarable, LValue):
 
     When used as an expression, evaluates to the value of the variable.
     """
-    @attr.s(frozen=True, slots=True)
+    @attr.s
     class Annotation(metaclass=abc.ABCMeta):
         pass
 
@@ -162,6 +165,7 @@ class Variable(declarable.Declarable, LValue):
             name=name,
             annotation=annotation,
             initializer=initializer,
+            cursor=cursor,
         ))
 
 
@@ -218,7 +222,10 @@ class Parenthesized(Expression):
             cls.end_token
         ])
 
-        return cursor.new_from_symbol(cls(expression=expression))
+        return cursor.new_from_symbol(cls(
+            expression=expression,
+            cursor=cursor,
+        ))
 
     @property
     def expressions(self):
@@ -242,7 +249,7 @@ class List(Parenthesized):
     end_token = parser_module.Characters[']']
 
 
-@attr.s(frozen=True, slots=True, kw_only=True)  # https://youtrack.jetbrains.com/issue/PY-46406
+@attr.s(kw_only=True)  # https://youtrack.jetbrains.com/issue/PY-46406
 class Operator(Expression, metaclass=abc.ABCMeta):
     """An operator is an expression which takes expressions as arguments.
 
@@ -261,7 +268,7 @@ class Operator(Expression, metaclass=abc.ABCMeta):
         pass
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s
 class UnaryOperator(Operator, metaclass=abc.ABCMeta):
     """An operator which takes exactly one argument.
     """
@@ -273,7 +280,7 @@ class UnaryOperator(Operator, metaclass=abc.ABCMeta):
     def parse(cls, cursor):
         return cursor.parse_one_symbol([
             cls.token
-        ]).new_from_symbol(cls())
+        ]).new_from_symbol(cls(cursor=cursor))
 
     @property
     def expressions(self):
@@ -284,10 +291,10 @@ class UnaryOperator(Operator, metaclass=abc.ABCMeta):
         if not operands:
             raise parser_module.ParseError('not enough operands', cursor)
 
-        return type(self)(expression=operands.pop())  # noqa
+        return type(self)(expression=operands.pop(), cursor=cursor)  # noqa
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s
 class BinaryOperator(Operator, metaclass=abc.ABCMeta):
     """An operator which takes exactly one argument.
     """
@@ -300,7 +307,7 @@ class BinaryOperator(Operator, metaclass=abc.ABCMeta):
     def parse(cls, cursor):
         return cursor.parse_one_symbol([
             cls.token
-        ]).new_from_symbol(cls())
+        ]).new_from_symbol(cls(cursor=cursor))
 
     @property
     def expressions(self):
@@ -314,7 +321,7 @@ class BinaryOperator(Operator, metaclass=abc.ABCMeta):
             raise parser_module.ParseError('not enough operands', cursor)
 
         # Instantiate left and right in reverse order because we're popping from a stack.
-        return type(self)(right=operands.pop(), left=operands.pop())  # noqa
+        return type(self)(right=operands.pop(), left=operands.pop(), cursor=cursor)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -385,6 +392,7 @@ class Call(Operator):
         return cursor.new_from_symbol(cls(
             expression_arguments=expression_arguments,
             keyword_arguments=keyword_arguments,
+            cursor=cursor,
         ))
 
     @property
@@ -404,6 +412,7 @@ class Call(Operator):
             callable=operands.pop(),
             expression_arguments=self.expression_arguments,
             keyword_arguments=self.keyword_arguments,
+            cursor=cursor,
         )
 
 
@@ -424,7 +433,8 @@ class Dot(Operator, LValue):
 
         if isinstance(cursor.last_symbol, parser_module.Identifier):
             return cursor.new_from_symbol(cls(
-                member_name=cursor.last_symbol.identifier
+                member_name=cursor.last_symbol.identifier,
+                cursor=cursor,
             ))
 
         raise RuntimeError('this should be unreachable')
@@ -441,6 +451,7 @@ class Dot(Operator, LValue):
         return Dot(
             object=operands.pop(),
             member_name=self.member_name,
+            cursor=cursor,
         )
 
 
@@ -473,13 +484,13 @@ class Subscript(Call, LValue):
             subscriptable=operands.pop(),
             expression_arguments=self.expression_arguments,
             keyword_arguments=self.keyword_arguments,
+            cursor=cursor,
         )
 
 
 @attr.s(frozen=True, slots=True)
 class Await(UnaryOperator):
-    """Await a promise. This can only be used from within an async function
-    or async generator.
+    """Await a promise.
     """
     higher_precedence_operators = Call.higher_precedence_operators | {Call, Dot, Subscript}
     token = parser_module.Characters['await']
@@ -750,7 +761,8 @@ class IfElse(Operator):
             ])
 
             return cursor.new_from_symbol(cls(
-                condition=condition
+                condition=condition,
+                cursor=cursor,
             ))
 
         raise parser_module.ParseError(
@@ -763,7 +775,12 @@ class IfElse(Operator):
             raise parser_module.ParseError('not enough operands', cursor)
 
         # Instantiate false_value and true_value in reverse order because we're popping from a stack.
-        return IfElse(condition=self.condition, false_value=operands.pop(), true_value=operands.pop())
+        return IfElse(
+            condition=self.condition,
+            false_value=operands.pop(),
+            true_value=operands.pop(),
+            cursor=cursor,
+        )
 
     @property
     def expressions(self):
@@ -802,13 +819,18 @@ class Lambda(Operator):
             parser_module.Characters[':']
         ], fail=True).new_from_symbol(cls(
             arguments=arguments,
+            cursor=cursor,
         ))
 
     def new_from_operand_stack(self, cursor, operands):
         if len(operands) < 1:
             raise parser_module.ParseError('not enough operands', cursor)
 
-        return Lambda(arguments=self.arguments, expression=operands.pop())
+        return Lambda(
+            arguments=self.arguments,
+            expression=operands.pop(),
+            cursor=cursor,
+        )
 
     @property
     def expressions(self):
@@ -836,29 +858,18 @@ class Assignment(BinaryOperator):
 class YieldFrom(UnaryOperator):
     """Yield all the values of an iterable. This can only be used from within
     a generator.
-
-        is_async: Await each promise in the iterable before yielding it. This
-            option can only be used from within an async generator.
     """
-    is_async: bool = attr.ib(default=False)
-
     higher_precedence_operators = Assignment.higher_precedence_operators | {Assignment}
-    token = parser_module.Regex['(async +)?yield +from']
-
-    @classmethod
-    def parse(cls, cursor):
-        cursor = cursor.parse_one_symbol([
-            cls.token
-        ])
-        return cursor.new_from_symbol(cls(
-            is_async=cursor.last_symbol.groups[1] is not None  # noqa
-        ))
+    token = parser_module.Regex['yield +from']
 
     def new_from_operand_stack(self, cursor, operands):
         if not operands:
             raise parser_module.ParseError('not enough operands', cursor)
 
-        return type(self)(expression=operands.pop(), is_async=self.is_async)  # noqa
+        return YieldFrom(
+            expression=operands.pop(),
+            cursor=cursor,
+        )
 
 
 @attr.s(frozen=True, slots=True)
@@ -967,7 +978,8 @@ class Comprehension(Operator):
             break
 
         return cursor.new_from_symbol(cls(
-            loops=loops
+            loops=loops,
+            cursor=cursor,
         ))
 
     def new_from_operand_stack(self, cursor, operands):
@@ -990,7 +1002,8 @@ class Comprehension(Operator):
                         receiver=self.loops[-1].receiver,
                         iterable=iterable_or_condition,
                     ),
-                ]
+                ],
+                cursor=cursor,
             )
 
         # Otherwise, the second operand is the loop condition.
@@ -998,6 +1011,7 @@ class Comprehension(Operator):
             value=value,
             loops=self.loops,
             condition=iterable_or_condition,
+            cursor=cursor,
         )
 
     @property
@@ -1119,7 +1133,10 @@ class ExpressionParser(parser_module.Parser):
 
         # Evaluate all remaining operators on the stack.
         while operators:
-            operands.append(operators.pop().new_from_operand_stack(cursor, operands))
+            operand = operators.pop().new_from_operand_stack(cursor, operands)
+            if operand.cursor is None:
+                raise RuntimeError('this should be unreachable')
+            operands.append(operand)
 
         # There should be exactly one operand left if all went well.
         if len(operands) != 1:
@@ -1289,7 +1306,8 @@ class ArgumentList(parser_module.Symbol):
                 break  # Additional arguments can only follow a comma, so we're done.
 
         return cursor.new_from_symbol(cls(
-            arguments=arguments
+            arguments=arguments,
+            cursor=cursor,
         ))
 
 
