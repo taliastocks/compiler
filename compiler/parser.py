@@ -369,6 +369,25 @@ class Identifier(Regex[r'[\w--\d]\w*']):
         return self.groups[0]
 
 
+@attr.s(frozen=True, slots=True)
+class String(Regex[r'(r|b|rb|br|)(?P<quote>[\'"])((?:\\.|[^\\])*?)(?P=quote)']):
+    @property
+    def is_raw(self):
+        return 'r' in self.groups[1]
+
+    @property
+    def is_binary(self):
+        return 'b' in self.groups[1]
+
+    @property
+    def quote(self):
+        return self.groups[2]
+
+    @property
+    def content(self):
+        return self.groups[3]
+
+
 def _measure_block_depth(cursor):
     """Measure the block depth for the current line number.
 

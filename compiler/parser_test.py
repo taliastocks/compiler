@@ -1085,12 +1085,12 @@ class TokenTestCase(unittest.TestCase):
             parser_module.Cursor(
                 lines=['foo1   bar'],
                 column=4,
-                last_symbol=parser_module.Identifier(  # noqa
-                    first_line=0,
-                    next_line=0,
-                    first_column=0,
-                    next_column=4,
-                    groups=['foo1'],
+                last_symbol=parser_module.Identifier(
+                    first_line=0,  # noqa
+                    next_line=0,  # noqa
+                    first_column=0,  # noqa
+                    next_column=4,  # noqa
+                    groups=['foo1'],  # noqa
                 ),
             )
         )
@@ -1105,11 +1105,11 @@ class TokenTestCase(unittest.TestCase):
                 lines=['foo   bar42'],
                 column=11,
                 last_symbol=parser_module.Identifier(
-                    first_line=0,
-                    next_line=0,
-                    first_column=6,
-                    next_column=11,
-                    groups=['bar42'],
+                    first_line=0,  # noqa
+                    next_line=0,  # noqa
+                    first_column=6,  # noqa
+                    next_column=11,  # noqa
+                    groups=['bar42'],  # noqa
                 ),
             )
         )
@@ -1123,11 +1123,11 @@ class TokenTestCase(unittest.TestCase):
                 lines=[' foo '],
                 column=4,
                 last_symbol=parser_module.Identifier(
-                    first_line=0,
-                    next_line=0,
-                    first_column=1,
-                    next_column=4,
-                    groups=['foo'],
+                    first_line=0,  # noqa
+                    next_line=0,  # noqa
+                    first_column=1,  # noqa
+                    next_column=4,  # noqa
+                    groups=['foo'],  # noqa
                 ),
             )
         )
@@ -1138,6 +1138,163 @@ class TokenTestCase(unittest.TestCase):
                 )
             )
         )
+
+    def test_string_is_raw_is_binary(self):
+        string = parser_module.String.parse(
+            parser_module.Cursor(
+                lines=[' rb"foo" '],
+            )
+        ).last_symbol
+        self.assertEqual(
+            parser_module.String(
+                first_line=0,  # noqa
+                next_line=0,  # noqa
+                first_column=1,  # noqa
+                next_column=8,  # noqa
+                groups=('rb"foo"', 'rb', '"', 'foo')  # noqa
+            ),
+            string
+        )
+        self.assertIs(True, string.is_raw)
+        self.assertIs(True, string.is_binary)
+        self.assertEqual('"', string.quote)
+        self.assertEqual('foo', string.content)
+
+        string = parser_module.String.parse(
+            parser_module.Cursor(
+                lines=[' br"foo" '],
+            )
+        ).last_symbol
+        self.assertEqual(
+            parser_module.String(
+                first_line=0,  # noqa
+                next_line=0,  # noqa
+                first_column=1,  # noqa
+                next_column=8,  # noqa
+                groups=('br"foo"', 'br', '"', 'foo')  # noqa
+            ),
+            string
+        )
+        self.assertIs(True, string.is_raw)
+        self.assertIs(True, string.is_binary)
+        self.assertEqual('"', string.quote)
+        self.assertEqual('foo', string.content)
+
+        string = parser_module.String.parse(
+            parser_module.Cursor(
+                lines=[' "foo" '],
+            )
+        ).last_symbol
+        self.assertEqual(
+            parser_module.String(
+                first_line=0,  # noqa
+                next_line=0,  # noqa
+                first_column=1,  # noqa
+                next_column=6,  # noqa
+                groups=('"foo"', '', '"', 'foo')  # noqa
+            ),
+            string
+        )
+        self.assertIs(False, string.is_raw)
+        self.assertIs(False, string.is_binary)
+        self.assertEqual('"', string.quote)
+        self.assertEqual('foo', string.content)
+
+        string = parser_module.String.parse(
+            parser_module.Cursor(
+                lines=[' r"foo" '],
+            )
+        ).last_symbol
+        self.assertEqual(
+            parser_module.String(
+                first_line=0,  # noqa
+                next_line=0,  # noqa
+                first_column=1,  # noqa
+                next_column=7,  # noqa
+                groups=('r"foo"', 'r', '"', 'foo')  # noqa
+            ),
+            string
+        )
+        self.assertIs(True, string.is_raw)
+        self.assertIs(False, string.is_binary)
+        self.assertEqual('"', string.quote)
+        self.assertEqual('foo', string.content)
+
+        string = parser_module.String.parse(
+            parser_module.Cursor(
+                lines=[' b"foo" '],
+            )
+        ).last_symbol
+        self.assertEqual(
+            parser_module.String(
+                first_line=0,  # noqa
+                next_line=0,  # noqa
+                first_column=1,  # noqa
+                next_column=7,  # noqa
+                groups=('b"foo"', 'b', '"', 'foo')  # noqa
+            ),
+            string
+        )
+        self.assertIs(False, string.is_raw)
+        self.assertIs(True, string.is_binary)
+        self.assertEqual('"', string.quote)
+        self.assertEqual('foo', string.content)
+
+    def test_string_quote(self):
+        string = parser_module.String.parse(
+            parser_module.Cursor(
+                lines=[' \'foo\' '],
+            )
+        ).last_symbol
+        self.assertEqual(
+            parser_module.String(
+                first_line=0,  # noqa
+                next_line=0,  # noqa
+                first_column=1,  # noqa
+                next_column=6,  # noqa
+                groups=("'foo'", '', "'", 'foo')  # noqa
+            ),
+            string
+        )
+        self.assertEqual("'", string.quote)
+        self.assertEqual('foo', string.content)
+
+        string = parser_module.String.parse(
+            parser_module.Cursor(
+                lines=[' "foo" '],
+            )
+        ).last_symbol
+        self.assertEqual(
+            parser_module.String(
+                first_line=0,  # noqa
+                next_line=0,  # noqa
+                first_column=1,  # noqa
+                next_column=6,  # noqa
+                groups=('"foo"', '', '"', 'foo')  # noqa
+            ),
+            string
+        )
+        self.assertEqual('"', string.quote)
+        self.assertEqual('foo', string.content)
+
+    def test_string_escape(self):
+        string = parser_module.String.parse(
+            parser_module.Cursor(
+                lines=[' "foo\\"" '],
+            )
+        ).last_symbol
+        self.assertEqual(
+            parser_module.String(
+                first_line=0,  # noqa
+                next_line=0,  # noqa
+                first_column=1,  # noqa
+                next_column=8,  # noqa
+                groups=('"foo\\""', '', '"', 'foo\\"')  # noqa
+            ),
+            string
+        )
+        self.assertEqual('"', string.quote)
+        self.assertEqual('foo\\"', string.content)
 
 
 class HelpersTestCase(unittest.TestCase):
