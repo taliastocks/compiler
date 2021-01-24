@@ -126,6 +126,17 @@ class NumberTestCase(unittest.TestCase):
             )
         )
 
+        # Separators.
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(["1'2'3'.1'0'0'e3'4'"])
+            ).last_symbol,
+            expression_module.Number(
+                digits_part=1231,
+                magnitude_part=33,
+            )
+        )
+
 
 class LValueTestCase(unittest.TestCase):
     def test_from_expression(self):
