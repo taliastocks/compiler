@@ -11,7 +11,7 @@ from .. import parser as parser_module
 # pylint: disable=fixme
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s
 class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
     """A statement represents some action to be carried out.
     """
@@ -198,7 +198,6 @@ class For(Statement):
     receiver: expression_module.LValue = attr.ib()
     body: Block = attr.ib()
     else_body: typing.Optional[Block] = attr.ib(default=None)
-    is_async: bool = attr.ib(default=False)
 
     @classmethod
     def parse(cls, cursor):
@@ -250,7 +249,6 @@ class With(Statement):
     context_manager: expression_module.Expression = attr.ib()
     body: Block = attr.ib()
     receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
-    is_async: bool = attr.ib(default=False)
 
     @classmethod
     def parse(cls, cursor):

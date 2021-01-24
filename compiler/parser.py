@@ -9,7 +9,7 @@ import regex
 from .meta import generic
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(frozen=True)
 class Parser(metaclass=abc.ABCMeta):
     @classmethod
     @abc.abstractmethod
@@ -106,7 +106,7 @@ class Cursor:
 @attr.s(frozen=True, slots=True)
 class ParseError(Exception):
     message: str = attr.ib()
-    cursor: Cursor = attr.ib()
+    cursor: typing.Optional[Cursor] = attr.ib()
 
     def __str__(self):
         return '{}\n{}'.format(self.message, self.cursor)
@@ -124,8 +124,10 @@ class IndentationError(ParseError):  # noqa
     column: int = attr.ib()
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s
 class Symbol(Parser, metaclass=abc.ABCMeta):
+    cursor: typing.Optional[Cursor] = attr.ib(kw_only=True, repr=False, eq=False, default=None)
+
     @classmethod
     def symbol_name(cls):
         return cls.__name__
