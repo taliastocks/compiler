@@ -52,6 +52,70 @@ class ExpressionTestCase(unittest.TestCase):
         )
 
 
+class LValueTestCase(unittest.TestCase):
+    def test_from_expression(self):
+        # Already an LValue.
+        self.assertEqual(
+            expression_module.Variable('foo'),
+            expression_module.LValue.from_expression(
+                expression_module.Variable('foo')
+            )
+        )
+
+        # Convert Parenthesized to Unpack.
+        self.assertEqual(
+            expression_module.Unpack([
+                expression_module.Variable('foo')
+            ]),
+            expression_module.LValue.from_expression(
+                expression_module.Parenthesized(
+                    expression_module.Variable('foo')
+                )
+            )
+        )
+
+        # Convert Comma to Unpack.
+        self.assertEqual(
+            expression_module.Unpack([
+                expression_module.Variable('foo'),
+                expression_module.Variable('bar'),
+            ]),
+            expression_module.LValue.from_expression(
+                expression_module.Comma(
+                    expression_module.Variable('foo'),
+                    expression_module.Variable('bar'),
+                )
+            )
+        )
+
+        # Combination of Parenthesized and Comma only becomes Unpack once.
+        self.assertEqual(
+            expression_module.Unpack([
+                expression_module.Variable('foo'),
+                expression_module.Variable('bar'),
+            ]),
+            expression_module.LValue.from_expression(
+                expression_module.Parenthesized(
+                    expression_module.Comma(
+                        expression_module.Variable('foo'),
+                        expression_module.Variable('bar'),
+                    )
+                )
+            )
+        )
+
+        # Throw an exception if the Expression isn't an LValue.
+        with self.assertRaisesRegex(ValueError, 'expected LValue expression'):
+            expression_module.LValue.from_expression(
+                expression_module.Parenthesized(
+                    expression_module.Comma(
+                        expression_module.Variable('foo'),
+                        expression_module.Call(),
+                    )
+                )
+            )
+
+
 class VariableTestCase(unittest.TestCase):
     def test_parse(self):
         self.assertEqual(
@@ -340,42 +404,6 @@ class UnpackTestCase(unittest.TestCase):
         )
 
 
-class ComprehensionTestCase(unittest.TestCase):
-    def test_expressions(self):
-        comprehension = expression_module.Comprehension(
-            value=expression_module.Variable('value'),
-            loops=[],
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Variable('value'),
-            ],
-            list(comprehension.expressions)
-        )
-
-        comprehension = expression_module.Comprehension(
-            value=expression_module.Variable('value'),
-            loops=[
-                expression_module.Comprehension.Loop(
-                    iterable=expression_module.Variable('iterable'),
-                    receiver=expression_module.Variable('receiver'),
-                ),
-            ],
-            condition=expression_module.Variable('condition'),
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Variable('iterable'),
-                expression_module.Variable('receiver'),
-                expression_module.Variable('value'),
-                expression_module.Variable('condition'),
-            ],
-            list(comprehension.expressions)
-        )
-
-
 class ParenthesizedTestCase(unittest.TestCase):
     def test_expressions(self):
         my_parenthesized = expression_module.Parenthesized(
@@ -534,6 +562,7 @@ class OperatorTestCase(unittest.TestCase):
             (expression_module.YieldFrom, expression_module.Yield),
             (expression_module.Star, expression_module.StarStar),
             (expression_module.Colon,),
+            (expression_module.Comprehension,),
             (expression_module.Comma,),
         )
 
@@ -978,9 +1007,138 @@ class ColonTestCase(unittest.TestCase):
         pass
 
 
+class ComprehensionTestCase(unittest.TestCase):
+    def test_expressions(self):
+        comprehension = expression_module.Comprehension(
+            value=expression_module.Variable('value'),
+            loops=[],
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('value'),
+            ],
+            list(comprehension.expressions)
+        )
+
+        comprehension = expression_module.Comprehension(
+            value=expression_module.Variable('value'),
+            loops=[
+                expression_module.Comprehension.Loop(
+                    iterable=expression_module.Variable('iterable'),
+                    receiver=expression_module.Variable('receiver'),
+                ),
+            ],
+            condition=expression_module.Variable('condition'),
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('iterable'),
+                expression_module.Variable('receiver'),
+                expression_module.Variable('value'),
+                expression_module.Variable('condition'),
+            ],
+            list(comprehension.expressions)
+        )
+
+    def test_parse(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['a for b in c'])
+            ).last_symbol,
+            expression_module.Comprehension(
+                value=expression_module.Variable('a'),
+                loops=[
+                    expression_module.Comprehension.Loop(
+                        receiver=expression_module.Variable('b'),
+                        iterable=expression_module.Variable('c'),
+                    )
+                ],
+            )
+        )
+
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    'a for b in c',
+                    'for d in e',
+                ])
+            ).last_symbol,
+            expression_module.Comprehension(
+                value=expression_module.Variable('a'),
+                loops=[
+                    expression_module.Comprehension.Loop(
+                        receiver=expression_module.Variable('b'),
+                        iterable=expression_module.Variable('c'),
+                    ),
+                    expression_module.Comprehension.Loop(
+                        receiver=expression_module.Variable('d'),
+                        iterable=expression_module.Variable('e'),
+                    ),
+                ],
+            )
+        )
+
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    'a for b in c',
+                    'for d in e',
+                    'if f',
+                ])
+            ).last_symbol,
+            expression_module.Comprehension(
+                value=expression_module.Variable('a'),
+                loops=[
+                    expression_module.Comprehension.Loop(
+                        receiver=expression_module.Variable('b'),
+                        iterable=expression_module.Variable('c'),
+                    ),
+                    expression_module.Comprehension.Loop(
+                        receiver=expression_module.Variable('d'),
+                        iterable=expression_module.Variable('e'),
+                    ),
+                ],
+                condition=expression_module.Variable('f'),
+            )
+        )
+
+
 class CommaTestCase(unittest.TestCase):
     def test_expressions(self):
-        pass
+        comma = expression_module.Comma(
+            left=expression_module.Variable('foo'),
+            right=expression_module.Variable('bar'),
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Variable('foo'),
+                expression_module.Variable('bar'),
+            ],
+            list(comma.expressions)
+        )
+
+    def test_to_expression_list(self):
+        self.assertEqual(
+            [
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+                expression_module.Variable('c'),
+                expression_module.Variable('d'),
+            ],
+            list(expression_module.Comma(
+                left=expression_module.Comma(
+                    left=expression_module.Variable('a'),
+                    right=expression_module.Variable('b'),
+                ),
+                right=expression_module.Comma(
+                    left=expression_module.Variable('c'),
+                    right=expression_module.Variable('d'),
+                ),
+            ).to_expression_list())
+        )
 
 
 class ExpressionParser(unittest.TestCase):
@@ -1513,14 +1671,14 @@ class ExpressionParser(unittest.TestCase):
             ]))
         )
 
-        # Stop the expression on the first newline if allow_newline=False.
+        # Stop the expression on the first newline EndLine in stop_symbols.
         self.assertEqual(
             expression_module.Variable('a'),
             self.parse_expression('\n'.join([
                 'a',
                 '+',
                 'b',
-            ]), allow_newline=False)
+            ]), stop_symbols=[parser_module.EndLine])
         )
 
         # However, if we've just consumed a prefix operator, continue to parse.
@@ -1532,7 +1690,7 @@ class ExpressionParser(unittest.TestCase):
                 '-',
                 'a',  # stop parsing here
                 'b',  # ignore
-            ]), allow_newline=False)
+            ]), stop_symbols=[parser_module.EndLine])
         )
 
         # Same with an infix operator.
@@ -1544,7 +1702,7 @@ class ExpressionParser(unittest.TestCase):
             self.parse_expression('\n'.join([
                 'a +',
                 'b',
-            ]), allow_newline=False)
+            ]), stop_symbols=[parser_module.EndLine])
         )
 
     def test_allow_colon(self):
@@ -1557,10 +1715,10 @@ class ExpressionParser(unittest.TestCase):
             self.parse_expression('a:b')
         )
 
-        # Stop parsing at ":" if allow_colon=False.
+        # Stop parsing at ":" if ":" in stop_symbols.
         self.assertEqual(
             expression_module.Variable('a'),
-            self.parse_expression('a:b', allow_colon=False)
+            self.parse_expression('a:b', stop_symbols=[parser_module.Characters[':']])
         )
 
     def test_allow_comma(self):
@@ -1573,10 +1731,10 @@ class ExpressionParser(unittest.TestCase):
             self.parse_expression('a, b')
         )
 
-        # Stop parsing at "," if allow_comma=False.
+        # Stop parsing at "," if "," in stop_symbols.
         self.assertEqual(
             expression_module.Variable('a'),
-            self.parse_expression('a, b', allow_comma=False)
+            self.parse_expression('a, b', stop_symbols=[parser_module.Characters[',']])
         )
 
     def test_ignore_trailing_comma(self):
