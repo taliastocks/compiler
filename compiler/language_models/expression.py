@@ -55,6 +55,16 @@ class Literal(Expression, metaclass=abc.ABCMeta):
 @attr.s(frozen=True, slots=True)
 class Number(Literal):
     """Represents a number. Can represent integers and floating point values without rounding.
+
+        Numbers may be one or more digits, optionally followed by one or both of the following:
+            - A "." followed by one or more digits.
+            - An "e" or "E", optionally followed by "+" or "-", followed by digits.
+
+        Digits may be separated by zero or more ticks (') to indicate digit grouping, e.g. 1'234,
+        but ticks may not precede the first digit, the first digit after the decimal place, or
+        the first digit of the magnitude.
+
+        Numbers are always interpreted in base ten.
     """
     digits_part: int = attr.ib(default=0)
     magnitude_part: int = attr.ib(default=0)
@@ -90,9 +100,57 @@ class Number(Literal):
             digits_part *= pow(10, len(fraction_part))
             digits_part += int(fraction_part)
 
+        # Normalize.
+        while digits_part % 10 == 0:
+            digits_part //= 10
+            magnitude_part += 1
+
         return cursor.new_from_symbol(cls(
             digits_part=digits_part,
             magnitude_part=magnitude_part,
+            cursor=cursor,
+        ))
+
+
+@attr.s(frozen=True, slots=True)
+class String(Literal):
+    """Represents a string.
+    """
+    is_binary: bool = attr.ib()
+    value: str = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        content: list[str] = []
+        is_binary: typing.Optional[bool] = None
+
+        while True:
+            cursor = cursor.parse_one_symbol([
+                parser_module.MultilineString,
+                parser_module.String,
+                parser_module.Always,
+            ])
+            if isinstance(cursor.last_symbol, parser_module.Always):
+                if content:
+                    break  # We're done parsing the string.
+                return None  # No match.
+
+            if is_binary is None:
+                is_binary = cursor.last_symbol.is_binary  # noqa
+            elif is_binary != cursor.last_symbol.is_binary:  # noqa
+                raise parser_module.ParseError(
+                    'all string literals must be binary, or none must be binary',
+                    cursor=cursor,
+                )
+
+            # TODO: decode escape sequences
+            string_part = cursor.last_symbol.content  # noqa
+
+            content.append(string_part)
+
+        return cursor.new_from_symbol(cls(
+            value=''.join(content),
+            is_binary=is_binary,
             cursor=cursor,
         ))
 

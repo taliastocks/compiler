@@ -372,19 +372,19 @@ class Identifier(Regex[r'[\w--\d]\w*']):
 @attr.s(frozen=True, slots=True)
 class String(Regex[r'(r|b|rb|br|)(?P<quote>[\'"])((?:\\.|[^\\])*?)(?P=quote)']):
     @property
-    def is_raw(self):
+    def is_raw(self) -> bool:
         return 'r' in self.groups[1]
 
     @property
-    def is_binary(self):
+    def is_binary(self) -> bool:
         return 'b' in self.groups[1]
 
     @property
-    def quote(self):
+    def quote(self) -> str:
         return self.groups[2]
 
     @property
-    def content(self):
+    def content(self) -> str:
         return self.groups[3]
 
 
