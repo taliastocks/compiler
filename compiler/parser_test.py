@@ -1296,6 +1296,186 @@ class TokenTestCase(unittest.TestCase):
         self.assertEqual('"', string.quote)
         self.assertEqual('foo\\"', string.content)
 
+    def test_multiline_string_lines(self):
+        self.assertEqual(
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    ' """First line',
+                    '    second line',
+                    '    """',
+                ])
+            ).last_symbol,
+            parser_module.MultilineString(
+                first_line=0,
+                next_line=2,
+                first_column=1,
+                next_column=7,
+                content='First line\nsecond line\n',
+                is_raw=False,
+                is_binary=False,
+            )
+        )
+
+        self.assertEqual(
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    ' """',
+                    '    First line',
+                    '      second line',
+                    '    """',
+                ])
+            ).last_symbol,
+            parser_module.MultilineString(
+                first_line=0,
+                next_line=3,
+                first_column=1,
+                next_column=7,
+                content='First line\n  second line\n',
+                is_raw=False,
+                is_binary=False,
+            )
+        )
+
+        self.assertEqual(
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    '"""First line',
+                    '    """',
+                ])
+            ).last_symbol,
+            parser_module.MultilineString(
+                first_line=0,
+                next_line=1,
+                first_column=0,
+                next_column=7,
+                content='First line\n',
+                is_raw=False,
+                is_binary=False,
+            )
+        )
+
+        self.assertEqual(
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    '"""First line"""',
+                ])
+            ).last_symbol,
+            parser_module.MultilineString(
+                first_line=0,
+                next_line=0,
+                first_column=0,
+                next_column=16,
+                content='First line',
+                is_raw=False,
+                is_binary=False,
+            )
+        )
+
+    def test_multiline_string_is_raw_is_binary(self):
+        self.assertEqual(
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    'rb"""text"""',
+                ])
+            ).last_symbol,
+            parser_module.MultilineString(
+                first_line=0,
+                next_line=0,
+                first_column=0,
+                next_column=12,
+                content='text',
+                is_raw=True,
+                is_binary=True,
+            )
+        )
+
+        self.assertEqual(
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    'br"""text"""',
+                ])
+            ).last_symbol,
+            parser_module.MultilineString(
+                first_line=0,
+                next_line=0,
+                first_column=0,
+                next_column=12,
+                content='text',
+                is_raw=True,
+                is_binary=True,
+            )
+        )
+
+        self.assertEqual(
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    'r"""text"""',
+                ])
+            ).last_symbol,
+            parser_module.MultilineString(
+                first_line=0,
+                next_line=0,
+                first_column=0,
+                next_column=11,
+                content='text',
+                is_raw=True,
+                is_binary=False,
+            )
+        )
+
+        self.assertEqual(
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    'b"""text"""',
+                ])
+            ).last_symbol,
+            parser_module.MultilineString(
+                first_line=0,
+                next_line=0,
+                first_column=0,
+                next_column=11,
+                content='text',
+                is_raw=False,
+                is_binary=True,
+            )
+        )
+
+        self.assertEqual(
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    '"""text"""',
+                ])
+            ).last_symbol,
+            parser_module.MultilineString(
+                first_line=0,
+                next_line=0,
+                first_column=0,
+                next_column=10,
+                content='text',
+                is_raw=False,
+                is_binary=False,
+            )
+        )
+
+    def test_multiline_string_nonspace_characters_last_line(self):
+        with self.assertRaisesRegex(parser_module.ParseError, 'non-space characters on last line of multiline string'):
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    '"""',
+                    'line 2"""',
+                ])
+            )
+
+    def test_multiline_string_outdented_text(self):
+        with self.assertRaisesRegex(parser_module.ParseError, 'out-dented text on multiline string'):
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    '"""',
+                    'line 2',
+                    '  """',
+                ])
+            )
+
 
 class HelpersTestCase(unittest.TestCase):
     # pylint: disable=protected-access

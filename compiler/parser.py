@@ -388,6 +388,72 @@ class String(Regex[r'(r|b|rb|br|)(?P<quote>[\'"])((?:\\.|[^\\])*?)(?P=quote)']):
         return self.groups[3]
 
 
+@attr.s(frozen=True, slots=True)
+class MultilineString(Token):
+    content: str = attr.ib()
+    is_raw: bool = attr.ib()
+    is_binary: bool = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        cursor = cursor.parse_one_symbol([
+            Regex[r'(r|b|rb|br|)("""|\'\'\')']
+        ])
+        initial_cursor = cursor
+        prefix = cursor.last_symbol.groups[1]  # noqa
+        is_raw = 'r' in prefix  # noqa
+        is_binary = 'b' in prefix  # noqa
+        quote = cursor.last_symbol.groups[2]  # noqa
+
+        while True:
+            cursor = cursor.parse_one_symbol([
+                Characters[quote],  # end quote always wins
+                Regex[r'(?:\\.|[^\\\'"])*'],  # escaped characters and non-quote characters
+                Regex[r'[\'"]'],  # one quote character (results in non-greedy behavior)
+            ])
+
+            if isinstance(cursor.last_symbol, Characters[quote]):
+                break
+
+        first_line = initial_cursor.line
+        next_line = cursor.line
+        first_column = initial_cursor.last_symbol.first_column  # noqa
+        next_column = cursor.column
+
+        content_lines = [
+            cursor.line_text(line)[
+                (first_column + len(prefix) + len(quote) if line == first_line else None):
+                (next_column - len(quote) if line == next_line else None)
+            ]
+            for line in range(first_line, next_line + 1)
+        ]
+
+        if len(content_lines) > 1 and content_lines[-1].strip(' '):
+            raise ParseError('non-space characters on last line of multiline string', cursor)
+
+        dedent_amount = len(content_lines[-1])
+
+        for i, line_text in enumerate(content_lines):
+            if i == 0:
+                continue
+            if line_text[:dedent_amount].strip():
+                raise ParseError('out-dented text on multiline string', cursor)
+            content_lines[i] = line_text[dedent_amount:]
+
+        if not content_lines[0]:
+            content_lines.pop(0)
+
+        return cursor.new_from_symbol(cls(
+            first_line=first_line,
+            next_line=next_line,
+            first_column=first_column,  # noqa
+            next_column=next_column,
+            content='\n'.join(content_lines),
+            is_raw=is_raw,
+            is_binary=is_binary,
+        ))
+
+
 def _measure_block_depth(cursor):
     """Measure the block depth for the current line number.
 
