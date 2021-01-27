@@ -370,7 +370,7 @@ class Identifier(Regex[r'[\w--\d]\w*']):
 
 
 @attr.s(frozen=True, slots=True)
-class String(Regex[r'(r|b|rb|br|)(?P<quote>[\'"])((?:\\.|[^\\])*?)(?P=quote)']):
+class String(Regex[r'(bf?r?|br?f?|fb?r?|fr?b|rb?f?|rf?b?|)(?P<quote>[\'"])((?:\\.|[^\\])*?)(?P=quote)']):
     @property
     def is_raw(self) -> bool:
         return 'r' in self.groups[1]
@@ -378,6 +378,10 @@ class String(Regex[r'(r|b|rb|br|)(?P<quote>[\'"])((?:\\.|[^\\])*?)(?P=quote)']):
     @property
     def is_binary(self) -> bool:
         return 'b' in self.groups[1]
+
+    @property
+    def is_formatted(self) -> bool:
+        return 'f' in self.groups[1]
 
     @property
     def quote(self) -> str:
@@ -393,16 +397,18 @@ class MultilineString(Token):
     content: str = attr.ib()
     is_raw: bool = attr.ib()
     is_binary: bool = attr.ib()
+    is_formatted: bool = attr.ib()
 
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
-            Regex[r'(r|b|rb|br|)("""|\'\'\')']
+            Regex[r'(bf?r?|br?f?|fb?r?|fr?b|rb?f?|rf?b?|)("""|\'\'\')']
         ])
         initial_cursor = cursor
         prefix = cursor.last_symbol.groups[1]  # noqa
-        is_raw = 'r' in prefix  # noqa
-        is_binary = 'b' in prefix  # noqa
+        is_raw = 'r' in prefix
+        is_binary = 'b' in prefix
+        is_formatted = 'f' in prefix
         quote = cursor.last_symbol.groups[2]  # noqa
 
         while True:
@@ -446,11 +452,12 @@ class MultilineString(Token):
         return cursor.new_from_symbol(cls(
             first_line=first_line,
             next_line=next_line,
-            first_column=first_column,  # noqa
+            first_column=first_column,
             next_column=next_column,
             content='\n'.join(content_lines),
             is_raw=is_raw,
             is_binary=is_binary,
+            is_formatted=is_formatted,
         ))
 
 

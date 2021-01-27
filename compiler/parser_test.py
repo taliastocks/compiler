@@ -1139,10 +1139,10 @@ class TokenTestCase(unittest.TestCase):
             )
         )
 
-    def test_string_is_raw_is_binary(self):
+    def test_string_is_raw_is_binary_is_formatted(self):
         string = parser_module.String.parse(
             parser_module.Cursor(
-                lines=[' rb"foo" '],
+                lines=[' rbf"foo" '],
             )
         ).last_symbol
         self.assertEqual(
@@ -1150,19 +1150,20 @@ class TokenTestCase(unittest.TestCase):
                 first_line=0,  # noqa
                 next_line=0,  # noqa
                 first_column=1,  # noqa
-                next_column=8,  # noqa
-                groups=('rb"foo"', 'rb', '"', 'foo')  # noqa
+                next_column=9,  # noqa
+                groups=('rbf"foo"', 'rbf', '"', 'foo')  # noqa
             ),
             string
         )
         self.assertIs(True, string.is_raw)
         self.assertIs(True, string.is_binary)
+        self.assertIs(True, string.is_formatted)
         self.assertEqual('"', string.quote)
         self.assertEqual('foo', string.content)
 
         string = parser_module.String.parse(
             parser_module.Cursor(
-                lines=[' br"foo" '],
+                lines=[' fbr"foo" '],
             )
         ).last_symbol
         self.assertEqual(
@@ -1170,13 +1171,14 @@ class TokenTestCase(unittest.TestCase):
                 first_line=0,  # noqa
                 next_line=0,  # noqa
                 first_column=1,  # noqa
-                next_column=8,  # noqa
-                groups=('br"foo"', 'br', '"', 'foo')  # noqa
+                next_column=9,  # noqa
+                groups=('fbr"foo"', 'fbr', '"', 'foo')  # noqa
             ),
             string
         )
         self.assertIs(True, string.is_raw)
         self.assertIs(True, string.is_binary)
+        self.assertIs(True, string.is_formatted)
         self.assertEqual('"', string.quote)
         self.assertEqual('foo', string.content)
 
@@ -1197,6 +1199,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIs(False, string.is_raw)
         self.assertIs(False, string.is_binary)
+        self.assertIs(False, string.is_formatted)
         self.assertEqual('"', string.quote)
         self.assertEqual('foo', string.content)
 
@@ -1217,6 +1220,7 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIs(True, string.is_raw)
         self.assertIs(False, string.is_binary)
+        self.assertIs(False, string.is_formatted)
         self.assertEqual('"', string.quote)
         self.assertEqual('foo', string.content)
 
@@ -1237,6 +1241,28 @@ class TokenTestCase(unittest.TestCase):
         )
         self.assertIs(False, string.is_raw)
         self.assertIs(True, string.is_binary)
+        self.assertIs(False, string.is_formatted)
+        self.assertEqual('"', string.quote)
+        self.assertEqual('foo', string.content)
+
+        string = parser_module.String.parse(
+            parser_module.Cursor(
+                lines=[' f"foo" '],
+            )
+        ).last_symbol
+        self.assertEqual(
+            parser_module.String(
+                first_line=0,  # noqa
+                next_line=0,  # noqa
+                first_column=1,  # noqa
+                next_column=7,  # noqa
+                groups=('f"foo"', 'f', '"', 'foo')  # noqa
+            ),
+            string
+        )
+        self.assertIs(False, string.is_raw)
+        self.assertIs(False, string.is_binary)
+        self.assertIs(True, string.is_formatted)
         self.assertEqual('"', string.quote)
         self.assertEqual('foo', string.content)
 
@@ -1371,38 +1397,40 @@ class TokenTestCase(unittest.TestCase):
             )
         )
 
-    def test_multiline_string_is_raw_is_binary(self):
+    def test_multiline_string_is_raw_is_binary_is_formatted(self):
         self.assertEqual(
             parser_module.MultilineString.parse(
                 parser_module.Cursor([
-                    'rb"""text"""',
+                    'rbf"""text"""',
                 ])
             ).last_symbol,
             parser_module.MultilineString(
                 first_line=0,
                 next_line=0,
                 first_column=0,
-                next_column=12,
+                next_column=13,
                 content='text',
                 is_raw=True,
                 is_binary=True,
+                is_formatted=True,
             )
         )
 
         self.assertEqual(
             parser_module.MultilineString.parse(
                 parser_module.Cursor([
-                    'br"""text"""',
+                    'fbr"""text"""',
                 ])
             ).last_symbol,
             parser_module.MultilineString(
                 first_line=0,
                 next_line=0,
                 first_column=0,
-                next_column=12,
+                next_column=13,
                 content='text',
                 is_raw=True,
                 is_binary=True,
+                is_formatted=True,
             )
         )
 
@@ -1420,6 +1448,7 @@ class TokenTestCase(unittest.TestCase):
                 content='text',
                 is_raw=True,
                 is_binary=False,
+                is_formatted=False,
             )
         )
 
@@ -1437,6 +1466,25 @@ class TokenTestCase(unittest.TestCase):
                 content='text',
                 is_raw=False,
                 is_binary=True,
+                is_formatted=False,
+            )
+        )
+
+        self.assertEqual(
+            parser_module.MultilineString.parse(
+                parser_module.Cursor([
+                    'f"""text"""',
+                ])
+            ).last_symbol,
+            parser_module.MultilineString(
+                first_line=0,
+                next_line=0,
+                first_column=0,
+                next_column=11,
+                content='text',
+                is_raw=False,
+                is_binary=False,
+                is_formatted=True,
             )
         )
 
@@ -1454,6 +1502,7 @@ class TokenTestCase(unittest.TestCase):
                 content='text',
                 is_raw=False,
                 is_binary=False,
+                is_formatted=False,
             )
         )
 
