@@ -117,7 +117,7 @@ class String(Literal):
     """Represents a string.
     """
     is_binary: bool = attr.ib()
-    value: str = attr.ib()
+    value: typing.Union[str, bytes] = attr.ib()
 
     @classmethod
     def parse(cls, cursor):
