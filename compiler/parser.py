@@ -6,6 +6,7 @@ import typing
 import attr
 import regex
 
+from .language_models import string
 from .meta import generic
 
 
@@ -367,6 +368,135 @@ class Identifier(Regex[r'[\w--\d]\w*']):
     @property
     def identifier(self):
         return self.groups[0]
+
+
+@attr.s(frozen=True, slots=True)
+class String(Symbol):
+    value: typing.Union[str, bytes] = attr.ib()
+    is_formatted: bool = attr.ib(default=False)
+
+    @classmethod
+    def parse(cls, cursor):
+        cursor = cursor.parse_one_symbol([
+            MultilineString,
+            OneLineString,
+        ])
+
+        if isinstance(cursor.last_symbol, (OneLineString, MultilineString)):
+            return cursor.new_from_symbol(cls(
+                cursor=cursor,
+                value=cursor.last_symbol.value,
+                is_formatted=cursor.last_symbol.is_formatted,
+            ))
+
+        raise RuntimeError('this should be unreachable')
+
+
+@attr.s(frozen=True, slots=True)
+class OneLineString(Regex[r'(bf?r?|br?f?|fb?r?|fr?b|rb?f?|rf?b?|)(?P<quote>[\'"])((?:\\.|[^\\])*?)(?P=quote)']):
+    @property
+    def is_raw(self) -> bool:
+        return 'r' in self.groups[1]
+
+    @property
+    def is_binary(self) -> bool:
+        return 'b' in self.groups[1]
+
+    @property
+    def is_formatted(self) -> bool:
+        return 'f' in self.groups[1]
+
+    @property
+    def quote(self) -> str:
+        return self.groups[2]
+
+    @property
+    def value(self) -> typing.Union[str, bytes]:
+        value = self.groups[3]
+        if self.is_raw:
+            if self.is_binary:
+                return value.encode('utf8')
+            return value
+        if self.is_binary:
+            return string.unescape_bytes(value)
+        return string.unescape_text(value)
+
+
+@attr.s(frozen=True, slots=True)
+class MultilineString(Token):
+    value: typing.Union[str, bytes] = attr.ib()
+    is_formatted: bool = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        # pylint: disable=too-many-locals
+        cursor = cursor.parse_one_symbol([
+            Regex[r'(bf?r?|br?f?|fb?r?|fr?b|rb?f?|rf?b?|)("""|\'\'\')']
+        ])
+        initial_cursor = cursor
+        prefix = cursor.last_symbol.groups[1]  # noqa
+        is_raw = 'r' in prefix
+        is_binary = 'b' in prefix
+        is_formatted = 'f' in prefix
+        quote = cursor.last_symbol.groups[2]  # noqa
+
+        while True:
+            cursor = cursor.parse_one_symbol([
+                Characters[quote],  # end quote always wins
+                Regex[r'(?:\\.|[^\\\'"])+'],  # escaped characters and non-quote characters
+                Regex[r'\\$'],  # escaped newline
+                Regex[r'[\'"]'],  # one quote character (results in non-greedy behavior)
+            ])
+
+            if isinstance(cursor.last_symbol, Characters[quote]):
+                break
+
+        first_line = initial_cursor.line
+        next_line = cursor.line
+        first_column = initial_cursor.last_symbol.first_column  # noqa
+        next_column = cursor.column
+
+        content_lines = [
+            cursor.line_text(line)[
+                (first_column + len(prefix) + len(quote) if line == first_line else None):
+                (next_column - len(quote) if line == next_line else None)
+            ]
+            for line in range(first_line, next_line + 1)
+        ]
+
+        if len(content_lines) > 1 and content_lines[-1].strip(' '):
+            raise ParseError('non-space characters on last line of multiline string', cursor)
+
+        dedent_amount = len(content_lines[-1])
+
+        for i, line_text in enumerate(content_lines):
+            if i == 0:
+                continue
+            if line_text[:dedent_amount].strip():
+                raise ParseError('out-dented text on multiline string', cursor)
+            content_lines[i] = line_text[dedent_amount:]
+
+        if not content_lines[0]:
+            content_lines.pop(0)
+
+        value = '\n'.join(content_lines)
+        if is_raw:
+            if is_binary:
+                value = value.encode('utf8')
+        else:
+            if is_binary:
+                value = string.unescape_bytes(value)
+            else:
+                value = string.unescape_text(value)
+
+        return cursor.new_from_symbol(cls(
+            first_line=first_line,
+            next_line=next_line,
+            first_column=first_column,
+            next_column=next_column,
+            value=value,
+            is_formatted=is_formatted,
+        ))
 
 
 def _measure_block_depth(cursor):

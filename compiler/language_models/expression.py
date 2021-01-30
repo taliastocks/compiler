@@ -55,6 +55,16 @@ class Literal(Expression, metaclass=abc.ABCMeta):
 @attr.s(frozen=True, slots=True)
 class Number(Literal):
     """Represents a number. Can represent integers and floating point values without rounding.
+
+        Numbers may be one or more digits, optionally followed by one or both of the following:
+            - A "." followed by one or more digits.
+            - An "e" or "E", optionally followed by "+" or "-", followed by digits.
+
+        Digits may be separated by zero or more ticks (') to indicate digit grouping, e.g. 1'234,
+        but ticks may not precede the first digit, the first digit after the decimal place, or
+        the first digit of the magnitude.
+
+        Numbers are always interpreted in base ten.
     """
     digits_part: int = attr.ib(default=0)
     magnitude_part: int = attr.ib(default=0)
@@ -90,9 +100,56 @@ class Number(Literal):
             digits_part *= pow(10, len(fraction_part))
             digits_part += int(fraction_part)
 
+        # Normalize.
+        while digits_part % 10 == 0:
+            digits_part //= 10
+            magnitude_part += 1
+
         return cursor.new_from_symbol(cls(
             digits_part=digits_part,
             magnitude_part=magnitude_part,
+            cursor=cursor,
+        ))
+
+
+@attr.s(frozen=True, slots=True)
+class String(Literal):
+    """Represents a string, a sequence of one or more string parts.
+
+        All string parts must be the same type: binary or text.
+        Not all string parts have to have the same ``is_formatted`` attribute.
+    """
+    is_binary: bool = attr.ib()
+    values: typing.Sequence[parser_module.String] = attr.ib(converter=tuple)
+
+    @classmethod
+    def parse(cls, cursor):
+        values: list[parser_module.String] = []
+        is_binary: typing.Optional[bool] = None
+
+        while True:
+            cursor = cursor.parse_one_symbol([
+                parser_module.String,
+                parser_module.Always,
+            ])
+            if not isinstance(cursor.last_symbol, parser_module.String):
+                if values:
+                    break  # We're done parsing the string.
+                return None  # No match.
+
+            if is_binary is None:
+                is_binary = isinstance(cursor.last_symbol.value, bytes)
+            elif is_binary != isinstance(cursor.last_symbol.value, bytes):
+                raise parser_module.ParseError(
+                    'all string literals must be binary, or none must be binary',
+                    cursor=cursor,
+                )
+
+            values.append(cursor.last_symbol)
+
+        return cursor.new_from_symbol(cls(
+            values=values,
+            is_binary=is_binary,
             cursor=cursor,
         ))
 
@@ -1104,6 +1161,7 @@ class ExpressionParser(parser_module.Parser):
     """Parse an expression according to the rules of operator precedence.
     """
     operands: typing.Sequence[typing.Type[Expression]] = (
+        String,
         Number,
         Variable,
         Parenthesized,

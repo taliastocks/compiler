@@ -53,7 +53,7 @@ class ExpressionTestCase(unittest.TestCase):
 
 
 class NumberTestCase(unittest.TestCase):
-    def test_parse(self):
+    def test_parse_float(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
                 parser_module.Cursor(['12.34e-56'])
@@ -64,7 +64,7 @@ class NumberTestCase(unittest.TestCase):
             )
         )
 
-        # Integer.
+    def test_parse_integer(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
                 parser_module.Cursor(['1234'])
@@ -75,7 +75,7 @@ class NumberTestCase(unittest.TestCase):
             )
         )
 
-        # Float, no magnitude part.
+    def test_parse_float_no_magnitude(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
                 parser_module.Cursor(['12.34'])
@@ -86,7 +86,7 @@ class NumberTestCase(unittest.TestCase):
             )
         )
 
-        # Float, magnitude, no fraction part.
+    def test_parse_integer_magnitude(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
                 parser_module.Cursor(['12e34'])
@@ -115,7 +115,7 @@ class NumberTestCase(unittest.TestCase):
             )
         )
 
-        # Strip trailing zeros in fraction part.
+    def test_parse_strip_zeros_fraction_part(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
                 parser_module.Cursor(['12.100e34'])
@@ -126,7 +126,7 @@ class NumberTestCase(unittest.TestCase):
             )
         )
 
-        # Separators.
+    def test_parse_separators(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
                 parser_module.Cursor(["1'2'3'.1'0'0'e3'4'"])
@@ -136,6 +136,72 @@ class NumberTestCase(unittest.TestCase):
                 magnitude_part=33,
             )
         )
+
+    def test_parse_normalize_trailing_zeros(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['123000'])
+            ).last_symbol,
+            expression_module.Number(
+                digits_part=123,
+                magnitude_part=3,
+            )
+        )
+
+
+class StringTestCase(unittest.TestCase):
+    def test_string_text(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    '"foo"',
+                    'f"""bar"""',
+                ])
+            ).last_symbol,
+            expression_module.String(
+                is_binary=False,
+                values=[
+                    parser_module.String('foo'),
+                    parser_module.String('bar', is_formatted=True),
+                ],
+            )
+        )
+
+    def test_string_binary(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    'b"foo"',
+                    'bf"""bar"""',
+                ])
+            ).last_symbol,
+            expression_module.String(
+                is_binary=True,
+                values=[
+                    parser_module.String(b'foo'),
+                    parser_module.String(b'bar', is_formatted=True),
+                ],
+            )
+        )
+
+    def test_string_mixed_string_binary(self):
+        with self.assertRaisesRegex(parser_module.ParseError,
+                                    'all string literals must be binary, or none must be binary'):
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    '"foo"',
+                    'bf"""bar"""',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError,
+                                    'all string literals must be binary, or none must be binary'):
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    'b"foo"',
+                    'f"""bar"""',
+                ])
+            )
 
 
 class LValueTestCase(unittest.TestCase):
