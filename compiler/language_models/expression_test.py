@@ -204,6 +204,43 @@ class StringTestCase(unittest.TestCase):
             )
 
 
+class BooleanTestCase(unittest.TestCase):
+    def test_boolean(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    ' True ',
+                ])
+            ).last_symbol,
+            expression_module.Boolean(
+                value=True,
+            )
+        )
+
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    ' False ',
+                ])
+            ).last_symbol,
+            expression_module.Boolean(
+                value=False,
+            )
+        )
+
+
+class NoneValueTestCase(unittest.TestCase):
+    def test_boolean(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    ' None ',
+                ])
+            ).last_symbol,
+            expression_module.NoneValue()
+        )
+
+
 class LValueTestCase(unittest.TestCase):
     def test_from_expression(self):
         # Already an LValue.

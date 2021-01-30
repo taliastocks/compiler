@@ -154,6 +154,53 @@ class String(Literal):
         ))
 
 
+@attr.s(frozen=True, slots=True)
+class Boolean(Literal):
+    """Represents a True or False literal value.
+    """
+    value: bool = attr.ib()
+
+    @classmethod
+    def parse(cls, cursor):
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['True'],
+            parser_module.Characters['False'],
+        ])
+
+        if isinstance(cursor.last_symbol, parser_module.Characters['True']):
+            return cursor.new_from_symbol(cls(
+                cursor=cursor,
+                value=True,
+            ))
+
+        if isinstance(cursor.last_symbol, parser_module.Characters['False']):
+            return cursor.new_from_symbol(cls(
+                cursor=cursor,
+                value=False,
+            ))
+
+        raise RuntimeError('this should be unreachable')
+
+
+@attr.s(frozen=True, slots=True)
+class NoneValue(Literal):
+    """Represents a None literal value.
+    """
+
+    @classmethod
+    def parse(cls, cursor):
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['None'],
+        ])
+
+        if isinstance(cursor.last_symbol, parser_module.Characters['None']):
+            return cursor.new_from_symbol(cls(
+                cursor=cursor,
+            ))
+
+        raise RuntimeError('this should be unreachable')
+
+
 @attr.s
 class LValue(Expression, metaclass=abc.ABCMeta):
     """An LValue is an expression which can be assigned to, i.e. it can appear
@@ -1161,6 +1208,8 @@ class ExpressionParser(parser_module.Parser):
     """Parse an expression according to the rules of operator precedence.
     """
     operands: typing.Sequence[typing.Type[Expression]] = (
+        NoneValue,
+        Boolean,
         String,
         Number,
         Variable,
