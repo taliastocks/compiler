@@ -127,7 +127,7 @@ class Block(Statement):
 
 @attr.s(frozen=True, slots=True)
 class Declaration(Statement):
-    """An inline declaration, e.g. of a function or class.
+    """An inline declaration, e.g. of a function, class, or variable.
     """
     declarable: declarable.Declarable = attr.ib()
 
@@ -145,7 +145,54 @@ class Assignment(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+            parser_module.EndLine
+        ])
+
+        if not cursor or not isinstance(cursor.last_symbol, expression_module.Expression):
+            return None  # No match.
+
+        receivers: list[expression_module.LValue] = []
+
+        try:
+            receivers.append(expression_module.LValue.from_expression(cursor.last_symbol))
+        except parser_module.ParseError:
+            return None  # First symbol was not an LValue.
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.EndLine,
+            parser_module.Characters['=']
+        ])
+
+        if isinstance(cursor.last_symbol, parser_module.EndLine):
+            return None  # End of line reached before assignment. No match.
+
+        while True:
+            cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+                parser_module.EndLine
+            ])
+
+            if not cursor or not isinstance(cursor.last_symbol, expression_module.Expression):
+                raise parser_module.ParseError('expected Expression', cursor)
+
+            expression = cursor.last_symbol
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.EndLine,
+                parser_module.Characters['='],
+            ])
+
+            if isinstance(cursor.last_symbol, parser_module.EndLine):
+                break  # End of statement.
+
+            # Otherwise, we expect another expression, and the last expression was a receiver.
+            receivers.append(expression_module.LValue.from_expression(expression))
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            receivers=receivers,
+            expression=expression,
+        ))
 
     @property
     def expressions(self):

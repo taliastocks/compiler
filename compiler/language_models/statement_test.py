@@ -182,7 +182,56 @@ class BlockTestCase(unittest.TestCase):
         )
 
 
+class DeclarationTestCase(unittest.TestCase):
+    pass
+
+
 class AssignmentTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    '(a) = b = c',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Assignment(
+                receivers=[
+                    expression.Unpack([
+                        expression.Variable('a')
+                    ]),
+                    expression.Variable('b'),
+                ],
+                expression=expression.Variable('c'),
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    '(a) = b =',
+                    '    c',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Assignment(
+                receivers=[
+                    expression.Unpack([
+                        expression.Variable('a')
+                    ]),
+                    expression.Variable('b'),
+                ],
+                expression=expression.Variable('c'),
+            )
+        )
+
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected Expression'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'a ='
+                ])
+            )
+
     def test_receivers(self):
         # ``a = b = expr``
         assignment = statement.Assignment(
