@@ -401,6 +401,7 @@ class MultilineString(Token):
 
     @classmethod
     def parse(cls, cursor):
+        # pylint: disable=too-many-locals
         cursor = cursor.parse_one_symbol([
             Regex[r'(bf?r?|br?f?|fb?r?|fr?b|rb?f?|rf?b?|)("""|\'\'\')']
         ])
