@@ -371,7 +371,29 @@ class Identifier(Regex[r'[\w--\d]\w*']):
 
 
 @attr.s(frozen=True, slots=True)
-class String(Regex[r'(bf?r?|br?f?|fb?r?|fr?b|rb?f?|rf?b?|)(?P<quote>[\'"])((?:\\.|[^\\])*?)(?P=quote)']):
+class String(Symbol):
+    value: typing.Union[str, bytes] = attr.ib()
+    is_formatted: bool = attr.ib(default=False)
+
+    @classmethod
+    def parse(cls, cursor):
+        cursor = cursor.parse_one_symbol([
+            MultilineString,
+            OneLineString,
+        ])
+
+        if isinstance(cursor.last_symbol, (OneLineString, MultilineString)):
+            return cursor.new_from_symbol(cls(
+                cursor=cursor,
+                value=cursor.last_symbol.value,
+                is_formatted=cursor.last_symbol.is_formatted,
+            ))
+
+        raise RuntimeError('this should be unreachable')
+
+
+@attr.s(frozen=True, slots=True)
+class OneLineString(Regex[r'(bf?r?|br?f?|fb?r?|fr?b|rb?f?|rf?b?|)(?P<quote>[\'"])((?:\\.|[^\\])*?)(?P=quote)']):
     @property
     def is_raw(self) -> bool:
         return 'r' in self.groups[1]

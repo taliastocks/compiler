@@ -150,7 +150,58 @@ class NumberTestCase(unittest.TestCase):
 
 
 class StringTestCase(unittest.TestCase):
-    pass  # TODO: test string literal parsing
+    def test_string_text(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    '"foo"',
+                    'f"""bar"""',
+                ])
+            ).last_symbol,
+            expression_module.String(
+                is_binary=False,
+                values=[
+                    parser_module.String('foo'),
+                    parser_module.String('bar', is_formatted=True),
+                ],
+            )
+        )
+
+    def test_string_binary(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    'b"foo"',
+                    'bf"""bar"""',
+                ])
+            ).last_symbol,
+            expression_module.String(
+                is_binary=True,
+                values=[
+                    parser_module.String(b'foo'),
+                    parser_module.String(b'bar', is_formatted=True),
+                ],
+            )
+        )
+
+    def test_string_mixed_string_binary(self):
+        with self.assertRaisesRegex(parser_module.ParseError,
+                                    'all string literals must be binary, or none must be binary'):
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    '"foo"',
+                    'bf"""bar"""',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError,
+                                    'all string literals must be binary, or none must be binary'):
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor([
+                    'b"foo"',
+                    'f"""bar"""',
+                ])
+            )
 
 
 class LValueTestCase(unittest.TestCase):

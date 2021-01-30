@@ -114,42 +114,41 @@ class Number(Literal):
 
 @attr.s(frozen=True, slots=True)
 class String(Literal):
-    """Represents a string.
+    """Represents a string, a sequence of one or more string parts.
+
+        All string parts must be the same type: binary or text.
+        Not all string parts have to have the same ``is_formatted`` attribute.
     """
     is_binary: bool = attr.ib()
-    value: typing.Union[str, bytes] = attr.ib()
+    values: typing.Sequence[parser_module.String] = attr.ib(converter=tuple)
 
     @classmethod
     def parse(cls, cursor):
-        content: list[str] = []
+        values: list[parser_module.String] = []
         is_binary: typing.Optional[bool] = None
 
         while True:
             cursor = cursor.parse_one_symbol([
-                parser_module.MultilineString,
                 parser_module.String,
                 parser_module.Always,
             ])
-            if isinstance(cursor.last_symbol, parser_module.Always):
-                if content:
+            if not isinstance(cursor.last_symbol, parser_module.String):
+                if values:
                     break  # We're done parsing the string.
                 return None  # No match.
 
             if is_binary is None:
-                is_binary = cursor.last_symbol.is_binary  # noqa
-            elif is_binary != cursor.last_symbol.is_binary:  # noqa
+                is_binary = isinstance(cursor.last_symbol.value, bytes)
+            elif is_binary != isinstance(cursor.last_symbol.value, bytes):
                 raise parser_module.ParseError(
                     'all string literals must be binary, or none must be binary',
                     cursor=cursor,
                 )
 
-            # TODO: decode escape sequences
-            string_part = cursor.last_symbol.content  # noqa
-
-            content.append(string_part)
+            values.append(cursor.last_symbol)
 
         return cursor.new_from_symbol(cls(
-            value=''.join(content),
+            values=values,
             is_binary=is_binary,
             cursor=cursor,
         ))
@@ -1162,6 +1161,7 @@ class ExpressionParser(parser_module.Parser):
     """Parse an expression according to the rules of operator precedence.
     """
     operands: typing.Sequence[typing.Type[Expression]] = (
+        String,
         Number,
         Variable,
         Parenthesized,

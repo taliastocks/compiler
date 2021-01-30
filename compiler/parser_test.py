@@ -1147,19 +1147,16 @@ class TokenTestCase(unittest.TestCase):
         ).last_symbol
         self.assertEqual(
             parser_module.String(
-                first_line=0,  # noqa
-                next_line=0,  # noqa
-                first_column=1,  # noqa
-                next_column=11,  # noqa
-                groups=(r'rbf"foo\\"', 'rbf', '"', r'foo\\')  # noqa
+                value=rb'foo\\',
+                is_formatted=True,
             ),
             string
         )
-        self.assertIs(True, string.is_raw)
-        self.assertIs(True, string.is_binary)
-        self.assertIs(True, string.is_formatted)
-        self.assertEqual('"', string.quote)
-        self.assertEqual(rb'foo\\', string.value)
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 11)
 
         string = parser_module.String.parse(
             parser_module.Cursor(
@@ -1168,19 +1165,16 @@ class TokenTestCase(unittest.TestCase):
         ).last_symbol
         self.assertEqual(
             parser_module.String(
-                first_line=0,  # noqa
-                next_line=0,  # noqa
-                first_column=1,  # noqa
-                next_column=11,  # noqa
-                groups=(r'fbr"foo\\"', 'fbr', '"', r'foo\\')  # noqa
+                value=rb'foo\\',
+                is_formatted=True,
             ),
             string
         )
-        self.assertIs(True, string.is_raw)
-        self.assertIs(True, string.is_binary)
-        self.assertIs(True, string.is_formatted)
-        self.assertEqual('"', string.quote)
-        self.assertEqual(rb'foo\\', string.value)
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 11)
 
         string = parser_module.String.parse(
             parser_module.Cursor(
@@ -1189,19 +1183,16 @@ class TokenTestCase(unittest.TestCase):
         ).last_symbol
         self.assertEqual(
             parser_module.String(
-                first_line=0,  # noqa
-                next_line=0,  # noqa
-                first_column=1,  # noqa
-                next_column=8,  # noqa
-                groups=(r'"foo\\"', '', '"', r'foo\\')  # noqa
+                value='foo\\',
+                is_formatted=False,
             ),
             string
         )
-        self.assertIs(False, string.is_raw)
-        self.assertIs(False, string.is_binary)
-        self.assertIs(False, string.is_formatted)
-        self.assertEqual('"', string.quote)
-        self.assertEqual('foo\\', string.value)
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 8)
 
         string = parser_module.String.parse(
             parser_module.Cursor(
@@ -1210,19 +1201,16 @@ class TokenTestCase(unittest.TestCase):
         ).last_symbol
         self.assertEqual(
             parser_module.String(
-                first_line=0,  # noqa
-                next_line=0,  # noqa
-                first_column=1,  # noqa
-                next_column=9,  # noqa
-                groups=(r'r"foo\\"', 'r', '"', r'foo\\')  # noqa
+                value=r'foo\\',
+                is_formatted=False,
             ),
             string
         )
-        self.assertIs(True, string.is_raw)
-        self.assertIs(False, string.is_binary)
-        self.assertIs(False, string.is_formatted)
-        self.assertEqual('"', string.quote)
-        self.assertEqual(r'foo\\', string.value)
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 9)
 
         string = parser_module.String.parse(
             parser_module.Cursor(
@@ -1231,19 +1219,16 @@ class TokenTestCase(unittest.TestCase):
         ).last_symbol
         self.assertEqual(
             parser_module.String(
-                first_line=0,  # noqa
-                next_line=0,  # noqa
-                first_column=1,  # noqa
-                next_column=9,  # noqa
-                groups=(r'b"foo\\"', 'b', '"', r'foo\\')  # noqa
+                value=b'foo\\',
+                is_formatted=False,
             ),
             string
         )
-        self.assertIs(False, string.is_raw)
-        self.assertIs(True, string.is_binary)
-        self.assertIs(False, string.is_formatted)
-        self.assertEqual('"', string.quote)
-        self.assertEqual(b'foo\\', string.value)
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 9)
 
         string = parser_module.String.parse(
             parser_module.Cursor(
@@ -1252,19 +1237,16 @@ class TokenTestCase(unittest.TestCase):
         ).last_symbol
         self.assertEqual(
             parser_module.String(
-                first_line=0,  # noqa
-                next_line=0,  # noqa
-                first_column=1,  # noqa
-                next_column=9,  # noqa
-                groups=(r'f"foo\\"', 'f', '"', r'foo\\')  # noqa
+                value='foo\\',
+                is_formatted=True,
             ),
             string
         )
-        self.assertIs(False, string.is_raw)
-        self.assertIs(False, string.is_binary)
-        self.assertIs(True, string.is_formatted)
-        self.assertEqual('"', string.quote)
-        self.assertEqual('foo\\', string.value)
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 9)
 
     def test_string_quote(self):
         string = parser_module.String.parse(
@@ -1274,16 +1256,15 @@ class TokenTestCase(unittest.TestCase):
         ).last_symbol
         self.assertEqual(
             parser_module.String(
-                first_line=0,  # noqa
-                next_line=0,  # noqa
-                first_column=1,  # noqa
-                next_column=6,  # noqa
-                groups=("'foo'", '', "'", 'foo')  # noqa
+                value='foo',
             ),
             string
         )
-        self.assertEqual("'", string.quote)
-        self.assertEqual('foo', string.value)
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 6)
 
         string = parser_module.String.parse(
             parser_module.Cursor(
@@ -1292,16 +1273,15 @@ class TokenTestCase(unittest.TestCase):
         ).last_symbol
         self.assertEqual(
             parser_module.String(
-                first_line=0,  # noqa
-                next_line=0,  # noqa
-                first_column=1,  # noqa
-                next_column=6,  # noqa
-                groups=('"foo"', '', '"', 'foo')  # noqa
+                value='foo',
             ),
             string
         )
-        self.assertEqual('"', string.quote)
-        self.assertEqual('foo', string.value)
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 6)
 
     def test_string_escape(self):
         string = parser_module.String.parse(
@@ -1311,189 +1291,225 @@ class TokenTestCase(unittest.TestCase):
         ).last_symbol
         self.assertEqual(
             parser_module.String(
-                first_line=0,  # noqa
-                next_line=0,  # noqa
-                first_column=1,  # noqa
-                next_column=8,  # noqa
-                groups=('"foo\\""', '', '"', 'foo\\"')  # noqa
+                value='foo"',
             ),
             string
         )
-        self.assertEqual('"', string.quote)
-        self.assertEqual('foo"', string.value)
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 8)
+
+        string = parser_module.String.parse(
+            parser_module.Cursor(
+                lines=[' b"foo\\"" '],
+            )
+        ).last_symbol
+        self.assertEqual(
+            parser_module.String(
+                value=b'foo"',
+            ),
+            string
+        )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 9)
 
     def test_multiline_string_lines(self):
+        string = parser_module.String.parse(
+            parser_module.Cursor([
+                r' """First line\\',
+                '    second line',
+                '    """',
+            ])
+        ).last_symbol
         self.assertEqual(
-            parser_module.MultilineString.parse(
-                parser_module.Cursor([
-                    r' """First line\\',
-                    '    second line',
-                    '    """',
-                ])
-            ).last_symbol,
-            parser_module.MultilineString(
-                first_line=0,
-                next_line=2,
-                first_column=1,
-                next_column=7,
+            string,
+            parser_module.String(
                 value='First line\\\nsecond line\n',
                 is_formatted=False,
             )
         )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 2)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 7)
 
+        string = parser_module.String.parse(
+            parser_module.Cursor([
+                ' """',
+                '    First line',
+                '      second line\\',
+                '     second line continued',
+                '    """',
+            ])
+        ).last_symbol
         self.assertEqual(
-            parser_module.MultilineString.parse(
-                parser_module.Cursor([
-                    ' """',
-                    '    First line',
-                    '      second line\\',
-                    '     second line continued',
-                    '    """',
-                ])
-            ).last_symbol,
-            parser_module.MultilineString(
-                first_line=0,
-                next_line=4,
-                first_column=1,
-                next_column=7,
+            string,
+            parser_module.String(
                 value='First line\n  second line second line continued\n',
                 is_formatted=False,
             )
         )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 4)
+        self.assertEqual(string.cursor.last_symbol.first_column, 1)
+        self.assertEqual(string.cursor.last_symbol.next_column, 7)
 
+        string = parser_module.String.parse(
+            parser_module.Cursor([
+                r'"""First line\n',
+                '    """',
+            ])
+        ).last_symbol
         self.assertEqual(
-            parser_module.MultilineString.parse(
-                parser_module.Cursor([
-                    r'"""First line\n',
-                    '    """',
-                ])
-            ).last_symbol,
-            parser_module.MultilineString(
-                first_line=0,
-                next_line=1,
-                first_column=0,
-                next_column=7,
+            string,
+            parser_module.String(
                 value='First line\n\n',
                 is_formatted=False,
             )
         )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 1)
+        self.assertEqual(string.cursor.last_symbol.first_column, 0)
+        self.assertEqual(string.cursor.last_symbol.next_column, 7)
 
+        string = parser_module.String.parse(
+            parser_module.Cursor([
+                '"""First line"""',
+            ])
+        ).last_symbol
         self.assertEqual(
-            parser_module.MultilineString.parse(
-                parser_module.Cursor([
-                    '"""First line"""',
-                ])
-            ).last_symbol,
-            parser_module.MultilineString(
-                first_line=0,
-                next_line=0,
-                first_column=0,
-                next_column=16,
+            string,
+            parser_module.String(
                 value='First line',
                 is_formatted=False,
             )
         )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 0)
+        self.assertEqual(string.cursor.last_symbol.next_column, 16)
 
     def test_multiline_string_is_raw_is_binary_is_formatted(self):
+        string = parser_module.String.parse(
+            parser_module.Cursor([
+                r'rbf"""text\\"""',
+            ])
+        ).last_symbol
         self.assertEqual(
-            parser_module.MultilineString.parse(
-                parser_module.Cursor([
-                    r'rbf"""text\\"""',
-                ])
-            ).last_symbol,
-            parser_module.MultilineString(
-                first_line=0,
-                next_line=0,
-                first_column=0,
-                next_column=15,
+            string,
+            parser_module.String(
                 value=rb'text\\',
                 is_formatted=True,
             )
         )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 0)
+        self.assertEqual(string.cursor.last_symbol.next_column, 15)
 
+        string = parser_module.String.parse(
+            parser_module.Cursor([
+                r'fbr"""text\\"""',
+            ])
+        ).last_symbol
         self.assertEqual(
-            parser_module.MultilineString.parse(
-                parser_module.Cursor([
-                    r'fbr"""text\\"""',
-                ])
-            ).last_symbol,
-            parser_module.MultilineString(
-                first_line=0,
-                next_line=0,
-                first_column=0,
-                next_column=15,
+            string,
+            parser_module.String(
                 value=rb'text\\',
                 is_formatted=True,
             )
         )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 0)
+        self.assertEqual(string.cursor.last_symbol.next_column, 15)
 
+        string = parser_module.String.parse(
+            parser_module.Cursor([
+                r'r"""text\\"""',
+            ])
+        ).last_symbol
         self.assertEqual(
-            parser_module.MultilineString.parse(
-                parser_module.Cursor([
-                    r'r"""text\\"""',
-                ])
-            ).last_symbol,
-            parser_module.MultilineString(
-                first_line=0,
-                next_line=0,
-                first_column=0,
-                next_column=13,
+            string,
+            parser_module.String(
                 value=r'text\\',
                 is_formatted=False,
             )
         )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 0)
+        self.assertEqual(string.cursor.last_symbol.next_column, 13)
 
+        string = parser_module.String.parse(
+            parser_module.Cursor([
+                r'b"""text\\"""',
+            ])
+        ).last_symbol
         self.assertEqual(
-            parser_module.MultilineString.parse(
-                parser_module.Cursor([
-                    r'b"""text\\"""',
-                ])
-            ).last_symbol,
-            parser_module.MultilineString(
-                first_line=0,
-                next_line=0,
-                first_column=0,
-                next_column=13,
+            string,
+            parser_module.String(
                 value=b'text\\',
                 is_formatted=False,
             )
         )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 0)
+        self.assertEqual(string.cursor.last_symbol.next_column, 13)
 
+        string = parser_module.String.parse(
+            parser_module.Cursor([
+                r'f"""text\\"""',
+            ])
+        ).last_symbol
         self.assertEqual(
-            parser_module.MultilineString.parse(
-                parser_module.Cursor([
-                    r'f"""text\\"""',
-                ])
-            ).last_symbol,
-            parser_module.MultilineString(
-                first_line=0,
-                next_line=0,
-                first_column=0,
-                next_column=13,
+            string,
+            parser_module.String(
                 value='text\\',
                 is_formatted=True,
             )
         )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 0)
+        self.assertEqual(string.cursor.last_symbol.next_column, 13)
 
+        string = parser_module.String.parse(
+            parser_module.Cursor([
+                r'"""text\\"""',
+            ])
+        ).last_symbol
         self.assertEqual(
-            parser_module.MultilineString.parse(
-                parser_module.Cursor([
-                    r'"""text\\"""',
-                ])
-            ).last_symbol,
-            parser_module.MultilineString(
-                first_line=0,
-                next_line=0,
-                first_column=0,
-                next_column=12,
+            string,
+            parser_module.String(
                 value='text\\',
                 is_formatted=False,
             )
         )
+        assert isinstance(string.cursor.last_symbol, parser_module.Token)
+        self.assertEqual(string.cursor.last_symbol.first_line, 0)
+        self.assertEqual(string.cursor.last_symbol.next_line, 0)
+        self.assertEqual(string.cursor.last_symbol.first_column, 0)
+        self.assertEqual(string.cursor.last_symbol.next_column, 12)
 
     def test_multiline_string_nonspace_characters_last_line(self):
         with self.assertRaisesRegex(parser_module.ParseError, 'non-space characters on last line of multiline string'):
-            parser_module.MultilineString.parse(
+            parser_module.String.parse(
                 parser_module.Cursor([
                     '"""',
                     'line 2"""',
@@ -1502,7 +1518,7 @@ class TokenTestCase(unittest.TestCase):
 
     def test_multiline_string_outdented_text(self):
         with self.assertRaisesRegex(parser_module.ParseError, 'out-dented text on multiline string'):
-            parser_module.MultilineString.parse(
+            parser_module.String.parse(
                 parser_module.Cursor([
                     '"""',
                     'line 2',
