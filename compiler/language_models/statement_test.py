@@ -1,6 +1,7 @@
 import unittest
 
 from . import statement, expression
+from .. import parser as parser_module
 
 # pylint: disable=fixme
 
@@ -137,6 +138,34 @@ class StatementTestCase(unittest.TestCase):
 
 
 class BlockTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Block.parse(
+                parser_module.Cursor([
+                    '    foo',
+                    '    bar',
+                ])
+            ).last_symbol,
+            statement.Block([
+                statement.Expression(expression.Variable('foo')),
+                statement.Expression(expression.Variable('bar')),
+            ])
+        )
+
+        self.assertEqual(
+            statement.Block.parse(
+                parser_module.Cursor([
+                    '    foo',
+                    '    bar',
+                    'baz',
+                ])
+            ).last_symbol,
+            statement.Block([
+                statement.Expression(expression.Variable('foo')),
+                statement.Expression(expression.Variable('bar')),
+            ])
+        )
+
     def test_statements(self):
         inner_inner_block = statement.Block([])
         inner_block_1 = statement.Block([inner_inner_block])
@@ -193,6 +222,29 @@ class AssignmentTestCase(unittest.TestCase):
 
 
 class ExpressionTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    '1 + 2',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Expression(
+                expression.Add(
+                    expression.Number(1),
+                    expression.Number(2),
+                )
+            )
+        )
+
+        with self.assertRaises(parser_module.ParseError):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    '1 + 2 3',
+                ])
+            )
+
     def test_expressions(self):
         expr = statement.Expression(
             expression=expression.Variable('foo')
