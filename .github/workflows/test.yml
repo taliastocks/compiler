@@ -103,6 +103,7 @@ jobs:
             set -v
             git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
             env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
+            python --version
 
             python -m venv $VIRTUAL_ENV
             source $VIRTUAL_ENV/bin/activate
