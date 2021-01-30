@@ -6,6 +6,7 @@ import typing
 import attr
 import regex
 
+from .language_models import string
 from .meta import generic
 
 
@@ -388,15 +389,20 @@ class String(Regex[r'(bf?r?|br?f?|fb?r?|fr?b|rb?f?|rf?b?|)(?P<quote>[\'"])((?:\\
         return self.groups[2]
 
     @property
-    def content(self) -> str:
-        return self.groups[3]
+    def value(self) -> typing.Union[str, bytes]:
+        value = self.groups[3]
+        if self.is_raw:
+            if self.is_binary:
+                return value.encode('utf8')
+            return value
+        if self.is_binary:
+            return string.unescape_bytes(value)
+        return string.unescape_text(value)
 
 
 @attr.s(frozen=True, slots=True)
 class MultilineString(Token):
-    content: str = attr.ib()
-    is_raw: bool = attr.ib()
-    is_binary: bool = attr.ib()
+    value: typing.Union[str, bytes] = attr.ib()
     is_formatted: bool = attr.ib()
 
     @classmethod
@@ -415,7 +421,8 @@ class MultilineString(Token):
         while True:
             cursor = cursor.parse_one_symbol([
                 Characters[quote],  # end quote always wins
-                Regex[r'(?:\\.|[^\\\'"])*'],  # escaped characters and non-quote characters
+                Regex[r'(?:\\.|[^\\\'"])+'],  # escaped characters and non-quote characters
+                Regex[r'\\$'],  # escaped newline
                 Regex[r'[\'"]'],  # one quote character (results in non-greedy behavior)
             ])
 
@@ -450,14 +457,22 @@ class MultilineString(Token):
         if not content_lines[0]:
             content_lines.pop(0)
 
+        value = '\n'.join(content_lines)
+        if is_raw:
+            if is_binary:
+                value = value.encode('utf8')
+        else:
+            if is_binary:
+                value = string.unescape_bytes(value)
+            else:
+                value = string.unescape_text(value)
+
         return cursor.new_from_symbol(cls(
             first_line=first_line,
             next_line=next_line,
             first_column=first_column,
             next_column=next_column,
-            content='\n'.join(content_lines),
-            is_raw=is_raw,
-            is_binary=is_binary,
+            value=value,
             is_formatted=is_formatted,
         ))
 
