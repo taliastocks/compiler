@@ -76,6 +76,24 @@ class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
 
         return False
 
+    @classmethod
+    def parse(cls, cursor):
+        return cursor.parse_one_symbol([
+            Declaration,
+            Assignment,
+            Expression,
+            If,
+            While,
+            For,
+            Break,
+            Continue,
+            With,
+            Try,
+            Raise,
+            Return,
+            Nonlocal,
+        ])
+
 
 @attr.s(frozen=True, slots=True)
 class Block(Statement):
@@ -85,7 +103,26 @@ class Block(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            parser_module.BeginBlock,
+        ])
+
+        statements: list[Statement] = []
+        while True:
+            cursor = cursor.parse_one_symbol([
+                parser_module.EndBlock,
+                Statement,
+            ])
+
+            if isinstance(cursor.last_symbol, Statement):
+                statements.append(cursor.last_symbol)
+            else:  # EndBlock
+                break
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            statements=statements,
+        ))
 
 
 @attr.s(frozen=True, slots=True)
@@ -128,7 +165,23 @@ class Expression(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+            parser_module.EndLine,
+        ])
+
+        if not cursor or not isinstance(cursor.last_symbol, expression_module.Expression):
+            return None  # No match.
+
+        expression = cursor.last_symbol
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.EndLine,
+        ], fail=True)
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            expression=expression,
+        ))
 
     @property
     def expressions(self):

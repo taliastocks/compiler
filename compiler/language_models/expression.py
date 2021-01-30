@@ -1236,7 +1236,7 @@ class ExpressionParser(parser_module.Parser):
 
     @classmethod
     def parse(cls, cursor,  # pylint: disable=arguments-differ
-              stop_symbols: typing.Sequence[parser_module.Symbol] = (),
+              stop_symbols: typing.Sequence[typing.Type[parser_module.Symbol]] = (),
               fail: bool = False):
         """Parse an expression according to the rules of operator precedence.
 
