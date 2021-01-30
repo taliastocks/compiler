@@ -99,6 +99,7 @@ jobs:
           if [ ! -d "$VIRTUAL_ENV/bin/activate" ]; then  # Skip if cache restored, even an order cache.
             set -v
             export PYTHON=python${{ matrix.python-version }}
+            yes | sudo add-apt-repository ppa:deadsnakes/ppa
             sudo apt-get install $PYTHON
 
             $PYTHON -m venv $VIRTUAL_ENV
