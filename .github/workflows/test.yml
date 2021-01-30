@@ -99,8 +99,6 @@ jobs:
             set -v
             git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
             env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
-            which python
-            python --version
           fi
 
       - name: Set up virtualenv
@@ -125,4 +123,6 @@ jobs:
         run: |
           # Test with pytest.
           source $VIRTUAL_ENV/bin/activate
+          which python
+          python --version
           python -m pytest --pylint --flake8 -o cache_dir=/home/runner/pytest_cache
