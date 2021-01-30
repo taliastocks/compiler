@@ -89,26 +89,21 @@ jobs:
             ${{ hashFiles('Pipfile.lock') }}-\
             ${{ hashFiles('.github/workflows/test.yml') }}-"
 
-      - name: Install Python ${{ matrix.python-version }}
+      - name: Set up virtualenv ${{ matrix.python-version }}
+        # Only set up the virtualenv if one wasn't loaded from the cache. Since hashFiles('Pipfile.lock')
+        # is part of the cache key, any change to dependencies will force a cache miss and therefore cause
+        # this section to run.
+        #
         # Use actions/setup-python@v2 to install Python. We install and invoke the action manually
         # (rather than with "use:") to avoid downloading it at all if we won't need it.
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          # Install Python (skip if cache was restored).
-          if [ ! -d "$VIRTUAL_ENV" ]; then  # Skip if cache restored, even an older cache.
+          # Set up virtualenv (skip if cache was restored).
+          if [ ! -d "$VIRTUAL_ENV/bin/activate" ]; then  # Skip if cache restored, even an order cache.
             set -v
             git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
             env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
-          fi
 
-      - name: Set up virtualenv
-        # Only set up the virtualenv if one wasn't loaded from the cache. Since hashFiles('Pipfile.lock')
-        # is part of the cache key, any change to dependencies will force a cache miss and therefore cause
-        # this section to run.
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          # Set up virtualenv (skip if cache was restored).
-          if [ ! -d "$VIRTUAL_ENV" ]; then  # Skip if cache restored, even an order cache.
             python -m venv $VIRTUAL_ENV
             source $VIRTUAL_ENV/bin/activate
             python -m pip install pipenv
