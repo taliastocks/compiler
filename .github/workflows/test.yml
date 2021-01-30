@@ -89,21 +89,34 @@ jobs:
             ${{ hashFiles('Pipfile.lock') }}-\
             ${{ hashFiles('.github/workflows/test.yml') }}-"
 
-      - name: Set up virtualenv ${{ matrix.python-version }}
+      - name: Install Python ${{ matrix.python-version }}
+        # Use actions/setup-python@v2 to install Python. We install and invoke the action manually
+        # (rather than with "use:") to avoid downloading it at all if we won't need it.
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          # Install Python (skip if cache was restored).
+          if [ ! -d "$VIRTUAL_ENV" ]; then  # Skip if cache restored, even an older cache.
+            set -v
+            git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
+            env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
+            which python
+            python --version
+          fi
+
+      - name: Set up virtualenv
         # Only set up the virtualenv if one wasn't loaded from the cache. Since hashFiles('Pipfile.lock')
         # is part of the cache key, any change to dependencies will force a cache miss and therefore cause
         # this section to run.
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           # Set up virtualenv (skip if cache was restored).
-          if [ ! -d "$VIRTUAL_ENV/bin/activate" ]; then  # Skip if cache restored, even an order cache.
-            set -v
-            export PYTHON=python${{ matrix.python-version }}
-            yes | sudo add-apt-repository ppa:deadsnakes/ppa
-            sudo apt-get install $PYTHON
-
-            $PYTHON -m venv $VIRTUAL_ENV
+          if [ ! -d "$VIRTUAL_ENV" ]; then  # Skip if cache restored, even an order cache.
+            which python
+            python --version
+            python -m venv $VIRTUAL_ENV
             source $VIRTUAL_ENV/bin/activate
+            which python
+            python --version
             python -m pip install pipenv
             python -m pipenv install --dev
           fi
