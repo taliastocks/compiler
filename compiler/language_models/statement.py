@@ -252,10 +252,7 @@ class If(Statement):
 
         cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
             parser_module.Characters[':']
-        ])
-
-        if cursor is None or not isinstance(cursor.last_symbol, expression_module.Expression):
-            raise parser_module.ParseError('expected Expression', cursor)
+        ], fail=True)
 
         condition = cursor.last_symbol
 
@@ -342,10 +339,7 @@ class While(Statement):
 
         cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
             parser_module.Characters[':']
-        ])
-
-        if cursor is None or not isinstance(cursor.last_symbol, expression_module.Expression):
-            raise parser_module.ParseError('expected Expression', cursor)
+        ], fail=True)
 
         condition = cursor.last_symbol
 
@@ -433,9 +427,7 @@ class For(Statement):
 
         cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
             parser_module.Characters['in']
-        ])
-        if cursor is None or not isinstance(cursor.last_symbol, expression_module.Expression):
-            raise parser_module.ParseError('expected LValue', cursor)
+        ], fail=True)
 
         receiver = expression_module.LValue.from_expression(cursor.last_symbol)
 
@@ -445,10 +437,7 @@ class For(Statement):
 
         cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
             parser_module.Characters[':']
-        ])
-
-        if cursor is None or not isinstance(cursor.last_symbol, expression_module.Expression):
-            raise parser_module.ParseError('expected Expression', cursor)
+        ], fail=True)
 
         iterable = cursor.last_symbol
 
@@ -583,9 +572,7 @@ class With(Statement):
                 parser_module.Characters['as'],
                 parser_module.Characters[':'],
                 parser_module.Characters[','],
-            ])
-            if cursor is None or not isinstance(cursor.last_symbol, expression_module.Expression):
-                raise parser_module.ParseError('expected Expression', cursor)
+            ], fail=True)
 
             context_manager = cursor.last_symbol
             receiver = None
@@ -600,9 +587,7 @@ class With(Statement):
                 cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
                     parser_module.Characters[':'],
                     parser_module.Characters[','],
-                ])
-                if cursor is None or not isinstance(cursor.last_symbol, expression_module.Expression):
-                    raise parser_module.ParseError('expected LValue', cursor)
+                ], fail=True)
 
                 receiver = expression_module.LValue.from_expression(cursor.last_symbol)
 
@@ -688,7 +673,113 @@ class Try(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['try']
+        ]).parse_one_symbol([
+            parser_module.Characters[':']
+        ], fail=True).parse_one_symbol([
+            parser_module.EndLine
+        ], fail=True).parse_one_symbol([
+            Block
+        ], fail=True)
+
+        assert isinstance(cursor.last_symbol, Block)
+        body = cursor.last_symbol
+        exception_handlers: list[Try.ExceptionHandler] = []
+        else_body = None
+        finally_body = None
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['except'],
+            parser_module.Characters['else'],
+            parser_module.Characters['finally'],
+        ], fail=True)
+
+        while isinstance(cursor.last_symbol, parser_module.Characters['except']):
+            cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+                parser_module.Characters['as'],
+                parser_module.Characters[':'],
+            ], fail=True)
+
+            assert isinstance(cursor.last_symbol, expression_module.Expression)
+            exception: expression_module.Expression = cursor.last_symbol
+            receiver = None
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters['as'],
+                parser_module.Characters[':'],
+            ], fail=True)
+
+            if isinstance(cursor.last_symbol, parser_module.Characters['as']):
+                cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+                    parser_module.Characters[':'],
+                ], fail=True)
+
+                assert isinstance(cursor.last_symbol, expression_module.Expression)
+                receiver = expression_module.LValue.from_expression(cursor.last_symbol)
+
+                cursor = cursor.parse_one_symbol([
+                    parser_module.Characters[':'],
+                ], fail=True)
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.EndLine
+            ], fail=True)
+
+            cursor = cursor.parse_one_symbol([
+                Block
+            ], fail=True)
+            assert isinstance(cursor.last_symbol, Block)
+
+            exception_handlers.append(Try.ExceptionHandler(
+                exception=exception,
+                body=cursor.last_symbol,
+                receiver=receiver,
+            ))
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters['except'],
+                parser_module.Characters['else'],
+                parser_module.Characters['finally'],
+                parser_module.Always,
+            ])
+
+        if isinstance(cursor.last_symbol, parser_module.Characters['else']):
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters[':']
+            ], fail=True).parse_one_symbol([
+                parser_module.EndLine
+            ], fail=True).parse_one_symbol([
+                Block
+            ], fail=True)
+
+            assert isinstance(cursor.last_symbol, Block)
+            else_body = cursor.last_symbol
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters['finally'],
+                parser_module.Always,
+            ])
+
+        if isinstance(cursor.last_symbol, parser_module.Characters['finally']):
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters[':']
+            ], fail=True).parse_one_symbol([
+                parser_module.EndLine
+            ], fail=True).parse_one_symbol([
+                Block
+            ], fail=True)
+
+            assert isinstance(cursor.last_symbol, Block)
+            finally_body = cursor.last_symbol
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            body=body,
+            exception_handlers=exception_handlers,
+            else_body=else_body,
+            finally_body=finally_body,
+        ))
 
     @property
     def receivers(self):

@@ -366,7 +366,7 @@ class IfTestCase(unittest.TestCase):
         )
 
     def test_parse_errors(self):
-        with self.assertRaisesRegex(parser_module.ParseError, 'expected Expression'):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected an operand'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'if :',
@@ -541,7 +541,7 @@ class WhileTestCase(unittest.TestCase):
         )
 
     def test_parse_errors(self):
-        with self.assertRaisesRegex(parser_module.ParseError, 'expected Expression'):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected an operand'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'while :',
@@ -718,10 +718,17 @@ class ForTestCase(unittest.TestCase):
         )
 
     def test_parse_errors(self):
-        with self.assertRaisesRegex(parser_module.ParseError, 'expected LValue'):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected an operand'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'for',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected LValue'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for 1',
                 ])
             )
 
@@ -732,7 +739,7 @@ class ForTestCase(unittest.TestCase):
                 ])
             )
 
-        with self.assertRaisesRegex(parser_module.ParseError, r'expected Expression'):
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected an operand'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'for a in',
@@ -1024,7 +1031,7 @@ class WithTestCase(unittest.TestCase):
         )
 
     def test_parse_errors(self):
-        with self.assertRaisesRegex(parser_module.ParseError, 'expected Expression'):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected an operand'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'with',
@@ -1038,10 +1045,17 @@ class WithTestCase(unittest.TestCase):
                 ])
             )
 
-        with self.assertRaisesRegex(parser_module.ParseError, r'expected LValue'):
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected an operand'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'with a as',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected LValue'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a as 3',
                 ])
             )
 
@@ -1052,14 +1066,14 @@ class WithTestCase(unittest.TestCase):
                 ])
             )
 
-        with self.assertRaisesRegex(parser_module.ParseError, 'expected Expression'):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected an operand'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'with a,',
                 ])
             )
 
-        with self.assertRaisesRegex(parser_module.ParseError, 'expected Expression'):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected an operand'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'with a as b,',
@@ -1173,6 +1187,343 @@ class WithTestCase(unittest.TestCase):
 
 
 class TryTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    body',
+                    'except exception as receiver:',
+                    '    exception_body',
+                    'except exception_2:',
+                    '    exception_body_2',
+                    'else:',
+                    '    else_body',
+                    'finally:',
+                    '    finally_body',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Try(
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('body')
+                    )
+                ]),
+                exception_handlers=[
+                    statement.Try.ExceptionHandler(
+                        exception=expression.Variable('exception'),
+                        body=statement.Block([
+                            statement.Expression(
+                                expression.Variable('exception_body')
+                            )
+                        ]),
+                        receiver=expression.Variable('receiver'),
+                    ),
+                    statement.Try.ExceptionHandler(
+                        exception=expression.Variable('exception_2'),
+                        body=statement.Block([
+                            statement.Expression(
+                                expression.Variable('exception_body_2')
+                            )
+                        ]),
+                    ),
+                ],
+                else_body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('else_body')
+                    )
+                ]),
+                finally_body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('finally_body')
+                    )
+                ]),
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    body',
+                    'except exception as receiver:',
+                    '    exception_body',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Try(
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('body')
+                    )
+                ]),
+                exception_handlers=[
+                    statement.Try.ExceptionHandler(
+                        exception=expression.Variable('exception'),
+                        body=statement.Block([
+                            statement.Expression(
+                                expression.Variable('exception_body')
+                            )
+                        ]),
+                        receiver=expression.Variable('receiver'),
+                    ),
+                ],
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    body',
+                    'except exception as receiver:',
+                    '    exception_body',
+                    'else:',
+                    '    else_body',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Try(
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('body')
+                    )
+                ]),
+                exception_handlers=[
+                    statement.Try.ExceptionHandler(
+                        exception=expression.Variable('exception'),
+                        body=statement.Block([
+                            statement.Expression(
+                                expression.Variable('exception_body')
+                            )
+                        ]),
+                        receiver=expression.Variable('receiver'),
+                    ),
+                ],
+                else_body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('else_body')
+                    )
+                ]),
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    body',
+                    'except exception as receiver:',
+                    '    exception_body',
+                    'finally:',
+                    '    finally_body',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Try(
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('body')
+                    )
+                ]),
+                exception_handlers=[
+                    statement.Try.ExceptionHandler(
+                        exception=expression.Variable('exception'),
+                        body=statement.Block([
+                            statement.Expression(
+                                expression.Variable('exception_body')
+                            )
+                        ]),
+                        receiver=expression.Variable('receiver'),
+                    ),
+                ],
+                finally_body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('finally_body')
+                    )
+                ]),
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    body',
+                    'finally:',
+                    '    finally_body',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Try(
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('body')
+                    )
+                ]),
+                exception_handlers=[],
+                finally_body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('finally_body')
+                    )
+                ]),
+            )
+        )
+
+    def test_parse_errors(self):
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\':\'\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Block\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'except\', \'else\', \'finally\'\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected an operand'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'except',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'as\', \':\'\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'except a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected an operand'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'except a as',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected LValue'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'except a as 3',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\':\'\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'except a as b',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'except a as b:a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Block\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'except a as b:',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\':\'\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'except a:',
+                    '    b',
+                    'else',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'except a:',
+                    '    b',
+                    'else:a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Block\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'except a:',
+                    '    b',
+                    'else:',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\':\'\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'finally',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'finally:a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Block\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'try:',
+                    '    a',
+                    'finally:',
+                ])
+            )
+
     def test_receiver(self):
         try_statement = statement.Try(
             body=statement.Block([
