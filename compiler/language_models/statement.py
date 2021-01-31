@@ -79,19 +79,19 @@ class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
     @classmethod
     def parse(cls, cursor):
         return cursor.parse_one_symbol([
-            Declaration,
-            Assignment,
-            Expression,
             If,
             While,
             For,
-            Break,
-            Continue,
             With,
             Try,
+            Break,
+            Continue,
             Raise,
             Return,
             Nonlocal,
+            Declaration,
+            Assignment,
+            Expression,
         ])
 
 
@@ -246,7 +246,70 @@ class If(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['if']
+        ])
+
+        cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+            parser_module.Characters[':']
+        ])
+
+        if cursor is None or not isinstance(cursor.last_symbol, expression_module.Expression):
+            raise parser_module.ParseError('expected Expression', cursor)
+
+        condition = cursor.last_symbol
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters[':']
+        ], fail=True).parse_one_symbol([
+            parser_module.EndLine
+        ], fail=True).parse_one_symbol([
+            Block
+        ], fail=True)
+
+        assert isinstance(cursor.last_symbol, Block)
+        body = cursor.last_symbol
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['else'],
+            parser_module.Always,
+        ])
+
+        if isinstance(cursor.last_symbol, parser_module.Always):
+            return cursor.new_from_symbol(cls(
+                cursor=cursor,
+                condition=condition,
+                body=body,
+            ))
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters[':'],
+            If,
+        ], fail=True)
+
+        if isinstance(cursor.last_symbol, If):
+            return cursor.new_from_symbol(cls(
+                cursor=cursor,
+                condition=condition,
+                body=body,
+                else_body=Block([
+                    cursor.last_symbol
+                ]),
+            ))
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.EndLine
+        ], fail=True).parse_one_symbol([
+            Block
+        ], fail=True)
+
+        assert isinstance(cursor.last_symbol, Block)
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            condition=condition,
+            body=body,
+            else_body=cursor.last_symbol,
+        ))
 
     @property
     def expressions(self):
