@@ -893,4 +893,33 @@ class Nonlocal(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['nonlocal']
+        ]).parse_one_symbol([
+            expression_module.Variable
+        ], fail=True)
+
+        variables: list[expression_module.Variable] = []
+        while True:
+            assert isinstance(cursor.last_symbol, expression_module.Variable)
+            variables.append(cursor.last_symbol)
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters[','],
+                parser_module.EndLine,
+            ], fail=True)
+
+            if isinstance(cursor.last_symbol, parser_module.EndLine):
+                break
+
+            cursor = cursor.parse_one_symbol([
+                expression_module.Variable
+            ], fail=True)
+
+        return cursor.new_from_symbol(cls(
+            variables=variables
+        ))
+
+    @property
+    def expressions(self):
+        yield from self.variables
