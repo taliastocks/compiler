@@ -4,6 +4,7 @@ from . import statement, expression
 from .. import parser as parser_module
 
 # pylint: disable=fixme
+# pylint: disable=too-many-lines
 
 
 class StatementTestCase(unittest.TestCase):
