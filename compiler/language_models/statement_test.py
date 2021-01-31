@@ -1675,6 +1675,41 @@ class TryTestCase(unittest.TestCase):
 
 
 class RaiseTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'raise',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Raise()
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'raise foo',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Raise(expression=expression.Variable('foo'))
+        )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected an operand'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'raise;',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'raise a a',
+                ])
+            )
+
     def test_expressions(self):
         raise_statement = statement.Raise(
             expression=expression.Variable('foo')
@@ -1689,6 +1724,41 @@ class RaiseTestCase(unittest.TestCase):
 
 
 class ReturnTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'return',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Return()
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'return foo',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Return(expression=expression.Variable('foo'))
+        )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected an operand'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'return;',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'return a a',
+                ])
+            )
+
     def test_expressions(self):
         return_statement = statement.Return(
             expression=expression.Variable('foo')

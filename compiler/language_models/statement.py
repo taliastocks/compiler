@@ -429,6 +429,7 @@ class For(Statement):
             parser_module.Characters['in']
         ], fail=True)
 
+        assert isinstance(cursor.last_symbol, expression_module.Expression)
         receiver = expression_module.LValue.from_expression(cursor.last_symbol)
 
         cursor = cursor.parse_one_symbol([
@@ -589,6 +590,7 @@ class With(Statement):
                     parser_module.Characters[','],
                 ], fail=True)
 
+                assert isinstance(cursor.last_symbol, expression_module.Expression)
                 receiver = expression_module.LValue.from_expression(cursor.last_symbol)
 
                 cursor = cursor.parse_one_symbol([
@@ -815,7 +817,31 @@ class Raise(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['raise'],
+        ]).parse_one_symbol([
+            parser_module.EndLine,
+            parser_module.Always,
+        ])
+
+        expression = None
+
+        if isinstance(cursor.last_symbol, parser_module.Always):
+            cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+                parser_module.EndLine
+            ], fail=True)
+
+            assert isinstance(cursor.last_symbol, expression_module.Expression)
+            expression = cursor.last_symbol
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.EndLine
+            ], fail=True)
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            expression=expression,
+        ))
 
     @property
     def expressions(self):
@@ -829,7 +855,31 @@ class Return(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['return'],
+        ]).parse_one_symbol([
+            parser_module.EndLine,
+            parser_module.Always,
+        ])
+
+        expression = None
+
+        if isinstance(cursor.last_symbol, parser_module.Always):
+            cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+                parser_module.EndLine
+            ], fail=True)
+
+            assert isinstance(cursor.last_symbol, expression_module.Expression)
+            expression = cursor.last_symbol
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.EndLine
+            ], fail=True)
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            expression=expression,
+        ))
 
     @property
     def expressions(self):
