@@ -871,6 +871,46 @@ class ForTestCase(unittest.TestCase):
         )
 
 
+class BreakTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'break',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Break()
+        )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'break a',
+                ])
+            )
+
+
+class ContinueTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'continue',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Continue()
+        )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'continue a',
+                ])
+            )
+
+
 class WithTestCase(unittest.TestCase):
     def test_receivers(self):
         with_statement = statement.With(
