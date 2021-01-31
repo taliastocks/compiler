@@ -530,7 +530,15 @@ class Break(Statement):
     """
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['break']
+        ]).parse_one_symbol([
+            parser_module.EndLine
+        ], fail=True)
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor
+        ))
 
 
 @attr.s(frozen=True, slots=True)
@@ -539,7 +547,15 @@ class Continue(Statement):
     """
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['continue']
+        ]).parse_one_symbol([
+            parser_module.EndLine
+        ], fail=True)
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor
+        ))
 
 
 @attr.s(frozen=True, slots=True)
