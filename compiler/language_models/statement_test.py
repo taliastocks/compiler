@@ -1770,3 +1770,75 @@ class ReturnTestCase(unittest.TestCase):
             ],
             list(return_statement.expressions)
         )
+
+
+class NonlocalTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'nonlocal a',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Nonlocal([
+                expression.Variable('a')
+            ])
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'nonlocal a, b',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Nonlocal([
+                expression.Variable('a'),
+                expression.Variable('b'),
+            ])
+        )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Variable\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'nonlocal;',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\',\', EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'nonlocal a a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Variable\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'nonlocal a,',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\',\', EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'nonlocal a, a a',
+                ])
+            )
+
+    def test_expressions(self):
+        nonlocal_statement = statement.Nonlocal(
+            variables=[
+                expression.Variable('foo'),
+                expression.Variable('bar'),
+            ]
+        )
+
+        self.assertEqual(
+            [
+                expression.Variable('foo'),
+                expression.Variable('bar'),
+            ],
+            list(nonlocal_statement.expressions)
+        )
