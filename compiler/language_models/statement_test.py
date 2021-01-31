@@ -658,6 +658,134 @@ class WhileTestCase(unittest.TestCase):
 
 
 class ForTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for a in iterable:',
+                    '    b',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.For(
+                receiver=expression.Variable('a'),
+                iterable=expression.Variable('iterable'),
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('b')
+                    )
+                ]),
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for a in iterable:',
+                    '    b',
+                    'else if c:',
+                    '    d',
+                    'else:',
+                    '    e',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.For(
+                receiver=expression.Variable('a'),
+                iterable=expression.Variable('iterable'),
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('b')
+                    )
+                ]),
+                else_body=statement.Block([
+                    statement.If(
+                        condition=expression.Variable('c'),
+                        body=statement.Block([
+                            statement.Expression(
+                                expression.Variable('d')
+                            )
+                        ]),
+                        else_body=statement.Block([
+                            statement.Expression(
+                                expression.Variable('e')
+                            )
+                        ])
+                    )
+                ])
+            )
+        )
+
+    def test_parse_errors(self):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected LValue'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'in\'\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected Expression'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for a in',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\':\'\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for a in iterable',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for a in iterable:a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Block\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for a in iterable:',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\':\', If\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for a in iterable:',
+                    '    b',
+                    'else',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for a in iterable:',
+                    '    b',
+                    'else:a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Block\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'for a in iterable:',
+                    '    b',
+                    'else:',
+                ])
+            )
+
     def test_expressions(self):
         for_statement = statement.For(
             iterable=expression.Variable('iterable'),
