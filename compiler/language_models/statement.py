@@ -572,7 +572,76 @@ class With(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['with']
+        ])
+
+        context_managers = []
+
+        while True:
+            cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+                parser_module.Characters['as'],
+                parser_module.Characters[':'],
+                parser_module.Characters[','],
+            ])
+            if cursor is None or not isinstance(cursor.last_symbol, expression_module.Expression):
+                raise parser_module.ParseError('expected Expression', cursor)
+
+            context_manager = cursor.last_symbol
+            receiver = None
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters['as'],
+                parser_module.Characters[':'],
+                parser_module.Characters[','],
+            ], fail=True)
+
+            if isinstance(cursor.last_symbol, parser_module.Characters['as']):
+                cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+                    parser_module.Characters[':'],
+                    parser_module.Characters[','],
+                ])
+                if cursor is None or not isinstance(cursor.last_symbol, expression_module.Expression):
+                    raise parser_module.ParseError('expected LValue', cursor)
+
+                receiver = expression_module.LValue.from_expression(cursor.last_symbol)
+
+                cursor = cursor.parse_one_symbol([
+                    parser_module.Characters[':'],
+                    parser_module.Characters[','],
+                ], fail=True)
+
+            context_managers.append((context_manager, receiver))
+
+            if isinstance(cursor.last_symbol, parser_module.Characters[':']):
+                break
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.EndLine
+        ], fail=True).parse_one_symbol([
+            Block
+        ], fail=True)
+
+        assert isinstance(cursor.last_symbol, Block)
+        body = cursor.last_symbol
+
+        def nest_context_managers(i):
+            nonlocal body
+            context_manager_, receiver_ = context_managers[i]
+            if i < len(context_managers) - 1:
+                inner_body = Block([
+                    nest_context_managers(i + 1)
+                ])
+            else:
+                inner_body = body
+            return cls(
+                cursor=cursor,
+                context_manager=context_manager_,
+                receiver=receiver_,
+                body=inner_body,
+            )
+
+        return cursor.new_from_symbol(nest_context_managers(0))
 
     @property
     def receivers(self):

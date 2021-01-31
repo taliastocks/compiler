@@ -912,6 +912,188 @@ class ContinueTestCase(unittest.TestCase):
 
 
 class WithTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with context_manager as receiver:',
+                    '    c',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.With(
+                context_manager=expression.Variable('context_manager'),
+                receiver=expression.Variable('receiver'),
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('c')
+                    )
+                ]),
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with context_manager:',
+                    '    body',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.With(
+                context_manager=expression.Variable('context_manager'),
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('body')
+                    )
+                ]),
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a as b, c as d:',
+                    '    body',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.With(
+                context_manager=expression.Variable('a'),
+                receiver=expression.Variable('b'),
+                body=statement.Block([
+                    statement.With(
+                        context_manager=expression.Variable('c'),
+                        receiver=expression.Variable('d'),
+                        body=statement.Block([
+                            statement.Expression(
+                                expression.Variable('body')
+                            )
+                        ]),
+                    )
+                ]),
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a, c as d:',
+                    '    body',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.With(
+                context_manager=expression.Variable('a'),
+                body=statement.Block([
+                    statement.With(
+                        context_manager=expression.Variable('c'),
+                        receiver=expression.Variable('d'),
+                        body=statement.Block([
+                            statement.Expression(
+                                expression.Variable('body')
+                            )
+                        ]),
+                    )
+                ]),
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a as b, c:',
+                    '    body',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.With(
+                context_manager=expression.Variable('a'),
+                receiver=expression.Variable('b'),
+                body=statement.Block([
+                    statement.With(
+                        context_manager=expression.Variable('c'),
+                        body=statement.Block([
+                            statement.Expression(
+                                expression.Variable('body')
+                            )
+                        ]),
+                    )
+                ]),
+            )
+        )
+
+    def test_parse_errors(self):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected Expression'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'as\', \':\', \',\'\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected LValue'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a as',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\':\', \',\'\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a as b',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected Expression'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a,',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected Expression'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a as b,',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a as b:a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a as b, c as d:a',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Block\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a as b:',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Block\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'with a as b, c as d:',
+                ])
+            )
+
     def test_receivers(self):
         with_statement = statement.With(
             context_manager=expression.Variable('context_manager'),
