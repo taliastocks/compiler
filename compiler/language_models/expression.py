@@ -480,24 +480,29 @@ class BinaryOperator(Operator, metaclass=abc.ABCMeta):
 
 
 @attr.s(frozen=True, slots=True)
-class Call(Operator):
-    """A function call, i.e. ``foo(...args...)``.
+class CallBase(Operator, metaclass=abc.ABCMeta):
+    """Common base class for Call and Subscript
     """
-    callable: typing.Optional[Expression] = attr.ib(default=None)
-    expression_arguments: typing.Sequence[Expression] = attr.ib(converter=tuple, default=())
+    positional_arguments: typing.Sequence[Expression] = attr.ib(converter=tuple, default=())
     keyword_arguments: typing.Mapping[str, Expression] = attr.ib(converter=immutabledict.immutabledict,
                                                                  default=immutabledict.immutabledict())
 
-    begin_token = parser_module.Characters['(']
-    end_token = parser_module.Characters[')']
+    # Override these in the subclass.
+    begin_token: typing.Type[parser_module.Symbol] = parser_module.Symbol
+    end_token: typing.Type[parser_module.Symbol] = parser_module.Symbol
 
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
             cls.begin_token
         ])
-        expression_arguments: list[Expression] = []
+        positional_arguments: list[Expression] = []
         keyword_arguments: dict[str, Expression] = {}
+
+        cursor = cursor.parse_one_symbol([
+            cls.end_token,
+            parser_module.Always,
+        ])
 
         while not isinstance(cursor.last_symbol, cls.end_token):
             # First try to parse the optional keyword name.
@@ -526,7 +531,7 @@ class Call(Operator):
                 if keyword_name is not None:
                     keyword_arguments[keyword_name] = cursor.last_symbol
                 else:
-                    expression_arguments.append(cursor.last_symbol)
+                    positional_arguments.append(cursor.last_symbol)
             else:
                 raise parser_module.ParseError(
                     message='expected expression',
@@ -545,16 +550,29 @@ class Call(Operator):
                 ])
 
         return cursor.new_from_symbol(cls(
-            expression_arguments=expression_arguments,
+            positional_arguments=positional_arguments,
             keyword_arguments=keyword_arguments,
             cursor=cursor,
         ))
+
+
+@attr.s(frozen=True, slots=True)
+class Call(CallBase):
+    """A function call, i.e. ``foo(...args...)``.
+    """
+    callable: typing.Optional[Expression] = attr.ib(default=None)
+    positional_arguments: typing.Sequence[Expression] = attr.ib(converter=tuple, default=())
+    keyword_arguments: typing.Mapping[str, Expression] = attr.ib(converter=immutabledict.immutabledict,
+                                                                 default=immutabledict.immutabledict())
+
+    begin_token = parser_module.Characters['(']
+    end_token = parser_module.Characters[')']
 
     @property
     def expressions(self):
         if self.callable is not None:
             yield self.callable
-        for argument in self.expression_arguments:
+        for argument in self.positional_arguments:
             yield argument
         for argument in self.keyword_arguments.values():
             yield argument
@@ -565,7 +583,7 @@ class Call(Operator):
 
         return Call(
             callable=operands.pop(),
-            expression_arguments=self.expression_arguments,
+            positional_arguments=self.positional_arguments,
             keyword_arguments=self.keyword_arguments,
             cursor=cursor,
         )
@@ -611,11 +629,11 @@ class Dot(Operator, LValue):
 
 
 @attr.s(frozen=True, slots=True)
-class Subscript(Call, LValue):
+class Subscript(CallBase, LValue):
     """An array subscript, i.e. ``my_array[3]``.
     """
     subscriptable: typing.Optional[Expression] = attr.ib(default=None)
-    expression_arguments: typing.Sequence[Expression] = attr.ib(converter=tuple, default=())
+    positional_arguments: typing.Sequence[Expression] = attr.ib(converter=tuple, default=())
     keyword_arguments: typing.Mapping[str, Expression] = attr.ib(converter=immutabledict.immutabledict,
                                                                  default=immutabledict.immutabledict())
 
@@ -626,7 +644,7 @@ class Subscript(Call, LValue):
     def expressions(self):
         if self.subscriptable is not None:
             yield self.subscriptable
-        for argument in self.expression_arguments:
+        for argument in self.positional_arguments:
             yield argument
         for argument in self.keyword_arguments.values():
             yield argument
@@ -637,7 +655,7 @@ class Subscript(Call, LValue):
 
         return Subscript(
             subscriptable=operands.pop(),
-            expression_arguments=self.expression_arguments,
+            positional_arguments=self.positional_arguments,
             keyword_arguments=self.keyword_arguments,
             cursor=cursor,
         )
@@ -651,14 +669,25 @@ class Await(UnaryOperator):
     token = parser_module.Characters['await']
 
 
-# TODO: Go
+@attr.s(frozen=True, slots=True)
+class Go(UnaryOperator):
+    """Call a function asynchronously, returning a promise.
+    """
+    expression: typing.Optional[Expression] = attr.ib(default=None)
+    higher_precedence_operators = Await.higher_precedence_operators
+    token = parser_module.Characters['go']
+
+    @expression.validator
+    def _check_expression(self, _, expression):
+        if expression is not None and not isinstance(expression, CallBase):
+            raise parser_module.ParseError('"go" must be followed by a Call or Subscript', self.cursor)
 
 
 @attr.s(frozen=True, slots=True)
 class Exponentiation(BinaryOperator):
     """a ** b
     """
-    higher_precedence_operators = Await.higher_precedence_operators | {Await}
+    higher_precedence_operators = Await.higher_precedence_operators | {Await, Go}
     token = parser_module.Characters['**']
 
     @classmethod
@@ -1222,7 +1251,7 @@ class ExpressionParser(parser_module.Parser):
         parser_module.Always,
     )
     prefix_operators: typing.Sequence[typing.Type[UnaryOperator]] = (
-        Await, Positive, Negative, BitInverse, Not, Lambda, YieldFrom, Yield, StarStar, Star,
+        Await, Go, Positive, Negative, BitInverse, Not, Lambda, YieldFrom, Yield, StarStar, Star,
         parser_module.Always,
     )
     infix_operators: typing.Sequence[typing.Type[Operator]] = (

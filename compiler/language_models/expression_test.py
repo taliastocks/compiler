@@ -31,7 +31,7 @@ class ExpressionTestCase(unittest.TestCase):
                 expression_module.Variable('a'),
                 expression_module.Subscript(
                     subscriptable=expression_module.Yield(),
-                    expression_arguments=[expression_module.Variable('foo')],
+                    positional_arguments=[expression_module.Variable('foo')],
                 ),
             ]).has_yield
         )
@@ -43,9 +43,9 @@ class ExpressionTestCase(unittest.TestCase):
                 expression_module.Variable('a'),
                 expression_module.Subscript(
                     subscriptable=expression_module.Variable('foo'),
-                    expression_arguments=[expression_module.Subscript(
+                    positional_arguments=[expression_module.Subscript(
                         subscriptable=expression_module.Variable('bar'),
-                        expression_arguments=[expression_module.YieldFrom()],
+                        positional_arguments=[expression_module.YieldFrom()],
                     )],
                 ),
             ]).has_yield
@@ -724,7 +724,7 @@ class OperatorTestCase(unittest.TestCase):
     def test_operator_precedence(self):
         expected_precedence = (
             (expression_module.Call, expression_module.Dot, expression_module.Subscript),
-            (expression_module.Await,),
+            (expression_module.Await, expression_module.Go),
             (expression_module.Exponentiation,),
             (expression_module.Positive, expression_module.Negative, expression_module.BitInverse),
             (expression_module.Multiply, expression_module.MatrixMultiply, expression_module.FloorDivide,
@@ -785,10 +785,56 @@ class OperatorTestCase(unittest.TestCase):
 
 
 class CallTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['a(b, c=d, e)'])
+            ).last_symbol,
+            expression_module.Call(
+                callable=expression_module.Variable('a'),
+                positional_arguments=[
+                    expression_module.Variable('b'),
+                    expression_module.Variable('e'),
+                ],
+                keyword_arguments={
+                    'c': expression_module.Variable('d'),
+                },
+            )
+        )
+
+        # allow trailing comma
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['a(b, c=d, e,)'])
+            ).last_symbol,
+            expression_module.Call(
+                callable=expression_module.Variable('a'),
+                positional_arguments=[
+                    expression_module.Variable('b'),
+                    expression_module.Variable('e'),
+                ],
+                keyword_arguments={
+                    'c': expression_module.Variable('d'),
+                },
+            )
+        )
+
+        # allow zero arguments
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['a()'])
+            ).last_symbol,
+            expression_module.Call(
+                callable=expression_module.Variable('a'),
+                positional_arguments=[],
+                keyword_arguments={},
+            )
+        )
+
     def test_expressions(self):
         call = expression_module.Call(
             callable=expression_module.Variable('my_function'),
-            expression_arguments=[
+            positional_arguments=[
                 expression_module.Variable('arg_1'),
                 expression_module.Variable('arg_2'),
             ],
@@ -824,10 +870,56 @@ class DotTestCase(unittest.TestCase):
 
 
 class SubscriptTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['a[b, c=d, e]'])
+            ).last_symbol,
+            expression_module.Subscript(
+                subscriptable=expression_module.Variable('a'),
+                positional_arguments=[
+                    expression_module.Variable('b'),
+                    expression_module.Variable('e'),
+                ],
+                keyword_arguments={
+                    'c': expression_module.Variable('d'),
+                },
+            )
+        )
+
+        # allow trailing comma
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['a[b, c=d, e,]'])
+            ).last_symbol,
+            expression_module.Subscript(
+                subscriptable=expression_module.Variable('a'),
+                positional_arguments=[
+                    expression_module.Variable('b'),
+                    expression_module.Variable('e'),
+                ],
+                keyword_arguments={
+                    'c': expression_module.Variable('d'),
+                },
+            )
+        )
+
+        # allow zero arguments
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['a[]'])
+            ).last_symbol,
+            expression_module.Subscript(
+                subscriptable=expression_module.Variable('a'),
+                positional_arguments=[],
+                keyword_arguments={},
+            )
+        )
+
     def test_expressions(self):
         subscript = expression_module.Subscript(
             subscriptable=expression_module.Variable('my_function'),
-            expression_arguments=[
+            positional_arguments=[
                 expression_module.Variable('arg_1'),
                 expression_module.Variable('arg_2'),
             ],
@@ -865,6 +957,55 @@ class AwaitTestCase(unittest.TestCase):
                 expression_module.Variable('foo')
             ],
             list(await_expr.expressions)
+        )
+
+
+class GoTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['go a()'])
+            ).last_symbol,
+            expression_module.Go(
+                expression=expression_module.Call(
+                    callable=expression_module.Variable('a')
+                )
+            )
+        )
+
+        self.assertEqual(
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['go a[]'])
+            ).last_symbol,
+            expression_module.Go(
+                expression=expression_module.Subscript(
+                    subscriptable=expression_module.Variable('a')
+                )
+            )
+        )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'"go" must be followed by a Call or Subscript'):
+            expression_module.ExpressionParser.parse(
+                parser_module.Cursor(['go a'])
+            )
+
+    def test_expressions(self):
+        go_expr = expression_module.Go()
+
+        self.assertEqual(
+            [],
+            list(go_expr.expressions)
+        )
+
+        go_expr = expression_module.Go(
+            expression=expression_module.Call()
+        )
+
+        self.assertEqual(
+            [
+                expression_module.Call()
+            ],
+            list(go_expr.expressions)
         )
 
 
@@ -1325,7 +1466,7 @@ class CommaTestCase(unittest.TestCase):
         )
 
 
-class ExpressionParser(unittest.TestCase):
+class ExpressionParserTestCase(unittest.TestCase):
     @staticmethod
     def parse_expression(expression_text, **kwds):
         return expression_module.ExpressionParser.parse(
@@ -1339,6 +1480,14 @@ class ExpressionParser(unittest.TestCase):
                 expression_module.Variable('foo')
             ),
             self.parse_expression('await foo')
+        )
+        self.assertEqual(
+            expression_module.Go(
+                expression=expression_module.Call(
+                    callable=expression_module.Variable('foo'),
+                )
+            ),
+            self.parse_expression('go foo()')
         )
         self.assertEqual(
             expression_module.Positive(
@@ -1605,7 +1754,7 @@ class ExpressionParser(unittest.TestCase):
         self.assertEqual(
             expression_module.Call(
                 callable=expression_module.Variable('callable'),
-                expression_arguments=[
+                positional_arguments=[
                     expression_module.Variable('arg_1'),
                     expression_module.Variable('arg_2'),
                 ],
@@ -1625,7 +1774,7 @@ class ExpressionParser(unittest.TestCase):
         self.assertEqual(
             expression_module.Subscript(
                 subscriptable=expression_module.Variable('subscriptable'),
-                expression_arguments=[
+                positional_arguments=[
                     expression_module.Variable('arg_1'),
                     expression_module.Variable('arg_2'),
                 ],
@@ -1784,9 +1933,9 @@ class ExpressionParser(unittest.TestCase):
                 object=expression_module.Subscript(
                     subscriptable=expression_module.Call(
                         callable=expression_module.Variable('a'),
-                        expression_arguments=[expression_module.Variable('b')],
+                        positional_arguments=[expression_module.Variable('b')],
                     ),
-                    expression_arguments=[expression_module.Variable('c')],
+                    positional_arguments=[expression_module.Variable('c')],
                 ),
                 member_name='foo',
             ),
@@ -1797,9 +1946,9 @@ class ExpressionParser(unittest.TestCase):
         self.assertEqual(
             expression_module.Call(
                 callable=expression_module.Variable('a'),
-                expression_arguments=[expression_module.Subscript(
+                positional_arguments=[expression_module.Subscript(
                     subscriptable=expression_module.Variable('b'),
-                    expression_arguments=[expression_module.Dot(
+                    positional_arguments=[expression_module.Dot(
                         object=expression_module.Variable('c'),
                         member_name='foo',
                     )],
