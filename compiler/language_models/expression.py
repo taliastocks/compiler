@@ -651,6 +651,9 @@ class Await(UnaryOperator):
     token = parser_module.Characters['await']
 
 
+# TODO: Go
+
+
 @attr.s(frozen=True, slots=True)
 class Exponentiation(BinaryOperator):
     """a ** b
@@ -1039,7 +1042,7 @@ class Yield(UnaryOperator):
 class StarStar(UnaryOperator):
     """**mapping
     """
-    higher_precedence_operators = Yield.higher_precedence_operators | {YieldFrom, Yield}
+    higher_precedence_operators = YieldFrom.higher_precedence_operators | {YieldFrom, Yield}
     token = parser_module.Characters['**']
 
 

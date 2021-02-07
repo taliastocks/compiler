@@ -3,9 +3,260 @@ import unittest
 import attr
 
 from . import function, expression, statement, argument_list
+from .. import parser as parser_module
 
 
 class FunctionTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            function.Function.parse(
+                parser_module.Cursor([
+                    '@decorator_1',
+                    '@decorator_2',
+                    'def my_function[a](b) -> c:',
+                    '    body',
+                ])
+            ).last_symbol,
+            function.Function(
+                name='my_function',
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('body')
+                    )
+                ]),
+                bindings=argument_list.ArgumentList([
+                    argument_list.Argument(
+                        expression.Variable('a'),
+                        is_positional=True,
+                        is_keyword=True,
+                    )
+                ]),
+                arguments=argument_list.ArgumentList([
+                    argument_list.Argument(
+                        expression.Variable('b'),
+                        is_positional=True,
+                        is_keyword=True,
+                    )
+                ]),
+                decorators=[
+                    function.Function.Decorator(
+                        expression.Variable('decorator_1')
+                    ),
+                    function.Function.Decorator(
+                        expression.Variable('decorator_2')
+                    ),
+                ],
+                return_type=expression.Variable('c'),
+            )
+        )
+
+        # Bindings are optional.
+        self.assertEqual(
+            function.Function.parse(
+                parser_module.Cursor([
+                    '@decorator_1',
+                    '@decorator_2',
+                    'def my_function(b) -> c:',
+                    '    body',
+                ])
+            ).last_symbol,
+            function.Function(
+                name='my_function',
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('body')
+                    )
+                ]),
+                bindings=argument_list.ArgumentList(),
+                arguments=argument_list.ArgumentList([
+                    argument_list.Argument(
+                        expression.Variable('b'),
+                        is_positional=True,
+                        is_keyword=True,
+                    )
+                ]),
+                decorators=[
+                    function.Function.Decorator(
+                        expression.Variable('decorator_1')
+                    ),
+                    function.Function.Decorator(
+                        expression.Variable('decorator_2')
+                    ),
+                ],
+                return_type=expression.Variable('c'),
+            )
+        )
+
+        # Return type is optional.
+        self.assertEqual(
+            function.Function.parse(
+                parser_module.Cursor([
+                    '@decorator_1',
+                    '@decorator_2',
+                    'def my_function[a](b):',
+                    '    body',
+                ])
+            ).last_symbol,
+            function.Function(
+                name='my_function',
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('body')
+                    )
+                ]),
+                bindings=argument_list.ArgumentList([
+                    argument_list.Argument(
+                        expression.Variable('a'),
+                        is_positional=True,
+                        is_keyword=True,
+                    )
+                ]),
+                arguments=argument_list.ArgumentList([
+                    argument_list.Argument(
+                        expression.Variable('b'),
+                        is_positional=True,
+                        is_keyword=True,
+                    )
+                ]),
+                decorators=[
+                    function.Function.Decorator(
+                        expression.Variable('decorator_1')
+                    ),
+                    function.Function.Decorator(
+                        expression.Variable('decorator_2')
+                    ),
+                ],
+                return_type=None,
+            )
+        )
+
+        # Decorators are optional.
+        self.assertEqual(
+            function.Function.parse(
+                parser_module.Cursor([
+                    'def my_function[a](b) -> c:',
+                    '    body',
+                ])
+            ).last_symbol,
+            function.Function(
+                name='my_function',
+                body=statement.Block([
+                    statement.Expression(
+                        expression.Variable('body')
+                    )
+                ]),
+                bindings=argument_list.ArgumentList([
+                    argument_list.Argument(
+                        expression.Variable('a'),
+                        is_positional=True,
+                        is_keyword=True,
+                    )
+                ]),
+                arguments=argument_list.ArgumentList([
+                    argument_list.Argument(
+                        expression.Variable('b'),
+                        is_positional=True,
+                        is_keyword=True,
+                    )
+                ]),
+                decorators=[],
+                return_type=expression.Variable('c'),
+            )
+        )
+
+    def test_parse_errors(self):
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected an operand'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    '@'
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    '@decorator a'
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Decorator, \'def\'\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    '@decorator'
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Identifier\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    '@decorator',
+                    'def',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'\[\', \'\(\'\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    'def foo',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\']\'\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    'def foo[',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'\(\'\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    'def foo[]',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'\)\'\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    'def foo[](',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'\:\'\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    'def foo()',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected an operand'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    'def foo() ->',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'\:\'\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    'def foo() -> return_type',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    'def foo() -> return_type: foo',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Block\)'):
+            function.Function.parse(
+                parser_module.Cursor([
+                    'def foo() -> return_type:',
+                ])
+            )
+
     def test_init_is_generator(self):
         my_function = function.Function(
             name='func',
@@ -149,4 +400,33 @@ class FunctionTestCase(unittest.TestCase):
                         ]
                     ),
                 ]),
+            )
+
+
+class FunctionDecoratorTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            function.Function.Decorator.parse(
+                parser_module.Cursor([
+                    '@foo',
+                    'next line',
+                ])
+            ).last_symbol,
+            function.Function.Decorator(
+                value=expression.Variable('foo')
+            )
+        )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            function.Function.Decorator.parse(
+                parser_module.Cursor([
+                    '@foo bar'
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected an operand'):
+            function.Function.Decorator.parse(
+                parser_module.Cursor([
+                    '@'
+                ])
             )

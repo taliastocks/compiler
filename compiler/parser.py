@@ -369,6 +369,10 @@ class Identifier(Regex[r'[\w--\d]\w*']):
     def identifier(self):
         return self.groups[0]
 
+    @classmethod
+    def symbol_name(cls):
+        return cls.__name__
+
 
 @attr.s(frozen=True, slots=True)
 class String(Symbol):
