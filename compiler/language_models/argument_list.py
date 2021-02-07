@@ -20,6 +20,9 @@ class ArgumentList(parser_module.Symbol):
     """
     arguments: typing.Sequence[Argument] = attr.ib(converter=tuple, default=())
 
+    def __iter__(self):
+        return iter(self.arguments)
+
     @classmethod
     def parse(cls, cursor, parse_annotations: bool = True):
         # pylint: disable=too-many-branches, arguments-differ
@@ -121,6 +124,22 @@ class ArgumentList(parser_module.Symbol):
             cursor=cursor,
         ))
 
+    @arguments.validator
+    def _check_arguments(self, _, arguments: typing.Sequence[Argument]):
+        has_extra_positionals = False
+        has_extra_keywords = False
+
+        for argument in arguments:
+            if argument.is_extra:
+                if argument.is_positional:
+                    if has_extra_positionals:
+                        raise ValueError('multiple "extra positional" arguments not allowed')
+                    has_extra_positionals = True
+                if argument.is_keyword:
+                    if has_extra_keywords:
+                        raise ValueError('multiple "extra keyword" arguments not allowed')
+                    has_extra_keywords = True
+
 
 @attr.s(frozen=True, slots=True)
 class Argument:
@@ -130,6 +149,17 @@ class Argument:
     is_positional: bool = attr.ib(default=False)
     is_keyword: bool = attr.ib(default=False)
     is_extra: bool = attr.ib(default=False)
+
+    @is_keyword.validator
+    def _check_is_keyword(self, _, is_keyword):
+        if not is_keyword and not self.is_positional:
+            raise ValueError('all arguments must be positional or keyword or both')
+
+    @is_extra.validator
+    def _check_is_extra(self, _, is_extra):
+        if is_extra:
+            if self.is_positional and self.is_keyword:
+                raise ValueError('"extra" arguments cannot be both positional and keyword')
 
 
 # pylint: disable=wrong-import-position, cyclic-import
