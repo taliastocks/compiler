@@ -4,7 +4,7 @@ import typing
 
 import attr
 
-from . import declarable, function, expression
+from . import declarable, expression, argument_list, statement
 from .. import parser as parser_module
 
 # pylint: disable=fixme
@@ -15,154 +15,125 @@ class Class(parser_module.Symbol, declarable.Declarable):
     """A Class declaration and definition.
     """
     @attr.s(frozen=True, slots=True)
-    class Decorator:
-        pass
+    class Decorator(parser_module.Symbol):
+        value: expression.Expression = attr.ib()
 
+        @classmethod
+        def parse(cls, cursor):
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters['@']
+            ])
+
+            cursor = expression.ExpressionParser.parse(cursor, stop_symbols=[
+                parser_module.EndLine
+            ], fail=True)
+
+            assert isinstance(cursor.last_symbol, expression.Expression)
+            value = cursor.last_symbol
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.EndLine
+            ], fail=True)
+
+            return cursor.new_from_symbol(cls(
+                cursor=cursor,
+                value=value,
+            ))
+
+    body: statement.Block = attr.ib(factory=statement.Block, repr=False)
+
+    bindings: argument_list.ArgumentList = attr.ib(factory=argument_list.ArgumentList, repr=False)
+    decorators: typing.Sequence[Decorator] = attr.ib(converter=tuple, default=(), repr=False)
     bases: typing.Sequence[expression.Expression] = attr.ib(converter=tuple, default=(), repr=False)
-    declarations: typing.Sequence[declarable.Declarable] = attr.ib(converter=tuple, default=(), repr=False)
 
     @classmethod
     def parse(cls, cursor):
-        pass  # Placeholder until I get around to writing a real implementation.
+        cursor = cursor.parse_one_symbol([
+            Class.Decorator,
+            parser_module.Characters['class'],
+        ])
 
+        decorators: list[Class.Decorator] = []
+        while isinstance(cursor.last_symbol, Class.Decorator):
+            assert isinstance(cursor.last_symbol, Class.Decorator)
+            decorators.append(cursor.last_symbol)
 
-@attr.s(frozen=True, slots=True)
-class StaticMethod(function.Function.Decorator):
-    """Decorator to denote a method as static.
+            cursor = cursor.parse_one_symbol([
+                Class.Decorator,
+                parser_module.Characters['class'],
+                parser_module.Characters['def'],
+            ], fail=True)
 
-    Static methods are not bound to an instance and do not receive
-    the instance as their first argument.
-    """
+            if isinstance(cursor.last_symbol, parser_module.Characters['def']):
+                return None  # backtrack, parse function
 
+        cursor = cursor.parse_one_symbol([
+            parser_module.Identifier
+        ], fail=True)
 
-@attr.s(frozen=True, slots=True)
-class ClassMethod(function.Function.Decorator):
-    """Decorator to denote a method as a class method.
+        assert isinstance(cursor.last_symbol, parser_module.Identifier)
+        name = cursor.last_symbol.identifier
 
-    Class methods are not bound to an instance; instead, they are bound
-    to the class and receive the class as their first argument. In particular,
-    when a class method is called on a subclass or instance of a subclass, it
-    receives the subclass as its first argument.
-    """
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['['],
+            parser_module.Characters['('],
+            parser_module.Always,
+        ])
 
+        if isinstance(cursor.last_symbol, parser_module.Characters['[']):
+            # parse bindings
+            cursor = cursor.parse_one_symbol([
+                argument_list.ArgumentList
+            ], fail=True)
 
-@attr.s(frozen=True, slots=True)
-class Getter(function.Function.Decorator):
-    """Decorator to denote a method as a "getter" for an attribute of the same name.
+            assert isinstance(cursor.last_symbol, argument_list.ArgumentList)
+            bindings = cursor.last_symbol
 
-    Accessing the attribute on an instance causes the decorated method to be called.
-    The return value of the decorated method is returned as the attribute value.
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters[']'],
+            ], fail=True).parse_one_symbol([
+                parser_module.Characters['('],
+                parser_module.Always,
+            ])
+        else:
+            bindings = argument_list.ArgumentList()
 
-    This decorator has no effect on class attribute access unless also used in
-    conjunction with ClassMethod or StaticMethod. When used with ClassMethod, the
-    method is called with the class as its only argument. When used with StaticMethod,
-    the method is called with no arguments.
-    """
+        bases: list[expression.Expression] = []
+        if isinstance(cursor.last_symbol, parser_module.Characters['(']):
+            # parse parent classes
+            while not isinstance(cursor.last_symbol, parser_module.Characters[')']):
+                cursor = expression.ExpressionParser.parse(cursor, stop_symbols=[
+                    parser_module.Characters[',']
+                ]) or cursor
 
+                if isinstance(cursor.last_symbol, expression.Expression):
+                    bases.append(cursor.last_symbol)
 
-@attr.s(frozen=True, slots=True)
-class Setter(function.Function.Decorator):
-    """Decorator to denote a method as a "setter" for an attribute of the same name.
+                    cursor = cursor.parse_one_symbol([
+                        parser_module.Characters[','],
+                        parser_module.Characters[')'],
+                    ], fail=True)
+                else:
+                    cursor = cursor.parse_one_symbol([
+                        parser_module.Characters[')'],
+                    ], fail=True)
 
-    Assigning to the attribute on an instance causes the decorated method to be called
-    with the assigned value as its second argument.
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters[':']
+        ], fail=True).parse_one_symbol([
+            parser_module.EndLine
+        ], fail=True).parse_one_symbol([
+            statement.Block
+        ], fail=True)
 
-    This decorator has no effect on class attribute access unless also used in
-    conjunction with ClassMethod or StaticMethod. When used with ClassMethod, the
-    method is called with the class as its first argument and the assigned value as
-    its second argument. When used with StaticMethod, the method is called with the
-    assigned value as its only argument.
-    """
+        assert isinstance(cursor.last_symbol, statement.Block)
+        body = cursor.last_symbol
 
-
-@attr.s(frozen=True, slots=True)
-class Private(function.Function.Decorator, expression.Variable.Annotation):
-    """Decorator/Annotation to denote a method or attribute as "private".
-
-    Private methods/attributes may only be accessed from methods of the same class.
-    Subclasses cannot override private methods/attributes; defining a method/attribute
-    of the same name in a subclass is allowed, but does not override the implementation
-    defined by the parent class (when accessed from the parent class).
-
-    When a private method/attribute shares the same name as a public method/attribute,
-    the private method/attribute takes precedence when accessed from methods of the
-    same class; when accessed externally, the public method/attribute is used (since
-    the private method/attribute is not visible externally).
-
-    TODO: Design a test framework API which provides access to private methods/attributes.
-    """
-
-    @classmethod
-    def parse(cls, cursor):
-        pass  # Placeholder until I get around to writing a real implementation.
-
-
-@attr.s(frozen=True, slots=True)
-class Protected(function.Function.Decorator, expression.Variable.Annotation):
-    """Decorator/Annotation to denote a method or attribute as "protected".
-
-    Protected methods/attributes may only be accessed from methods of the same class,
-    or methods of any of its subclasses. Subclasses may override protected methods/attributes
-    with their own implementation.
-
-    When a protected method/attribute shares the same name as a public method/attribute,
-    the protected method/attribute takes precedence when accessed from methods of the same
-    class or methods of any of its subclasses; when accessed externally, the public method/
-    attribute is used (since the protected method/attribute is not visible externally).
-
-    TODO: Design a test framework API which provides access to protected methods/attributes.
-    """
-
-    @classmethod
-    def parse(cls, cursor):
-        pass  # Placeholder until I get around to writing a real implementation.
-
-
-@attr.s(frozen=True, slots=True)
-class Constructor(function.Function.Decorator, expression.Variable.Annotation):
-    """Decorator/Annotation to denote a method or attribute as part of the instance constructor.
-
-    Constructor attributes are appended as position_keyword arguments of the same name to the instance
-    constructor in the order in which they were declared.
-
-    Constructor methods have their arguments appended to the instance constructor. The instance
-    constructor calls these methods in the order in which they were declared, passing through matching
-    arguments. Constructor methods which share a name with an attribute are interpreted as factories
-    (or converters) for that attribute; that is, their return value is assigned to the attribute.
-    Otherwise, constructors cannot return anything. TODO: validation
-
-    Constructor methods cannot be asynchronous, unless they are factories/converters, in which case they
-    are interpreted as returning a Promise. TODO: validation
-    Constructor methods may omit the method name.
-
-    TODO: Figure out how to build the instance constructor (repeated argument names, etc).
-    """
-
-    @classmethod
-    def parse(cls, cursor):
-        pass  # Placeholder until I get around to writing a real implementation.
-
-
-@attr.s(frozen=True, slots=True)
-class Destructor(function.Function.Decorator):
-    """Decorator to denote a method as part of the instance destructor.
-
-    Destructor methods are executed in the order in which they were declared.
-    Destructor methods may omit the method name.
-    """
-
-
-@attr.s(frozen=True, slots=True)
-class Frozen(expression.Variable.Annotation, Class.Decorator):
-    """Annotation/Class Decorator to denote an attribute (or all attributes of a class) as frozen.
-
-    Frozen attributes can only be modified during instance construction; afterwards, they are read-only.
-    A class with only frozen attributes may be passed by value rather than by reference if the compiler
-    determines that this would be more efficient.
-
-    Note that frozen attributes may still be mutable (due to their assigned value being mutable).
-    """
-
-    @classmethod
-    def parse(cls, cursor):
-        pass  # Placeholder until I get around to writing a real implementation.
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            name=name,
+            bindings=bindings,
+            decorators=decorators,
+            bases=bases,
+            body=body,
+        ))
