@@ -18,7 +18,7 @@ class ClassTestCase(unittest.TestCase):
             class_.Class(
                 name='MyClass',
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -56,7 +56,7 @@ class ClassTestCase(unittest.TestCase):
             class_.Class(
                 name='MyClass',
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -64,6 +64,42 @@ class ClassTestCase(unittest.TestCase):
                 bases=[
                     expression.Variable('b'),
                 ],
+                decorators=[
+                    class_.Class.Decorator(
+                        expression.Variable('decorator_1')
+                    ),
+                    class_.Class.Decorator(
+                        expression.Variable('decorator_2')
+                    ),
+                ],
+            )
+        )
+
+        # Bases are optional.
+        self.assertEqual(
+            class_.Class.parse(
+                parser_module.Cursor([
+                    '@decorator_1',
+                    '@decorator_2',
+                    'class MyClass[a]:',
+                    '    body',
+                ])
+            ).last_symbol,
+            class_.Class(
+                name='MyClass',
+                body=statement.Block([
+                    statement.Declaration(
+                        expression.Variable('body')
+                    )
+                ]),
+                bindings=argument_list.ArgumentList([
+                    argument_list.Argument(
+                        expression.Variable('a'),
+                        is_positional=True,
+                        is_keyword=True,
+                    )
+                ]),
+                bases=[],
                 decorators=[
                     class_.Class.Decorator(
                         expression.Variable('decorator_1')
@@ -86,7 +122,7 @@ class ClassTestCase(unittest.TestCase):
             class_.Class(
                 name='MyClass',
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),

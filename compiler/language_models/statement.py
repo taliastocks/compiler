@@ -5,10 +5,11 @@ import typing
 
 import attr
 
-from . import expression as expression_module
+from . import expression as expression_module, declarable
 from .. import parser as parser_module
 
 # pylint: disable=fixme
+# pylint: disable=too-many-lines
 
 
 @attr.s
@@ -135,7 +136,37 @@ class Declaration(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        pass
+        cursor = cursor.parse_one_symbol([
+            class_.Class,
+            function.Function,
+            parser_module.Always,
+        ])
+
+        if isinstance(cursor.last_symbol, parser_module.Always):
+            cursor = expression_module.Variable.parse(
+                cursor,
+                parse_annotation=True,
+                parse_initializer=True,
+                allow_comma_in_annotations=True,
+            )
+
+            if cursor is None:
+                return None
+
+            assert isinstance(cursor.last_symbol, expression_module.Variable)
+            symbol = cursor.last_symbol
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.EndLine
+            ])  # backtrack if the next token is not EndLine
+        else:
+            assert isinstance(cursor.last_symbol, declarable.Declarable)
+            symbol = cursor.last_symbol
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            declarable=symbol,
+        ))
 
 
 @attr.s(frozen=True, slots=True)
@@ -972,3 +1003,7 @@ class Pass(Statement):
         return cursor.new_from_symbol(cls(
             cursor=cursor,
         ))
+
+
+# pylint: disable=wrong-import-position, cyclic-import
+from . import class_, function  # noqa, handle import cycle
