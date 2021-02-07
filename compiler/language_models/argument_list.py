@@ -10,13 +10,6 @@ from .. import parser as parser_module
 @attr.s(frozen=True, slots=True)
 class ArgumentList(parser_module.Symbol):
     """A list of function arguments.
-
-    Why is this here? This isn't an Expression!
-
-        Although ArgumentList is not an expression, it participates in a dependency
-        cycle with Lambda and Variable. Since Python makes module dependency cycles
-        difficult, this goes here for now. When the compiler is rewritten in Sibilance,
-        this class and Argument should both move to a new module.
     """
     arguments: typing.Sequence[Argument] = attr.ib(converter=tuple, default=())
 

@@ -923,3 +923,6 @@ class Nonlocal(Statement):
     @property
     def expressions(self):
         yield from self.variables
+
+
+# TODO: Assert, Pass
