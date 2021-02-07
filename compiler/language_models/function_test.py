@@ -179,7 +179,7 @@ class FunctionTestCase(unittest.TestCase):
                 ])
             )
 
-        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Decorator, \'def\'\)'):
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Decorator, \'def\', \'class\'\)'):
             function.Function.parse(
                 parser_module.Cursor([
                     '@decorator'

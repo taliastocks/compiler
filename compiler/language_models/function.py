@@ -66,7 +66,11 @@ class Function(declarable.Declarable, parser_module.Symbol):
             cursor = cursor.parse_one_symbol([
                 Function.Decorator,
                 parser_module.Characters['def'],
+                parser_module.Characters['class'],
             ], fail=True)
+
+            if isinstance(cursor.last_symbol, parser_module.Characters['class']):
+                return None  # backtrack, parse class
 
         cursor = cursor.parse_one_symbol([
             parser_module.Identifier
@@ -81,6 +85,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
         ], fail=True)
 
         if isinstance(cursor.last_symbol, parser_module.Characters['[']):
+            # parse bindings
             cursor = cursor.parse_one_symbol([
                 argument_list.ArgumentList
             ], fail=True)
