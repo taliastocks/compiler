@@ -20,7 +20,7 @@ class FunctionTestCase(unittest.TestCase):
             function.Function(
                 name='my_function',
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -63,7 +63,7 @@ class FunctionTestCase(unittest.TestCase):
             function.Function(
                 name='my_function',
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -100,7 +100,7 @@ class FunctionTestCase(unittest.TestCase):
             function.Function(
                 name='my_function',
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -141,7 +141,7 @@ class FunctionTestCase(unittest.TestCase):
             function.Function(
                 name='my_function',
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),

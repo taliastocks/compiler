@@ -18,7 +18,7 @@ class ClassTestCase(unittest.TestCase):
             class_.Class(
                 name='MyClass',
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -56,7 +56,7 @@ class ClassTestCase(unittest.TestCase):
             class_.Class(
                 name='MyClass',
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -86,7 +86,7 @@ class ClassTestCase(unittest.TestCase):
             class_.Class(
                 name='MyClass',
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),

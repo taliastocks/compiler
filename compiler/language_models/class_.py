@@ -40,7 +40,7 @@ class Class(parser_module.Symbol, declarable.Declarable):
                 value=value,
             ))
 
-    body: statement.Block = attr.ib(factory=statement.Block, repr=False)
+    body: statement.Block = attr.ib(factory=lambda: statement.Block(), repr=False)
 
     bindings: argument_list.ArgumentList = attr.ib(factory=argument_list.ArgumentList, repr=False)
     decorators: typing.Sequence[Decorator] = attr.ib(converter=tuple, default=(), repr=False)

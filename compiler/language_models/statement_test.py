@@ -47,7 +47,7 @@ class StatementTestCase(unittest.TestCase):
                         body=statement.Block([]),
                         receiver=expression.Variable('receiver_4'),
                     ),
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('some_other_variable')
                     ),
                 ]),
@@ -95,7 +95,7 @@ class StatementTestCase(unittest.TestCase):
                     statement.Nonlocal([
                         expression.Variable('my_nonlocal')
                     ]),
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('some_other_variable')
                     ),
                 ]),
@@ -148,8 +148,8 @@ class BlockTestCase(unittest.TestCase):
                 ])
             ).last_symbol,
             statement.Block([
-                statement.Expression(expression.Variable('foo')),
-                statement.Expression(expression.Variable('bar')),
+                statement.Declaration(expression.Variable('foo')),
+                statement.Declaration(expression.Variable('bar')),
             ])
         )
 
@@ -162,8 +162,8 @@ class BlockTestCase(unittest.TestCase):
                 ])
             ).last_symbol,
             statement.Block([
-                statement.Expression(expression.Variable('foo')),
-                statement.Expression(expression.Variable('bar')),
+                statement.Declaration(expression.Variable('foo')),
+                statement.Declaration(expression.Variable('bar')),
             ])
         )
 
@@ -288,6 +288,21 @@ class ExpressionTestCase(unittest.TestCase):
             )
         )
 
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'a + b',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Expression(
+                expression.Add(
+                    expression.Variable('a'),
+                    expression.Variable('b'),
+                )
+            )
+        )
+
         with self.assertRaises(parser_module.ParseError):
             statement.Statement.parse(
                 parser_module.Cursor([
@@ -321,7 +336,7 @@ class IfTestCase(unittest.TestCase):
             statement.If(
                 condition=expression.Variable('a'),
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('b')
                     )
                 ]),
@@ -343,7 +358,7 @@ class IfTestCase(unittest.TestCase):
             statement.If(
                 condition=expression.Variable('a'),
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('b')
                     )
                 ]),
@@ -351,12 +366,12 @@ class IfTestCase(unittest.TestCase):
                     statement.If(
                         condition=expression.Variable('c'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('d')
                             )
                         ]),
                         else_body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('e')
                             )
                         ])
@@ -425,12 +440,12 @@ class IfTestCase(unittest.TestCase):
         if_else_statement = statement.If(
             condition=expression.Variable('condition'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
             else_body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('else_body')
                 )
             ]),
@@ -447,12 +462,12 @@ class IfTestCase(unittest.TestCase):
         if_else_statement = statement.If(
             condition=expression.Variable('condition'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
             else_body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('else_body')
                 )
             ]),
@@ -469,7 +484,7 @@ class IfTestCase(unittest.TestCase):
         if_statement = statement.If(
             condition=expression.Variable('condition'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -496,7 +511,7 @@ class WhileTestCase(unittest.TestCase):
             statement.While(
                 condition=expression.Variable('a'),
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('b')
                     )
                 ]),
@@ -518,7 +533,7 @@ class WhileTestCase(unittest.TestCase):
             statement.While(
                 condition=expression.Variable('a'),
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('b')
                     )
                 ]),
@@ -526,12 +541,12 @@ class WhileTestCase(unittest.TestCase):
                     statement.If(
                         condition=expression.Variable('c'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('d')
                             )
                         ]),
                         else_body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('e')
                             )
                         ])
@@ -600,12 +615,12 @@ class WhileTestCase(unittest.TestCase):
         while_statement = statement.While(
             condition=expression.Variable('condition'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
             else_body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('else_body')
                 )
             ]),
@@ -622,12 +637,12 @@ class WhileTestCase(unittest.TestCase):
         while_statement = statement.While(
             condition=expression.Variable('condition'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
             else_body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('else_body')
                 )
             ]),
@@ -644,7 +659,7 @@ class WhileTestCase(unittest.TestCase):
         while_statement = statement.While(
             condition=expression.Variable('condition'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -672,7 +687,7 @@ class ForTestCase(unittest.TestCase):
                 receiver=expression.Variable('a'),
                 iterable=expression.Variable('iterable'),
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('b')
                     )
                 ]),
@@ -695,7 +710,7 @@ class ForTestCase(unittest.TestCase):
                 receiver=expression.Variable('a'),
                 iterable=expression.Variable('iterable'),
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('b')
                     )
                 ]),
@@ -703,12 +718,12 @@ class ForTestCase(unittest.TestCase):
                     statement.If(
                         condition=expression.Variable('c'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('d')
                             )
                         ]),
                         else_body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('e')
                             )
                         ])
@@ -799,12 +814,12 @@ class ForTestCase(unittest.TestCase):
             iterable=expression.Variable('iterable'),
             receiver=expression.Variable('receiver'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
             else_body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('else_body')
                 )
             ]),
@@ -823,7 +838,7 @@ class ForTestCase(unittest.TestCase):
             iterable=expression.Variable('iterable'),
             receiver=expression.Variable('receiver'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -841,12 +856,12 @@ class ForTestCase(unittest.TestCase):
             iterable=expression.Variable('iterable'),
             receiver=expression.Variable('receiver'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
             else_body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('else_body')
                 )
             ]),
@@ -864,7 +879,7 @@ class ForTestCase(unittest.TestCase):
             iterable=expression.Variable('iterable'),
             receiver=expression.Variable('receiver'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -932,7 +947,7 @@ class WithTestCase(unittest.TestCase):
                 context_manager=expression.Variable('context_manager'),
                 receiver=expression.Variable('receiver'),
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('c')
                     )
                 ]),
@@ -950,7 +965,7 @@ class WithTestCase(unittest.TestCase):
             statement.With(
                 context_manager=expression.Variable('context_manager'),
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -973,7 +988,7 @@ class WithTestCase(unittest.TestCase):
                         context_manager=expression.Variable('c'),
                         receiver=expression.Variable('d'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('body')
                             )
                         ]),
@@ -997,7 +1012,7 @@ class WithTestCase(unittest.TestCase):
                         context_manager=expression.Variable('c'),
                         receiver=expression.Variable('d'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('body')
                             )
                         ]),
@@ -1021,7 +1036,7 @@ class WithTestCase(unittest.TestCase):
                     statement.With(
                         context_manager=expression.Variable('c'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('body')
                             )
                         ]),
@@ -1136,7 +1151,7 @@ class WithTestCase(unittest.TestCase):
         with_statement = statement.With(
             context_manager=expression.Variable('context_manager'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -1153,7 +1168,7 @@ class WithTestCase(unittest.TestCase):
             context_manager=expression.Variable('context_manager'),
             receiver=expression.Variable('receiver'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -1172,7 +1187,7 @@ class WithTestCase(unittest.TestCase):
             context_manager=expression.Variable('context_manager'),
             receiver=expression.Variable('receiver'),
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -1206,7 +1221,7 @@ class TryTestCase(unittest.TestCase):
             ).last_symbol,
             statement.Try(
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -1214,7 +1229,7 @@ class TryTestCase(unittest.TestCase):
                     statement.Try.ExceptionHandler(
                         exception=expression.Variable('exception'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('exception_body')
                             )
                         ]),
@@ -1223,19 +1238,19 @@ class TryTestCase(unittest.TestCase):
                     statement.Try.ExceptionHandler(
                         exception=expression.Variable('exception_2'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('exception_body_2')
                             )
                         ]),
                     ),
                 ],
                 else_body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('else_body')
                     )
                 ]),
                 finally_body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('finally_body')
                     )
                 ]),
@@ -1254,7 +1269,7 @@ class TryTestCase(unittest.TestCase):
             ).last_symbol,
             statement.Try(
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -1262,7 +1277,7 @@ class TryTestCase(unittest.TestCase):
                     statement.Try.ExceptionHandler(
                         exception=expression.Variable('exception'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('exception_body')
                             )
                         ]),
@@ -1286,7 +1301,7 @@ class TryTestCase(unittest.TestCase):
             ).last_symbol,
             statement.Try(
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -1294,7 +1309,7 @@ class TryTestCase(unittest.TestCase):
                     statement.Try.ExceptionHandler(
                         exception=expression.Variable('exception'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('exception_body')
                             )
                         ]),
@@ -1302,7 +1317,7 @@ class TryTestCase(unittest.TestCase):
                     ),
                 ],
                 else_body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('else_body')
                     )
                 ]),
@@ -1323,7 +1338,7 @@ class TryTestCase(unittest.TestCase):
             ).last_symbol,
             statement.Try(
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
@@ -1331,7 +1346,7 @@ class TryTestCase(unittest.TestCase):
                     statement.Try.ExceptionHandler(
                         exception=expression.Variable('exception'),
                         body=statement.Block([
-                            statement.Expression(
+                            statement.Declaration(
                                 expression.Variable('exception_body')
                             )
                         ]),
@@ -1339,7 +1354,7 @@ class TryTestCase(unittest.TestCase):
                     ),
                 ],
                 finally_body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('finally_body')
                     )
                 ]),
@@ -1358,13 +1373,13 @@ class TryTestCase(unittest.TestCase):
             ).last_symbol,
             statement.Try(
                 body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('body')
                     )
                 ]),
                 exception_handlers=[],
                 finally_body=statement.Block([
-                    statement.Expression(
+                    statement.Declaration(
                         expression.Variable('finally_body')
                     )
                 ]),
@@ -1527,7 +1542,7 @@ class TryTestCase(unittest.TestCase):
     def test_receiver(self):
         try_statement = statement.Try(
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -1535,7 +1550,7 @@ class TryTestCase(unittest.TestCase):
                 statement.Try.ExceptionHandler(
                     exception=expression.Variable('exception'),
                     body=statement.Block([
-                        statement.Expression(
+                        statement.Declaration(
                             expression.Variable('exception_body')
                         ),
                     ]),
@@ -1544,7 +1559,7 @@ class TryTestCase(unittest.TestCase):
                 statement.Try.ExceptionHandler(  # receiver is optional
                     exception=expression.Variable('exception'),
                     body=statement.Block([
-                        statement.Expression(
+                        statement.Declaration(
                             expression.Variable('exception_body')
                         ),
                     ]),
@@ -1562,7 +1577,7 @@ class TryTestCase(unittest.TestCase):
     def test_expressions(self):
         try_else_finally_statement = statement.Try(
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -1571,19 +1586,19 @@ class TryTestCase(unittest.TestCase):
                     exception=expression.Variable('exception'),
                     receiver=expression.Variable('receiver'),
                     body=statement.Block([
-                        statement.Expression(
+                        statement.Declaration(
                             expression.Variable('exception_body')
                         ),
                     ]),
                 )
             ],
             else_body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('else_body')
                 ),
             ]),
             finally_body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('finally_body')
                 ),
             ]),
@@ -1600,7 +1615,7 @@ class TryTestCase(unittest.TestCase):
     def test_statements(self):
         try_else_finally_statement = statement.Try(
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -1608,7 +1623,7 @@ class TryTestCase(unittest.TestCase):
                 statement.Try.ExceptionHandler(
                     exception=expression.Variable('exception'),
                     body=statement.Block([
-                        statement.Expression(
+                        statement.Declaration(
                             expression.Variable('exception_body')
                         ),
                     ]),
@@ -1617,19 +1632,19 @@ class TryTestCase(unittest.TestCase):
                 statement.Try.ExceptionHandler(  # receiver is optional
                     exception=expression.Variable('exception'),
                     body=statement.Block([
-                        statement.Expression(
+                        statement.Declaration(
                             expression.Variable('exception_body')
                         ),
                     ]),
                 ),
             ],
             else_body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('else_body')
                 ),
             ]),
             finally_body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('finally_body')
                 ),
             ]),
@@ -1648,7 +1663,7 @@ class TryTestCase(unittest.TestCase):
 
         try_statement = statement.Try(
             body=statement.Block([
-                statement.Expression(
+                statement.Declaration(
                     expression.Variable('body')
                 )
             ]),
@@ -1657,7 +1672,7 @@ class TryTestCase(unittest.TestCase):
                     exception=expression.Variable('exception'),
                     receiver=expression.Variable('receiver'),
                     body=statement.Block([
-                        statement.Expression(
+                        statement.Declaration(
                             expression.Variable('exception_body')
                         ),
                     ]),
