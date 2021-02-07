@@ -241,11 +241,7 @@ class Variable(declarable.Declarable, LValue):
 
     When used as an expression, evaluates to the value of the variable.
     """
-    @attr.s
-    class Annotation(metaclass=abc.ABCMeta):
-        pass
-
-    annotation: typing.Optional[typing.Union[Expression, Annotation]] = attr.ib(default=None, repr=False)
+    annotation: typing.Optional[Expression] = attr.ib(default=None, repr=False)
     initializer: typing.Optional[Expression] = attr.ib(default=None, repr=False)
 
     @classmethod
@@ -281,7 +277,7 @@ class Variable(declarable.Declarable, LValue):
                         [] if allow_comma_in_annotations else
                         [parser_module.Characters[',']]
                     ),
-                )
+                ) or cursor
 
                 if isinstance(cursor.last_symbol, Expression):
                     annotation = cursor.last_symbol

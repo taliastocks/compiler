@@ -1,6 +1,6 @@
 import unittest
 
-from . import statement, expression
+from . import statement, expression, function, class_
 from .. import parser as parser_module
 
 # pylint: disable=fixme
@@ -184,7 +184,85 @@ class BlockTestCase(unittest.TestCase):
 
 
 class DeclarationTestCase(unittest.TestCase):
-    pass
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'a: b = c',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Declaration(
+                expression.Variable(
+                    name='a',
+                    annotation=expression.Variable('b'),
+                    initializer=expression.Variable('c'),
+                )
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'a: b',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Declaration(
+                expression.Variable(
+                    name='a',
+                    annotation=expression.Variable('b'),
+                )
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'def foo():',
+                    '    bar',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Declaration(
+                function.Function(
+                    name='foo',
+                    body=statement.Block([
+                        statement.Declaration(
+                            expression.Variable('bar')
+                        )
+                    ]),
+                )
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'class foo:',
+                    '    bar',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Declaration(
+                class_.Class(
+                    name='foo',
+                    body=statement.Block([
+                        statement.Declaration(
+                            expression.Variable('bar')
+                        )
+                    ]),
+                )
+            )
+        )
+
+    def test_parse_errors(self):
+        with self.assertRaisesRegex(parser_module.ParseError, 'expected variable annotation'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'a:'
+                ])
+            )
 
 
 class AssignmentTestCase(unittest.TestCase):
@@ -229,7 +307,7 @@ class AssignmentTestCase(unittest.TestCase):
         with self.assertRaisesRegex(parser_module.ParseError, 'expected Expression'):
             statement.Statement.parse(
                 parser_module.Cursor([
-                    'a ='
+                    '(a) ='
                 ])
             )
 

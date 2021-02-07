@@ -1,7 +1,5 @@
 import unittest
 
-import attr
-
 from . import function, expression, statement, argument_list
 from .. import parser as parser_module
 
@@ -280,22 +278,15 @@ class FunctionTestCase(unittest.TestCase):
         )
 
     def test_init_locals_arguments(self):
-        @attr.s(frozen=True, slots=True)
-        class MyAnnotation(expression.Variable.Annotation):
-            my_attr: str = attr.ib()
-
-            def parse(self, _):
-                pass
-
         my_function = function.Function(
             name='func',
             arguments=argument_list.ArgumentList([
                 argument_list.Argument(
-                    expression.Variable('foo', [MyAnnotation('a')]),
+                    expression.Variable('foo', expression.Variable('a')),
                     is_keyword=True,
                 ),
                 argument_list.Argument(
-                    expression.Variable('bar', [MyAnnotation('b')]),
+                    expression.Variable('bar', expression.Variable('b')),
                     is_keyword=True,
                 ),
             ]),
@@ -303,8 +294,8 @@ class FunctionTestCase(unittest.TestCase):
 
         self.assertEqual(
             {
-                'foo': expression.Variable('foo', [MyAnnotation('a')]),
-                'bar': expression.Variable('bar', [MyAnnotation('b')]),
+                'foo': expression.Variable('foo', expression.Variable('a')),
+                'bar': expression.Variable('bar', expression.Variable('b')),
             },
             my_function.locals
         )

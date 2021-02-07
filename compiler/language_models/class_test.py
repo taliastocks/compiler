@@ -75,6 +75,42 @@ class ClassTestCase(unittest.TestCase):
             )
         )
 
+        # Bases are optional.
+        self.assertEqual(
+            class_.Class.parse(
+                parser_module.Cursor([
+                    '@decorator_1',
+                    '@decorator_2',
+                    'class MyClass[a]:',
+                    '    body',
+                ])
+            ).last_symbol,
+            class_.Class(
+                name='MyClass',
+                body=statement.Block([
+                    statement.Declaration(
+                        expression.Variable('body')
+                    )
+                ]),
+                bindings=argument_list.ArgumentList([
+                    argument_list.Argument(
+                        expression.Variable('a'),
+                        is_positional=True,
+                        is_keyword=True,
+                    )
+                ]),
+                bases=[],
+                decorators=[
+                    class_.Class.Decorator(
+                        expression.Variable('decorator_1')
+                    ),
+                    class_.Class.Decorator(
+                        expression.Variable('decorator_2')
+                    ),
+                ],
+            )
+        )
+
         # Decorators are optional.
         self.assertEqual(
             class_.Class.parse(

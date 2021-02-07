@@ -92,8 +92,8 @@ class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
             Nonlocal,
             Assert,
             Pass,
-            Assignment,
             Declaration,
+            Assignment,
             Expression,
         ])
 
@@ -136,26 +136,30 @@ class Declaration(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        new_cursor = expression_module.Variable.parse(
-            cursor,
-            parse_annotation=True,
-            parse_initializer=True,
-            allow_comma_in_annotations=True,
-        )
+        cursor = cursor.parse_one_symbol([
+            class_.Class,
+            function.Function,
+            parser_module.Always,
+        ])
 
-        if new_cursor is not None:
-            assert isinstance(new_cursor.last_symbol, expression_module.Variable)
-            symbol = new_cursor.last_symbol
+        if isinstance(cursor.last_symbol, parser_module.Always):
+            cursor = expression_module.Variable.parse(
+                cursor,
+                parse_annotation=True,
+                parse_initializer=True,
+                allow_comma_in_annotations=True,
+            )
 
-            cursor = new_cursor.parse_one_symbol([
+            if cursor is None:
+                return None
+
+            assert isinstance(cursor.last_symbol, expression_module.Variable)
+            symbol = cursor.last_symbol
+
+            cursor = cursor.parse_one_symbol([
                 parser_module.EndLine
             ])  # backtrack if the next token is not EndLine
         else:
-            cursor = cursor.parse_one_symbol([
-                class_.Class,
-                function.Function,
-            ])
-
             assert isinstance(cursor.last_symbol, declarable.Declarable)
             symbol = cursor.last_symbol
 
