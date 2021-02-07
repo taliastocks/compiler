@@ -89,6 +89,8 @@ class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
             Raise,
             Return,
             Nonlocal,
+            Assert,
+            Pass,
             Declaration,
             Assignment,
             Expression,
@@ -925,4 +927,48 @@ class Nonlocal(Statement):
         yield from self.variables
 
 
-# TODO: Assert, Pass
+@attr.s(frozen=True, slots=True)
+class Assert(Statement):
+    expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
+
+    @classmethod
+    def parse(cls, cursor):
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['assert'],
+        ])
+
+        cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+            parser_module.EndLine
+        ], fail=True)
+
+        assert isinstance(cursor.last_symbol, expression_module.Expression)
+        expression = cursor.last_symbol
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.EndLine
+        ], fail=True)
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            expression=expression,
+        ))
+
+    @property
+    def expressions(self):
+        if self.expression is not None:
+            yield self.expression
+
+
+@attr.s(frozen=True, slots=True)
+class Pass(Statement):
+    @classmethod
+    def parse(cls, cursor):
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['pass'],
+        ]).parse_one_symbol([
+            parser_module.EndLine,
+        ], fail=True)
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+        ))
