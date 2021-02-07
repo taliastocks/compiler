@@ -1842,3 +1842,70 @@ class NonlocalTestCase(unittest.TestCase):
             ],
             list(nonlocal_statement.expressions)
         )
+
+
+class AssertTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'assert foo',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Assert(expression=expression.Variable('foo'))
+        )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected an operand'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'assert',
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'assert a a',
+                ])
+            )
+
+    def test_expressions(self):
+        assert_statement = statement.Assert(
+            expression=expression.Variable('foo')
+        )
+
+        self.assertEqual(
+            [
+                expression.Variable('foo')
+            ],
+            list(assert_statement.expressions)
+        )
+
+
+class PassTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'pass',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Pass()
+        )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'pass a',
+                ])
+            )
+
+    def test_expressions(self):
+        pass_statement = statement.Pass()
+
+        self.assertEqual(
+            [],
+            list(pass_statement.expressions)
+        )
