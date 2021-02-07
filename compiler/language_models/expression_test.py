@@ -1,6 +1,6 @@
 import unittest
 
-from . import expression as expression_module
+from . import expression as expression_module, argument_list
 from .. import parser as parser_module
 
 # pylint: disable=fixme
@@ -1041,7 +1041,7 @@ class LambdaTestCase(unittest.TestCase):
                 parser_module.Cursor(['lambda: foo'])
             ).last_symbol,
             expression_module.Lambda(
-                arguments=expression_module.ArgumentList([]),
+                arguments=argument_list.ArgumentList([]),
                 expression=expression_module.Variable('foo'),
             )
         )
@@ -1052,13 +1052,13 @@ class LambdaTestCase(unittest.TestCase):
                 parser_module.Cursor(['lambda a, b: foo'])
             ).last_symbol,
             expression_module.Lambda(
-                arguments=expression_module.ArgumentList([
-                    expression_module.Argument(
+                arguments=argument_list.ArgumentList([
+                    argument_list.Argument(
                         expression_module.Variable('a'),
                         is_positional=True,
                         is_keyword=True,
                     ),
-                    expression_module.Argument(
+                    argument_list.Argument(
                         expression_module.Variable('b'),
                         is_positional=True,
                         is_keyword=True,
@@ -1074,8 +1074,8 @@ class LambdaTestCase(unittest.TestCase):
                 parser_module.Cursor(['lambda a=b: foo'])
             ).last_symbol,
             expression_module.Lambda(
-                arguments=expression_module.ArgumentList([
-                    expression_module.Argument(
+                arguments=argument_list.ArgumentList([
+                    argument_list.Argument(
                         expression_module.Variable(
                             'a',
                             initializer=expression_module.Variable('b')
@@ -1934,247 +1934,3 @@ class ExpressionParser(unittest.TestCase):
 
         with self.assertRaisesRegex(parser_module.ParseError, 'expected an operand'):
             self.parse_expression('a +')
-
-
-class ArgumentListTestCase(unittest.TestCase):
-    def test_parse_positional_keyword(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['a, b, c'])
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable('a'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-                expression_module.Argument(
-                    expression_module.Variable('b'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-                expression_module.Argument(
-                    expression_module.Variable('c'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-            ])
-        )
-
-    def test_parse_positional_only(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['a, b, /'])
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable('a'),
-                    is_positional=True,
-                    is_keyword=False,
-                ),
-                expression_module.Argument(
-                    expression_module.Variable('b'),
-                    is_positional=True,
-                    is_keyword=False,
-                ),
-            ])
-        )
-
-    def test_parse_keyword_only(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['*, a, b'])
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable('a'),
-                    is_positional=False,
-                    is_keyword=True,
-                ),
-                expression_module.Argument(
-                    expression_module.Variable('b'),
-                    is_positional=False,
-                    is_keyword=True,
-                ),
-            ])
-        )
-
-    def test_parse_positional_only_keyword_only(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['a, /, b, *, c'])
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable('a'),
-                    is_positional=True,
-                    is_keyword=False,
-                ),
-                expression_module.Argument(
-                    expression_module.Variable('b'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-                expression_module.Argument(
-                    expression_module.Variable('c'),
-                    is_positional=False,
-                    is_keyword=True,
-                ),
-            ])
-        )
-
-    def test_parse_extra_positional(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['*a'])
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable('a'),
-                    is_positional=True,
-                    is_keyword=False,
-                    is_extra=True,
-                ),
-            ])
-        )
-
-    def test_parse_extra_keyword(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['**a'])
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable('a'),
-                    is_positional=False,
-                    is_keyword=True,
-                    is_extra=True,
-                ),
-            ])
-        )
-
-    def test_parse_multiple_extra_positional(self):
-        with self.assertRaisesRegex(parser_module.ParseError, 'multiple "extra positional" arguments found'):
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['*a, *b'])
-            )
-
-    def test_parse_multiple_begin_keyword_only(self):
-        with self.assertRaisesRegex(parser_module.ParseError, 'multiple "begin keyword-only" markers found'):
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['*, *'])
-            )
-
-    def test_parse_multiple_extra_keyword(self):
-        with self.assertRaisesRegex(parser_module.ParseError, 'multiple "extra keyword" arguments found'):
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['**a, **b'])
-            )
-
-    def test_parse_multiple_end_position_only(self):
-        with self.assertRaisesRegex(parser_module.ParseError, 'multiple "end position-only" markers found'):
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['/, /'])
-            )
-
-    def test_end_position_only_after_begin_keyword_only(self):
-        with self.assertRaisesRegex(parser_module.ParseError,
-                                    '"end position-only" marker found after "begin keyword-only" marker'):
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['*, /'])
-            )
-
-    def test_parse_variable_initializer(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['a=b'])
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable(
-                        'a',
-                        initializer=expression_module.Variable('b'),
-                    ),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-            ])
-        )
-
-    def test_parse_variable_annotations(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['a: b'])
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable(
-                        'a',
-                        annotation=expression_module.Variable('b'),
-                    ),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-            ])
-        )
-
-    def test_parse_variable_no_annotations(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['a: b']),
-                parse_annotations=False,
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable(
-                        'a',  # parsing stopped at the ":"
-                    ),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-            ])
-        )
-
-    def test_parse_expected_variable(self):
-        with self.assertRaisesRegex(parser_module.ParseError, 'expected Variable'):
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['**'])
-            )
-
-    def test_parse_trailing_comma(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['a, b,'])
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable('a'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-                expression_module.Argument(
-                    expression_module.Variable('b'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-            ])
-        )
-
-    def test_parse_multiple_lines(self):
-        self.assertEqual(
-            expression_module.ArgumentList.parse(
-                parser_module.Cursor(['a,', 'b'])
-            ).last_symbol,
-            expression_module.ArgumentList([
-                expression_module.Argument(
-                    expression_module.Variable('a'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-                expression_module.Argument(
-                    expression_module.Variable('b'),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-            ])
-        )
