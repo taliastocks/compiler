@@ -132,5 +132,5 @@ class Argument:
     is_extra: bool = attr.ib(default=False)
 
 
-# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-position, cyclic-import
 from . import expression  # noqa, handle import cycle
