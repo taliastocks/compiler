@@ -246,3 +246,75 @@ class ArgumentListTestCase(unittest.TestCase):
                 ),
             ])
         )
+
+    def test_check_arguments(self):
+        with self.assertRaisesRegex(ValueError, 'multiple "extra positional" arguments not allowed'):
+            argument_list.ArgumentList([
+                argument_list.Argument(
+                    expression_module.Variable('a'),
+                    is_positional=True,
+                    is_extra=True,
+                ),
+                argument_list.Argument(
+                    expression_module.Variable('b'),
+                    is_positional=True,
+                    is_extra=True,
+                ),
+            ])
+
+        with self.assertRaisesRegex(ValueError, 'multiple "extra keyword" arguments not allowed'):
+            argument_list.ArgumentList([
+                argument_list.Argument(
+                    expression_module.Variable('a'),
+                    is_keyword=True,
+                    is_extra=True,
+                ),
+                argument_list.Argument(
+                    expression_module.Variable('b'),
+                    is_keyword=True,
+                    is_extra=True,
+                ),
+            ])
+
+
+class ArgumentTestCase(unittest.TestCase):
+    def test_check_is_keyword_or_is_positional(self):
+        with self.assertRaisesRegex(ValueError, 'all arguments must be positional or keyword or both'):
+            argument_list.Argument(
+                variable=expression_module.Variable('foo'),
+                is_positional=False,
+                is_keyword=False,
+                is_extra=False,
+            )
+
+        with self.assertRaisesRegex(ValueError, 'all arguments must be positional or keyword or both'):
+            argument_list.Argument(
+                variable=expression_module.Variable('foo'),
+                is_positional=False,
+                is_keyword=False,
+                is_extra=True,
+            )
+
+        # Should not raise.
+        argument_list.Argument(
+            variable=expression_module.Variable('foo'),
+            is_positional=True,
+            is_keyword=False,
+            is_extra=False,
+        )
+        argument_list.Argument(
+            variable=expression_module.Variable('foo'),
+            is_positional=False,
+            is_keyword=True,
+            is_extra=False,
+        )
+
+    def test_check_is_extra(self):
+        # Extra args cannot be both positional and keyword.
+        with self.assertRaisesRegex(ValueError, '"extra" arguments cannot be both positional and keyword'):
+            argument_list.Argument(
+                variable=expression_module.Variable('foo'),
+                is_positional=True,
+                is_keyword=True,
+                is_extra=True,
+            )
