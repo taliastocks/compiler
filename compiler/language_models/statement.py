@@ -137,6 +137,7 @@ class Declaration(Statement):
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
+            Import,
             class_.Class,
             function.Function,
             parser_module.Always,
@@ -167,6 +168,10 @@ class Declaration(Statement):
             cursor=cursor,
             declarable=symbol,
         ))
+
+    @property
+    def receivers(self):
+        yield self.declarable
 
 
 @attr.s(frozen=True, slots=True)
@@ -1002,6 +1007,75 @@ class Pass(Statement):
 
         return cursor.new_from_symbol(cls(
             cursor=cursor,
+        ))
+
+
+@attr.s(frozen=True, slots=True)
+class Import(Statement, declarable.Declarable):
+    path: typing.Sequence[str] = attr.ib(converter=tuple)
+
+    @classmethod
+    def parse(cls, cursor):
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['import'],
+        ])
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['.'],
+            parser_module.Identifier,
+        ], fail=True)
+
+        dots = 0
+        while isinstance(cursor.last_symbol, parser_module.Characters['.']):
+            dots += 1
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters['.'],
+                parser_module.Identifier,
+            ], fail=True)
+
+        path = []
+        if dots:
+            path.append('.' * dots)
+
+        while True:
+            assert isinstance(cursor.last_symbol, parser_module.Identifier)
+            path.append(cursor.last_symbol.identifier)
+            name = cursor.last_symbol.identifier
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.Characters['.'],
+                parser_module.Always,
+            ])
+
+            if isinstance(cursor.last_symbol, parser_module.Always):
+                break
+
+            cursor = cursor.parse_one_symbol([
+                parser_module.Identifier
+            ], fail=True)
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters['as'],
+            parser_module.Always,
+        ])
+
+        if isinstance(cursor.last_symbol, parser_module.Characters['as']):
+            cursor = cursor.parse_one_symbol([
+                parser_module.Identifier
+            ], fail=True)
+
+            assert isinstance(cursor.last_symbol, parser_module.Identifier)
+            name = cursor.last_symbol.identifier
+
+        cursor = cursor.parse_one_symbol([
+            parser_module.EndLine
+        ], fail=True)
+
+        return cursor.new_from_symbol(cls(
+            cursor=cursor,
+            name=name,
+            path=path,
         ))
 
 

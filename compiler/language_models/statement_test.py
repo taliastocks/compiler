@@ -31,6 +31,7 @@ class StatementTestCase(unittest.TestCase):
                 expression.Variable('receiver_2'),
                 expression.Variable('receiver_3'),
                 expression.Variable('receiver_4'),
+                expression.Variable('declaration'),
             },
             set(statement.For(
                 iterable=expression.Variable('iterable'),
@@ -47,8 +48,11 @@ class StatementTestCase(unittest.TestCase):
                         body=statement.Block([]),
                         receiver=expression.Variable('receiver_4'),
                     ),
-                    statement.Declaration(
+                    statement.Expression(
                         expression.Variable('some_other_variable')
+                    ),
+                    statement.Declaration(
+                        expression.Variable('declaration')
                     ),
                 ]),
             ).variable_assignments)
@@ -263,6 +267,18 @@ class DeclarationTestCase(unittest.TestCase):
                     'a:'
                 ])
             )
+
+    def test_receivers(self):
+        declaration = statement.Declaration(
+            declarable=expression.Variable('foo')
+        )
+
+        self.assertEqual(
+            [
+                expression.Variable('foo')
+            ],
+            list(declaration.receivers)
+        )
 
 
 class AssignmentTestCase(unittest.TestCase):
@@ -2001,4 +2017,122 @@ class PassTestCase(unittest.TestCase):
         self.assertEqual(
             [],
             list(pass_statement.expressions)
+        )
+
+
+class ImportTestCase(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import foo',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Declaration(
+                statement.Import(
+                    name='foo',
+                    path=['foo'],
+                )
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import foo.bar',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Declaration(
+                statement.Import(
+                    name='bar',
+                    path=['foo', 'bar'],
+                )
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import .foo.bar',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Declaration(
+                statement.Import(
+                    name='bar',
+                    path=['.', 'foo', 'bar'],
+                )
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import ...foo.bar',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Declaration(
+                statement.Import(
+                    name='bar',
+                    path=['...', 'foo', 'bar'],
+                )
+            )
+        )
+
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import ...foo.bar as baz',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Declaration(
+                statement.Import(
+                    name='baz',
+                    path=['...', 'foo', 'bar'],
+                )
+            )
+        )
+
+    def test_parse_error(self):
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'.\', Identifier\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import'
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'.\', Identifier\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import .'
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(Identifier\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import .foo as'
+                ])
+            )
+
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(EndLine\)'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import .foo as bar garbage'
+                ])
+            )
+
+    def test_expressions(self):
+        import_statement = statement.Import(
+            name='foo',
+            path=['...', 'foo'],
+        )
+
+        self.assertEqual(
+            [],
+            list(import_statement.expressions)
         )
