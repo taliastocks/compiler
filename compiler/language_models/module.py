@@ -20,7 +20,7 @@ class Module(parser_module.Symbol):
                                                                     repr=False)
 
     @classmethod
-    def from_string(cls, code: str):
+    def from_string(cls, code: str) -> Module:
         cursor = parser_module.Cursor(code.splitlines())
 
         return cls.parse(cursor).last_symbol
