@@ -1,7 +1,7 @@
 import unittest
 
 from . import statement, expression, function, class_
-from ..lib import parser as parser_module
+from ..libs import parser as parser_module
 
 # pylint: disable=fixme
 # pylint: disable=too-many-lines

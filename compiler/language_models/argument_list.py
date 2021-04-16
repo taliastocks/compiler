@@ -4,7 +4,7 @@ import typing
 
 import attr
 
-from ..lib import parser as parser_module
+from ..libs import parser as parser_module
 
 
 @attr.s(frozen=True, slots=True)

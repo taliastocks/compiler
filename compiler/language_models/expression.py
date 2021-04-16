@@ -7,7 +7,7 @@ import attr
 import immutabledict
 
 from . import declarable, argument_list
-from ..lib import parser as parser_module
+from ..libs import parser as parser_module
 
 # pylint: disable=fixme
 # pylint: disable=too-many-lines

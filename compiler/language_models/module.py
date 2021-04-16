@@ -9,7 +9,7 @@ from . import (
     declarable as declarable_module,
     statement as statement_module,
 )
-from ..lib import parser as parser_module
+from ..libs import parser as parser_module
 
 
 @attr.s(frozen=True, slots=True)

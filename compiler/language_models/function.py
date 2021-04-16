@@ -6,7 +6,7 @@ import attr
 import immutabledict
 
 from . import statement, declarable, expression, argument_list
-from ..lib import parser as parser_module
+from ..libs import parser as parser_module
 
 
 @attr.s(frozen=True, slots=True)
