@@ -2,7 +2,7 @@ import textwrap
 import unittest
 
 from . import module, function, class_, expression, statement
-from .. import parser as parser_module
+from ..libs import parser as parser_module
 
 
 class ModuleTestCase(unittest.TestCase):

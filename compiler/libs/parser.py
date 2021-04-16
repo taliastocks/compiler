@@ -6,8 +6,8 @@ import typing
 import attr
 import regex
 
-from .language_models import string
-from .meta import generic
+from ..language_models import string
+from ..meta import generic
 
 
 @attr.s(frozen=True)
