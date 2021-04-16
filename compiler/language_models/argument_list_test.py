@@ -1,7 +1,7 @@
 import unittest
 
 from . import argument_list, expression as expression_module
-from .. import parser as parser_module
+from ..lib import parser as parser_module
 
 
 class ArgumentListTestCase(unittest.TestCase):

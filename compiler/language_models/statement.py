@@ -6,7 +6,7 @@ import typing
 import attr
 
 from . import expression as expression_module, declarable
-from .. import parser as parser_module
+from ..lib import parser as parser_module
 
 # pylint: disable=fixme
 # pylint: disable=too-many-lines

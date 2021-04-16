@@ -5,7 +5,7 @@ import typing
 import attr
 
 from . import declarable, expression, argument_list, statement
-from .. import parser as parser_module
+from ..lib import parser as parser_module
 
 # pylint: disable=fixme
 
