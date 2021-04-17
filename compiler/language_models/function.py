@@ -47,9 +47,9 @@ class Function(declarable.Declarable, parser_module.Symbol):
     return_type: typing.Optional[expression.Expression] = attr.ib(default=None, repr=False)
 
     is_generator: bool = attr.ib(init=False, repr=False)
-    locals: typing.Mapping[declarable.Declarable] = attr.ib(converter=immutabledict.immutabledict,
-                                                            init=False,
-                                                            repr=False)
+    locals: typing.Mapping[str, declarable.Declarable] = attr.ib(converter=immutabledict.immutabledict,
+                                                                 init=False,
+                                                                 repr=False)
 
     @classmethod
     def parse(cls, cursor):
