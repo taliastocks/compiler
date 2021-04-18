@@ -6,7 +6,7 @@ import typing
 import attr
 import immutabledict
 
-from . import declarable, argument_list
+from . import declarable, argument_list, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -18,6 +18,10 @@ class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
     """An Expression is a syntactic entity that may be evaluated to determine
     its value.
     """
+    def execute(self, namespace: namespace_module.Namespace):
+        """Execute the expression in a namespace.
+        """
+
     @property
     def expressions(self) -> typing.Iterable[Expression]:
         """Get all the expressions which this expression directly depends on,
@@ -31,19 +35,6 @@ class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
         """
         for expression in self.expressions:
             yield from expression.variable_assignments
-
-    @property
-    def has_yield(self) -> bool:
-        """True if this expression yields, otherwise False
-        """
-        if isinstance(self, (Yield, YieldFrom)):
-            return True
-
-        for expression in self.expressions:
-            if expression.has_yield:
-                return True
-
-        return False
 
 
 @attr.s
@@ -658,32 +649,10 @@ class Subscript(CallBase, LValue):
 
 
 @attr.s(frozen=True, slots=True)
-class Await(UnaryOperator):
-    """Await a promise.
-    """
-    higher_precedence_operators = Call.higher_precedence_operators | {Call, Dot, Subscript}
-    token = parser_module.Characters['await']
-
-
-@attr.s(frozen=True, slots=True)
-class Go(UnaryOperator):
-    """Call a function asynchronously, returning a promise.
-    """
-    expression: typing.Optional[Expression] = attr.ib(default=None)
-    higher_precedence_operators = Await.higher_precedence_operators
-    token = parser_module.Characters['go']
-
-    @expression.validator
-    def _check_expression(self, _, expression):
-        if expression is not None and not isinstance(expression, CallBase):
-            raise parser_module.ParseError('"go" must be followed by a Call or Subscript', self.cursor)
-
-
-@attr.s(frozen=True, slots=True)
 class Exponentiation(BinaryOperator):
     """a ** b
     """
-    higher_precedence_operators = Await.higher_precedence_operators | {Await, Go}
+    higher_precedence_operators = Call.higher_precedence_operators | {Call, Dot, Subscript}
     token = parser_module.Characters['**']
 
     @classmethod
@@ -1038,36 +1007,10 @@ class Assignment(BinaryOperator):
 
 
 @attr.s(frozen=True, slots=True)
-class YieldFrom(UnaryOperator):
-    """Yield all the values of an iterable. This can only be used from within
-    a generator.
-    """
-    higher_precedence_operators = Assignment.higher_precedence_operators | {Assignment}
-    token = parser_module.Regex['yield +from']
-
-    def new_from_operand_stack(self, cursor, operands):
-        if not operands:
-            raise parser_module.ParseError('not enough operands', cursor)
-
-        return YieldFrom(
-            expression=operands.pop(),
-            cursor=cursor,
-        )
-
-
-@attr.s(frozen=True, slots=True)
-class Yield(UnaryOperator):
-    """Yield a single value from a generator.
-    """
-    higher_precedence_operators = YieldFrom.higher_precedence_operators
-    token = parser_module.Characters['yield']
-
-
-@attr.s(frozen=True, slots=True)
 class StarStar(UnaryOperator):
     """**mapping
     """
-    higher_precedence_operators = YieldFrom.higher_precedence_operators | {YieldFrom, Yield}
+    higher_precedence_operators = Assignment.higher_precedence_operators | {Assignment}
     token = parser_module.Characters['**']
 
 
@@ -1247,7 +1190,7 @@ class ExpressionParser(parser_module.Parser):
         parser_module.Always,
     )
     prefix_operators: typing.Sequence[typing.Type[UnaryOperator]] = (
-        Await, Go, Positive, Negative, BitInverse, Not, Lambda, YieldFrom, Yield, StarStar, Star,
+        Positive, Negative, BitInverse, Not, Lambda, StarStar, Star,
         parser_module.Always,
     )
     infix_operators: typing.Sequence[typing.Type[Operator]] = (
