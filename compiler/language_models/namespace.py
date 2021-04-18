@@ -24,3 +24,6 @@ class Namespace:
             raise KeyError('name {!r} already defined'.format(name))
 
         self.declarations[name] = value
+
+    def __getitem__(self, item):
+        return self.lookup(item)

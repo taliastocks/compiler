@@ -1,6 +1,7 @@
+import decimal
 import unittest
 
-from . import expression as expression_module, argument_list
+from . import expression as expression_module, argument_list, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -8,6 +9,15 @@ from ..libs import parser as parser_module
 
 
 class NumberTestCase(unittest.TestCase):
+    def test_execute(self):
+        self.assertEqual(
+            decimal.Decimal('-12.34e-56'),
+            expression_module.Number(
+                digits_part=-1234,
+                magnitude_part=-58,
+            ).execute(namespace_module.Namespace())
+        )
+
     def test_parse_float(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
@@ -105,6 +115,29 @@ class NumberTestCase(unittest.TestCase):
 
 
 class StringTestCase(unittest.TestCase):
+    def test_execute(self):
+        # TODO: test local variable formatting
+        self.assertEqual(
+            'hello world',
+            expression_module.String(
+                is_binary=False,
+                values=[
+                    parser_module.String('hello '),
+                    parser_module.String('world'),
+                ],
+            ).execute(namespace_module.Namespace())
+        )
+        self.assertEqual(
+            b'hello world',
+            expression_module.String(
+                is_binary=True,
+                values=[
+                    parser_module.String(b'hello '),
+                    parser_module.String(b'world'),
+                ],
+            ).execute(namespace_module.Namespace())
+        )
+
     def test_string_text(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
@@ -160,6 +193,16 @@ class StringTestCase(unittest.TestCase):
 
 
 class BooleanTestCase(unittest.TestCase):
+    def test_execute(self):
+        self.assertIs(
+            True,
+            expression_module.Boolean(True).execute(namespace_module.Namespace())
+        )
+        self.assertIs(
+            False,
+            expression_module.Boolean(False).execute(namespace_module.Namespace())
+        )
+
     def test_boolean(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
@@ -185,6 +228,12 @@ class BooleanTestCase(unittest.TestCase):
 
 
 class NoneValueTestCase(unittest.TestCase):
+    def test_execute(self):
+        self.assertIs(
+            None,
+            expression_module.NoneValue().execute(namespace_module.Namespace())
+        )
+
     def test_boolean(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(

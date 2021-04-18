@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import decimal
 import typing
 
 import attr
@@ -60,6 +61,9 @@ class Number(Literal):
     digits_part: int = attr.ib(default=0)
     magnitude_part: int = attr.ib(default=0)
 
+    def execute(self, namespace):
+        return decimal.Decimal('{self.digits_part}e{self.magnitude_part}'.format(self=self))
+
     @classmethod
     def parse(cls, cursor):
         regex_class = parser_module.Regex[r'(\d[\d\']*)(?:\.(\d[\d\']*))?(?:[eE]([-+])?(\d[\d\']*))?']
@@ -113,6 +117,12 @@ class String(Literal):
     is_binary: bool = attr.ib()
     values: typing.Sequence[parser_module.String] = attr.ib(converter=tuple)
 
+    def execute(self, namespace):
+        # TODO: local variable formatting
+        if self.is_binary:
+            return b''.join(bytes(value.value) for value in self.values)
+        return ''.join(str(value.value) for value in self.values)
+
     @classmethod
     def parse(cls, cursor):
         values: list[parser_module.String] = []
@@ -151,6 +161,9 @@ class Boolean(Literal):
     """
     value: bool = attr.ib()
 
+    def execute(self, namespace):
+        return self.value
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
@@ -177,6 +190,9 @@ class Boolean(Literal):
 class NoneValue(Literal):
     """Represents a None literal value.
     """
+
+    def execute(self, namespace):
+        return None
 
     @classmethod
     def parse(cls, cursor):
