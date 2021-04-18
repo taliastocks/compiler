@@ -46,7 +46,6 @@ class Function(declarable.Declarable, parser_module.Symbol):
     decorators: typing.Sequence[Decorator] = attr.ib(converter=tuple, default=(), repr=False)
     return_type: typing.Optional[expression.Expression] = attr.ib(default=None, repr=False)
 
-    is_generator: bool = attr.ib(init=False, repr=False)
     locals: typing.Mapping[str, declarable.Declarable] = attr.ib(converter=immutabledict.immutabledict,
                                                                  init=False,
                                                                  repr=False)
@@ -147,12 +146,6 @@ class Function(declarable.Declarable, parser_module.Symbol):
             return_type=return_type,
             body=body,
         ))
-
-    @is_generator.default
-    def _init_is_generator(self):
-        """A function which yields is a generator.
-        """
-        return self.body.has_yield
 
     @locals.default
     def _init_locals(self):

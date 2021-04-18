@@ -255,28 +255,6 @@ class FunctionTestCase(unittest.TestCase):
                 ])
             )
 
-    def test_init_is_generator(self):
-        my_function = function.Function(
-            name='func',
-            body=statement.Block([
-                statement.Expression(
-                    expression.Yield()
-                )
-            ]),
-        )
-
-        self.assertIs(
-            True,
-            my_function.is_generator
-        )
-
-        my_function = function.Function('func')
-
-        self.assertIs(
-            False,
-            my_function.is_generator
-        )
-
     def test_init_locals_arguments(self):
         my_function = function.Function(
             name='func',

@@ -63,20 +63,6 @@ class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
         for statement in self.statements:
             yield from statement.nonlocal_variables
 
-    @property
-    def has_yield(self) -> bool:
-        """True if the statement yields, otherwise False.
-        """
-        for expression in self.expressions:
-            if expression.has_yield:
-                return True
-
-        for statement in self.statements:
-            if statement.has_yield:
-                return True
-
-        return False
-
     @classmethod
     def parse(cls, cursor):
         return cursor.parse_one_symbol([

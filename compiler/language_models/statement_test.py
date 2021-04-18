@@ -106,41 +106,6 @@ class StatementTestCase(unittest.TestCase):
             ).nonlocal_variables)
         )
 
-    def test_has_yield(self):
-        # Simple.
-        self.assertIs(
-            True,
-            statement.Expression(
-                expression.Yield()
-            ).has_yield
-        )
-        self.assertIs(
-            True,
-            statement.Expression(
-                expression.YieldFrom()
-            ).has_yield
-        )
-        self.assertIs(
-            False,
-            statement.Expression(
-                expression.Variable('whatever')
-            ).has_yield
-        )
-
-        # Nested.
-        self.assertIs(
-            True,
-            statement.While(
-                condition=expression.Variable('condition'),
-                body=statement.Block([]),
-                else_body=statement.Block([
-                    statement.Expression(
-                        expression.Yield()
-                    )
-                ])
-            ).has_yield
-        )
-
 
 class BlockTestCase(unittest.TestCase):
     def test_parse(self):

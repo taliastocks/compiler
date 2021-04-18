@@ -7,51 +7,6 @@ from ..libs import parser as parser_module
 # pylint: disable=too-many-lines
 
 
-class ExpressionTestCase(unittest.TestCase):
-    def test_has_yield(self):
-        self.assertIs(
-            True,
-            expression_module.Yield().has_yield
-        )
-
-        self.assertIs(
-            True,
-            expression_module.YieldFrom().has_yield
-        )
-
-        self.assertIs(
-            False,
-            expression_module.Variable('foo').has_yield
-        )
-
-        # Check nesting works.
-        self.assertIs(
-            True,
-            expression_module.Unpack([
-                expression_module.Variable('a'),
-                expression_module.Subscript(
-                    subscriptable=expression_module.Yield(),
-                    positional_arguments=[expression_module.Variable('foo')],
-                ),
-            ]).has_yield
-        )
-
-        # Check even more nesting works.
-        self.assertIs(
-            True,
-            expression_module.Unpack([
-                expression_module.Variable('a'),
-                expression_module.Subscript(
-                    subscriptable=expression_module.Variable('foo'),
-                    positional_arguments=[expression_module.Subscript(
-                        subscriptable=expression_module.Variable('bar'),
-                        positional_arguments=[expression_module.YieldFrom()],
-                    )],
-                ),
-            ]).has_yield
-        )
-
-
 class NumberTestCase(unittest.TestCase):
     def test_parse_float(self):
         self.assertEqual(
@@ -724,7 +679,6 @@ class OperatorTestCase(unittest.TestCase):
     def test_operator_precedence(self):
         expected_precedence = (
             (expression_module.Call, expression_module.Dot, expression_module.Subscript),
-            (expression_module.Await, expression_module.Go),
             (expression_module.Exponentiation,),
             (expression_module.Positive, expression_module.Negative, expression_module.BitInverse),
             (expression_module.Multiply, expression_module.MatrixMultiply, expression_module.FloorDivide,
@@ -743,7 +697,6 @@ class OperatorTestCase(unittest.TestCase):
             (expression_module.IfElse,),
             (expression_module.Lambda,),
             (expression_module.Assignment,),
-            (expression_module.YieldFrom, expression_module.Yield),
             (expression_module.Star, expression_module.StarStar),
             (expression_module.Colon,),
             (expression_module.Comprehension,),
@@ -764,17 +717,17 @@ class OperatorTestCase(unittest.TestCase):
         # This behavior comes from the operator precedence rules, so just test a sample of cases.
         self.assertIs(
             True,
-            expression_module.Call.precedes_on_right(expression_module.Await)
+            expression_module.Call.precedes_on_right(expression_module.Not)
         )
         self.assertIs(
             False,
-            expression_module.Await.precedes_on_right(expression_module.Call)
+            expression_module.Not.precedes_on_right(expression_module.Call)
         )
 
         # Most operators should evaluate left to right.
         self.assertIs(
             False,
-            expression_module.Await.precedes_on_right(expression_module.Await)
+            expression_module.Not.precedes_on_right(expression_module.Not)
         )
 
         # ...with the exception of exponentiation...
@@ -936,76 +889,6 @@ class SubscriptTestCase(unittest.TestCase):
                 expression_module.Variable('foo_arg'),
             ],
             list(subscript.expressions)
-        )
-
-
-class AwaitTestCase(unittest.TestCase):
-    def test_expressions(self):
-        await_expr = expression_module.Await()
-
-        self.assertEqual(
-            [],
-            list(await_expr.expressions)
-        )
-
-        await_expr = expression_module.Await(
-            expression=expression_module.Variable('foo')
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Variable('foo')
-            ],
-            list(await_expr.expressions)
-        )
-
-
-class GoTestCase(unittest.TestCase):
-    def test_parse(self):
-        self.assertEqual(
-            expression_module.ExpressionParser.parse(
-                parser_module.Cursor(['go a()'])
-            ).last_symbol,
-            expression_module.Go(
-                expression=expression_module.Call(
-                    callable=expression_module.Variable('a')
-                )
-            )
-        )
-
-        self.assertEqual(
-            expression_module.ExpressionParser.parse(
-                parser_module.Cursor(['go a[]'])
-            ).last_symbol,
-            expression_module.Go(
-                expression=expression_module.Subscript(
-                    subscriptable=expression_module.Variable('a')
-                )
-            )
-        )
-
-        with self.assertRaisesRegex(parser_module.ParseError, r'"go" must be followed by a Call or Subscript'):
-            expression_module.ExpressionParser.parse(
-                parser_module.Cursor(['go a'])
-            )
-
-    def test_expressions(self):
-        go_expr = expression_module.Go()
-
-        self.assertEqual(
-            [],
-            list(go_expr.expressions)
-        )
-
-        go_expr = expression_module.Go(
-            expression=expression_module.Call()
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Call()
-            ],
-            list(go_expr.expressions)
         )
 
 
@@ -1275,48 +1158,6 @@ class AssignmentTestCase(unittest.TestCase):
         )
 
 
-class YieldFromTestCase(unittest.TestCase):
-    def test_expressions(self):
-        yield_from_expr = expression_module.YieldFrom()
-
-        self.assertEqual(
-            [],
-            list(yield_from_expr.expressions)
-        )
-
-        yield_from_expr = expression_module.YieldFrom(
-            expression=expression_module.Variable('foo')
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Variable('foo')
-            ],
-            list(yield_from_expr.expressions)
-        )
-
-
-class YieldTestCase(unittest.TestCase):
-    def test_expressions(self):
-        yield_expr = expression_module.Yield()
-
-        self.assertEqual(
-            [],
-            list(yield_expr.expressions)
-        )
-
-        yield_expr = expression_module.Yield(
-            expression=expression_module.Variable('foo')
-        )
-
-        self.assertEqual(
-            [
-                expression_module.Variable('foo')
-            ],
-            list(yield_expr.expressions)
-        )
-
-
 class StarStarTestCase(unittest.TestCase):
     def test_expressions(self):
         pass
@@ -1476,20 +1317,6 @@ class ExpressionParserTestCase(unittest.TestCase):
 
     def test_parse_prefix_operators(self):
         self.assertEqual(
-            expression_module.Await(
-                expression_module.Variable('foo')
-            ),
-            self.parse_expression('await foo')
-        )
-        self.assertEqual(
-            expression_module.Go(
-                expression=expression_module.Call(
-                    callable=expression_module.Variable('foo'),
-                )
-            ),
-            self.parse_expression('go foo()')
-        )
-        self.assertEqual(
             expression_module.Positive(
                 expression_module.Variable('foo')
             ),
@@ -1518,18 +1345,6 @@ class ExpressionParserTestCase(unittest.TestCase):
                 expression=expression_module.Variable('foo'),
             ),
             self.parse_expression('lambda: foo')
-        )
-        self.assertEqual(
-            expression_module.YieldFrom(
-                expression_module.Variable('foo')
-            ),
-            self.parse_expression('yield from foo')
-        )
-        self.assertEqual(
-            expression_module.Yield(
-                expression_module.Variable('foo')
-            ),
-            self.parse_expression('yield foo')
         )
         self.assertEqual(
             expression_module.StarStar(
@@ -1789,19 +1604,19 @@ class ExpressionParserTestCase(unittest.TestCase):
         # Prefix operators should be evaluated right to left.
         self.assertEqual(
             expression_module.Negative(
-                expression_module.Await(
+                expression_module.Not(
                     expression_module.Variable('a')
                 )
             ),
-            self.parse_expression('-await a')
+            self.parse_expression('-not a')
         )
         self.assertEqual(
-            expression_module.Await(
+            expression_module.Not(
                 expression_module.Negative(
                     expression_module.Variable('a')
                 )
             ),
-            self.parse_expression('await -a')
+            self.parse_expression('not -a')
         )
 
     def test_precedence_infix_equal_precedence(self):
