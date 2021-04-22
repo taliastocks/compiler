@@ -20,9 +20,6 @@ class Namespace:
         raise KeyError('no such name {!r}'.format(name))
 
     def declare(self, name: str, value: typing.Any):
-        if name in self.declarations:
-            raise KeyError('name {!r} already defined'.format(name))
-
         self.declarations[name] = value
 
     def __getitem__(self, item):

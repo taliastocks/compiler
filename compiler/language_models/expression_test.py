@@ -203,7 +203,7 @@ class BooleanTestCase(unittest.TestCase):
             expression_module.Boolean(False).execute(namespace_module.Namespace())
         )
 
-    def test_boolean(self):
+    def test_parse(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
                 parser_module.Cursor([
@@ -234,7 +234,7 @@ class NoneValueTestCase(unittest.TestCase):
             expression_module.NoneValue().execute(namespace_module.Namespace())
         )
 
-    def test_boolean(self):
+    def test_parse(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
                 parser_module.Cursor([
@@ -310,6 +310,48 @@ class LValueTestCase(unittest.TestCase):
 
 
 class VariableTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('foo', 'foo value')
+        namespace.declare('bar', 'bar value')
+
+        self.assertEqual(
+            'foo value',
+            expression_module.Variable('foo').execute(namespace)
+        )
+        self.assertEqual(
+            'bar value',
+            expression_module.Variable('bar').execute(namespace)
+        )
+
+        with self.assertRaises(NameError):
+            # This should eventually be a compile-time check, but for now
+            # at least throw the same error as Python does.
+            expression_module.Variable('baz').execute(namespace)
+
+    def test_execute_initializer(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('foo', 'foo value')
+        namespace.declare('bar', 'bar value')
+
+        # "foo = bar"
+        self.assertEqual(
+            'bar value',
+            expression_module.Variable(
+                name='foo',
+                initializer=expression_module.Variable('bar')
+            ).execute(namespace)
+        )
+        self.assertEqual(
+            'bar value',
+            namespace.lookup('foo')
+        )
+
+        with self.assertRaises(NameError):
+            # This should eventually be a compile-time check, but for now
+            # at least throw the same error as Python does.
+            expression_module.Variable('baz').execute(namespace)
+
     def test_parse(self):
         cursor = expression_module.Variable.parse(
             parser_module.Cursor(

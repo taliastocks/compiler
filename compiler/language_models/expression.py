@@ -251,6 +251,17 @@ class Variable(declarable.Declarable, LValue):
     annotation: typing.Optional[Expression] = attr.ib(default=None, repr=False)
     initializer: typing.Optional[Expression] = attr.ib(default=None, repr=False)
 
+    def execute(self, namespace):
+        if self.initializer is not None:
+            new_value = self.initializer.execute(namespace)
+            namespace.declare(self.name, new_value)
+            return new_value
+
+        try:
+            return namespace.lookup(self.name)
+        except KeyError as exc:
+            raise NameError('name {!r} is not defined'.format(self.name)) from exc
+
     @classmethod
     def parse(cls,
               cursor,
