@@ -1,5 +1,6 @@
 import decimal
 import unittest
+from unittest import mock
 
 from . import expression as expression_module, argument_list, namespace as namespace_module
 from ..libs import parser as parser_module
@@ -310,6 +311,15 @@ class LValueTestCase(unittest.TestCase):
 
 
 class VariableTestCase(unittest.TestCase):
+    def test_assign(self):
+        namespace = namespace_module.Namespace()
+        expression_module.Variable('foo').assign(namespace, 'foo value')
+
+        self.assertEqual(
+            'foo value',
+            namespace.lookup('foo')
+        )
+
     def test_execute(self):
         namespace = namespace_module.Namespace()
         namespace.declare('foo', 'foo value')
@@ -599,6 +609,42 @@ class VariableTestCase(unittest.TestCase):
 
 
 class UnpackTestCase(unittest.TestCase):
+    def test_assign(self):
+        namespace = namespace_module.Namespace()
+
+        expression_module.Unpack(lvalues=[
+            expression_module.Variable('foo'),
+            expression_module.Unpack(lvalues=[
+                expression_module.Variable('bar'),
+                expression_module.Variable('baz'),
+            ])
+        ]).assign(namespace, ['foo_value', ['bar_value', 'baz_value']])
+
+        self.assertEqual(
+            'foo_value',
+            namespace.lookup('foo')
+        )
+        self.assertEqual(
+            'bar_value',
+            namespace.lookup('bar')
+        )
+        self.assertEqual(
+            'baz_value',
+            namespace.lookup('baz')
+        )
+
+        with self.assertRaisesRegex(ValueError, 'not enough values to unpack'):
+            expression_module.Unpack([
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ]).assign(namespace, ['a'])
+
+        with self.assertRaisesRegex(ValueError, 'too many values to unpack'):
+            expression_module.Unpack([
+                expression_module.Variable('a'),
+                expression_module.Variable('b'),
+            ]).assign(namespace, ['a', 'b', 'c'])
+
     def test_expressions(self):
         unpack = expression_module.Unpack([
             expression_module.Variable('a'),
@@ -899,6 +945,21 @@ class CallTestCase(unittest.TestCase):
 
 
 class DotTestCase(unittest.TestCase):
+    def test_assign(self):
+        namespace = namespace_module.Namespace()
+        foo_value = mock.Mock(spec_set=['bar'])
+        namespace.declare('foo', foo_value)
+
+        expression_module.Dot(
+            object=expression_module.Variable('foo'),
+            member_name='bar',
+        ).assign(namespace, 'bar_value')
+
+        self.assertEqual(
+            'bar_value',
+            foo_value.bar
+        )
+
     def test_expressions(self):
         dot = expression_module.Dot(
             object=expression_module.Variable('my_object'),
@@ -914,6 +975,25 @@ class DotTestCase(unittest.TestCase):
 
 
 class SubscriptTestCase(unittest.TestCase):
+    def test_assign(self):
+        namespace = namespace_module.Namespace()
+        foo_value = {}
+        namespace.declare('foo', foo_value)
+
+        expression_module.Subscript(
+            subscriptable=expression_module.Variable('foo'),
+            positional_arguments=[
+                expression_module.String.from_string('bar')
+            ],
+        ).assign(namespace, 'bar_value')
+
+        self.assertEqual(
+            {
+                'bar': 'bar_value'
+            },
+            foo_value
+        )
+
     def test_parse(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
