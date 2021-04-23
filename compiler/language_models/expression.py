@@ -124,6 +124,16 @@ class String(Literal):
         return ''.join(str(value.value) for value in self.values)
 
     @classmethod
+    def from_string(cls, value):
+        assert type(value) in [bytes, str]
+        return cls(
+            is_binary=isinstance(value, bytes),
+            values=[
+                parser_module.String(value)
+            ],
+        )
+
+    @classmethod
     def parse(cls, cursor):
         values: list[parser_module.String] = []
         is_binary: typing.Optional[bool] = None
@@ -213,6 +223,11 @@ class LValue(Expression, metaclass=abc.ABCMeta):
     """An LValue is an expression which can be assigned to, i.e. it can appear
     on the left-hand side of an `=` sign (thus "L" as in "Left").
     """
+    @abc.abstractmethod
+    def assign(self, namespace: namespace_module.Namespace, value: typing.Any):
+        """Assign a value to this LValue.
+        """
+
     @staticmethod
     def from_expression(expression: Expression) -> LValue:
         """Convert an expression into an LValue if possible.
@@ -251,10 +266,13 @@ class Variable(declarable.Declarable, LValue):
     annotation: typing.Optional[Expression] = attr.ib(default=None, repr=False)
     initializer: typing.Optional[Expression] = attr.ib(default=None, repr=False)
 
+    def assign(self, namespace, value):
+        namespace.declare(self.name, value)
+
     def execute(self, namespace):
         if self.initializer is not None:
             new_value = self.initializer.execute(namespace)
-            namespace.declare(self.name, new_value)
+            self.assign(namespace, new_value)
             return new_value
 
         try:
@@ -346,9 +364,30 @@ class Unpack(LValue):
     """
     lvalues: typing.Sequence[LValue] = attr.ib(converter=tuple)
 
+    def assign(self, namespace, value):
+        value: typing.Iterable
+
+        items = [
+            item
+            for i, item in enumerate(value)
+            if i <= len(self.lvalues)
+        ]
+
+        if len(items) < len(self.lvalues):
+            raise ValueError('not enough values to unpack')
+
+        if len(items) > len(self.lvalues):
+            raise ValueError('too many values to unpack')
+
+        for lvalue, item in zip(self.lvalues, items):
+            lvalue.assign(namespace, item)
+
+    def execute(self, namespace):
+        raise RuntimeError('this should be unreachable')
+
     @classmethod
     def parse(cls, cursor):
-        pass
+        raise RuntimeError('this should be unreachable')
 
     @property
     def expressions(self):
@@ -610,6 +649,9 @@ class Dot(Operator, LValue):
     object: typing.Optional[Expression] = attr.ib(default=None)
     member_name: typing.Optional[str] = attr.ib(default=None)
 
+    def assign(self, namespace, value):
+        setattr(self.object.execute(namespace), self.member_name, value)
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
@@ -653,6 +695,13 @@ class Subscript(CallBase, LValue):
 
     begin_token = parser_module.Characters['[']
     end_token = parser_module.Characters[']']
+
+    def assign(self, namespace, value):
+        self.subscriptable.execute(namespace).__setitem__(  # noqa, python does not support keyword subscripts
+            *[arg.execute(namespace) for arg in self.positional_arguments],
+            value,
+            **{name: arg.execute(namespace) for name, arg in self.keyword_arguments.items()}
+        )
 
     @property
     def expressions(self):
