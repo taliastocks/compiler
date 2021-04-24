@@ -414,6 +414,10 @@ class Parenthesized(Expression):
     begin_token = parser_module.Characters['(']
     end_token = parser_module.Characters[')']
 
+    def execute(self, namespace):
+        # TODO: handle comma operator
+        return self.expression.execute(namespace)
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
@@ -621,6 +625,17 @@ class Call(CallBase):
     begin_token = parser_module.Characters['(']
     end_token = parser_module.Characters[')']
 
+    def execute(self, namespace):
+        callable_value = self.callable.execute(namespace)
+        positional_arguments = [
+            arg.execute(namespace) for arg in self.positional_arguments
+        ]
+        keyword_arguments = {
+            key: arg.execute(namespace)
+            for key, arg in self.keyword_arguments.items()
+        }
+        return callable_value(*positional_arguments, **keyword_arguments)  # noqa
+
     @property
     def expressions(self):
         if self.callable is not None:
@@ -648,6 +663,9 @@ class Dot(Operator, LValue):
     """
     object: typing.Optional[Expression] = attr.ib(default=None)
     member_name: typing.Optional[str] = attr.ib(default=None)
+
+    def execute(self, namespace):
+        return getattr(self.object.execute(namespace), self.member_name)
 
     def assign(self, namespace, value):
         setattr(self.object.execute(namespace), self.member_name, value)
@@ -696,6 +714,17 @@ class Subscript(CallBase, LValue):
     begin_token = parser_module.Characters['[']
     end_token = parser_module.Characters[']']
 
+    def execute(self, namespace):
+        subscriptable = self.subscriptable.execute(namespace)
+        positional_arguments = [
+            arg.execute(namespace) for arg in self.positional_arguments
+        ]
+        keyword_arguments = {
+            key: arg.execute(namespace)
+            for key, arg in self.keyword_arguments.items()
+        }
+        return subscriptable.__getitem__(*positional_arguments, **keyword_arguments)  # noqa
+
     def assign(self, namespace, value):
         self.subscriptable.execute(namespace).__setitem__(  # noqa, python does not support keyword subscripts
             *[arg.execute(namespace) for arg in self.positional_arguments],
@@ -731,6 +760,9 @@ class Exponentiation(BinaryOperator):
     higher_precedence_operators = Call.higher_precedence_operators | {Call, Dot, Subscript}
     token = parser_module.Characters['**']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) ** self.right.execute(namespace)  # noqa
+
     @classmethod
     def precedes_on_right(cls, other: typing.Type[Operator]) -> bool:
         if other is cls:
@@ -745,6 +777,9 @@ class Positive(UnaryOperator):
     higher_precedence_operators = Exponentiation.higher_precedence_operators | {Exponentiation}
     token = parser_module.Characters['+']
 
+    def execute(self, namespace):
+        return +self.expression.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class Negative(UnaryOperator):
@@ -752,6 +787,9 @@ class Negative(UnaryOperator):
     """
     higher_precedence_operators = Positive.higher_precedence_operators
     token = parser_module.Characters['-']
+
+    def execute(self, namespace):
+        return -self.expression.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -761,6 +799,9 @@ class BitInverse(UnaryOperator):
     higher_precedence_operators = Positive.higher_precedence_operators
     token = parser_module.Characters['~']
 
+    def execute(self, namespace):
+        return ~self.expression.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class Multiply(BinaryOperator):
@@ -768,6 +809,9 @@ class Multiply(BinaryOperator):
     """
     higher_precedence_operators = Positive.higher_precedence_operators | {Positive, Negative, BitInverse}
     token = parser_module.Characters['*']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) * self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -777,6 +821,9 @@ class MatrixMultiply(BinaryOperator):
     higher_precedence_operators = Multiply.higher_precedence_operators
     token = parser_module.Characters['@']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) @ self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class FloorDivide(BinaryOperator):
@@ -784,6 +831,9 @@ class FloorDivide(BinaryOperator):
     """
     higher_precedence_operators = Multiply.higher_precedence_operators
     token = parser_module.Characters['//']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) // self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -793,6 +843,9 @@ class Divide(BinaryOperator):
     higher_precedence_operators = Multiply.higher_precedence_operators
     token = parser_module.Characters['/']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) / self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class Modulo(BinaryOperator):
@@ -800,6 +853,9 @@ class Modulo(BinaryOperator):
     """
     higher_precedence_operators = Multiply.higher_precedence_operators
     token = parser_module.Characters['%']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) % self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -810,6 +866,9 @@ class Add(BinaryOperator):
         Multiply, MatrixMultiply, Divide, FloorDivide, Modulo}
     token = parser_module.Characters['+']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) + self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class Subtract(BinaryOperator):
@@ -817,6 +876,9 @@ class Subtract(BinaryOperator):
     """
     higher_precedence_operators = Add.higher_precedence_operators
     token = parser_module.Characters['-']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) - self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -826,6 +888,9 @@ class ShiftLeft(BinaryOperator):
     higher_precedence_operators = Add.higher_precedence_operators | {Add, Subtract}
     token = parser_module.Characters['<<']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) << self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class ShiftRight(BinaryOperator):
@@ -833,6 +898,9 @@ class ShiftRight(BinaryOperator):
     """
     higher_precedence_operators = ShiftLeft.higher_precedence_operators
     token = parser_module.Characters['>>']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) >> self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -842,6 +910,9 @@ class BitAnd(BinaryOperator):
     higher_precedence_operators = ShiftLeft.higher_precedence_operators | {ShiftLeft, ShiftRight}
     token = parser_module.Characters['&']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) & self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class BitXor(BinaryOperator):
@@ -850,6 +921,9 @@ class BitXor(BinaryOperator):
     higher_precedence_operators = BitAnd.higher_precedence_operators | {BitAnd}
     token = parser_module.Characters['^']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) ^ self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class BitOr(BinaryOperator):
@@ -857,6 +931,9 @@ class BitOr(BinaryOperator):
     """
     higher_precedence_operators = BitXor.higher_precedence_operators | {BitXor}
     token = parser_module.Characters['|']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) | self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)

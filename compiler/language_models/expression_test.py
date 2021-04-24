@@ -687,6 +687,16 @@ class UnpackTestCase(unittest.TestCase):
 
 
 class ParenthesizedTestCase(unittest.TestCase):
+    def test_execute(self):
+        self.assertEqual(
+            'value',
+            expression_module.Parenthesized(
+                expression_module.String.from_string('value')
+            ).execute(namespace_module.Namespace())
+        )
+
+        # TODO: comma operator
+
     def test_expressions(self):
         my_parenthesized = expression_module.Parenthesized(
             expression=expression_module.Variable('foo'),
@@ -875,6 +885,35 @@ class OperatorTestCase(unittest.TestCase):
 
 
 class CallTestCase(unittest.TestCase):
+    def test_execute(self):
+        my_callable = mock.Mock(return_value='return value!')
+        pos_1 = expression_module.String.from_string('pos_1')
+        pos_2 = expression_module.String.from_string('pos_2')
+        kwd_1 = expression_module.String.from_string('kwd_1')
+        kwd_2 = expression_module.String.from_string('kwd_2')
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('my_callable', my_callable)
+
+        self.assertEqual(
+            'return value!',
+            expression_module.Call(
+                callable=expression_module.Variable('my_callable'),
+                positional_arguments=[pos_1, pos_2],
+                keyword_arguments={
+                    'keyword_1': kwd_1,
+                    'keyword_2': kwd_2,
+                },
+            ).execute(namespace)
+        )
+
+        my_callable.assert_called_once_with(
+            'pos_1',
+            'pos_2',
+            keyword_1='kwd_1',
+            keyword_2='kwd_2',
+        )
+
     def test_parse(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
@@ -945,6 +984,20 @@ class CallTestCase(unittest.TestCase):
 
 
 class DotTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        foo_value = mock.Mock(spec_set=['bar'])
+        foo_value.bar = 'bar_value'
+        namespace.declare('foo', foo_value)
+
+        self.assertEqual(
+            'bar_value',
+            expression_module.Dot(
+                object=expression_module.Variable('foo'),
+                member_name='bar',
+            ).execute(namespace)
+        )
+
     def test_assign(self):
         namespace = namespace_module.Namespace()
         foo_value = mock.Mock(spec_set=['bar'])
@@ -975,6 +1028,36 @@ class DotTestCase(unittest.TestCase):
 
 
 class SubscriptTestCase(unittest.TestCase):
+    def test_execute(self):
+        subscriptable = mock.MagicMock()
+        subscriptable.__getitem__.return_value = 'return value!'
+        pos_1 = expression_module.String.from_string('pos_1')
+        pos_2 = expression_module.String.from_string('pos_2')
+        kwd_1 = expression_module.String.from_string('kwd_1')
+        kwd_2 = expression_module.String.from_string('kwd_2')
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('my_callable', subscriptable)
+
+        self.assertEqual(
+            'return value!',
+            expression_module.Subscript(
+                subscriptable=expression_module.Variable('my_callable'),
+                positional_arguments=[pos_1, pos_2],
+                keyword_arguments={
+                    'keyword_1': kwd_1,
+                    'keyword_2': kwd_2,
+                },
+            ).execute(namespace)
+        )
+
+        subscriptable.__getitem__.assert_called_once_with(
+            'pos_1',
+            'pos_2',
+            keyword_1='kwd_1',
+            keyword_2='kwd_2',
+        )
+
     def test_assign(self):
         namespace = namespace_module.Namespace()
         foo_value = {}
@@ -1064,83 +1147,228 @@ class SubscriptTestCase(unittest.TestCase):
 
 
 class ExponentiationTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        self.assertEqual(
+            decimal.Decimal(16),
+            expression_module.Exponentiation(
+                left=expression_module.Number(4),
+                right=expression_module.Number(2),
+            ).execute(namespace_module.Namespace())
+        )
 
 
 class PositiveTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        self.assertEqual(
+            decimal.Decimal(4),
+            expression_module.Positive(
+                expression_module.Number(4),
+            ).execute(namespace_module.Namespace())
+        )
 
 
 class NegativeTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        self.assertEqual(
+            decimal.Decimal(-4),
+            expression_module.Negative(
+                expression_module.Number(4),
+            ).execute(namespace_module.Namespace())
+        )
 
 
 class BitInverseTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('seven', 7)
+
+        self.assertEqual(
+            -8,
+            expression_module.BitInverse(
+                expression_module.Variable('seven'),
+            ).execute(namespace)
+        )
 
 
 class MultiplyTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        self.assertEqual(
+            decimal.Decimal(8),
+            expression_module.Multiply(
+                left=expression_module.Number(4),
+                right=expression_module.Number(2),
+            ).execute(namespace_module.Namespace())
+        )
 
 
 class MatrixMultiplyTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+
+        left = mock.MagicMock()
+        left.__matmul__.return_value = 'result!'
+        right = mock.MagicMock()
+
+        namespace.declare('left', left)
+        namespace.declare('right', right)
+
+        self.assertEqual(
+            'result!',
+            expression_module.MatrixMultiply(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class FloorDivideTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('left', 7)
+        namespace.declare('right', 2)
+
+        self.assertEqual(
+            3,
+            expression_module.FloorDivide(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class DivideTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('left', 7)
+        namespace.declare('right', 2)
+
+        self.assertEqual(
+            3.5,
+            expression_module.Divide(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class ModuloTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('left', 17)
+        namespace.declare('right', 10)
+
+        self.assertEqual(
+            7,
+            expression_module.Modulo(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class AddTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('left', 17)
+        namespace.declare('right', 10)
+
+        self.assertEqual(
+            27,
+            expression_module.Add(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class SubtractTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('left', 17)
+        namespace.declare('right', 7)
+
+        self.assertEqual(
+            10,
+            expression_module.Subtract(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class ShiftLeftTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('left', 32)
+        namespace.declare('right', 2)
+
+        self.assertEqual(
+            128,
+            expression_module.ShiftLeft(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class ShiftRightTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('left', 32)
+        namespace.declare('right', 2)
+
+        self.assertEqual(
+            8,
+            expression_module.ShiftRight(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class BitAndTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('left', 7)  # 0111
+        namespace.declare('right', 11)  # 1011
+
+        self.assertEqual(
+            3,  # 0011
+            expression_module.BitAnd(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class BitXorTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('left', 7)  # 0111
+        namespace.declare('right', 11)  # 1011
+
+        self.assertEqual(
+            12,  # 1100
+            expression_module.BitXor(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class BitOrTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('left', 5)  # 0101
+        namespace.declare('right', 9)  # 1001
+
+        self.assertEqual(
+            13,  # 1101
+            expression_module.BitOr(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class InTestCase(unittest.TestCase):
