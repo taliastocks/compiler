@@ -1731,6 +1731,31 @@ class OrTestCase(unittest.TestCase):
 
 
 class IfElseTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('true_value', 'true value')
+        namespace.declare('false_value', 'false value')
+
+        namespace.declare('condition', False)
+        self.assertIs(
+            'false value',
+            expression_module.IfElse(
+                condition=expression_module.Variable('condition'),
+                true_value=expression_module.Variable('true_value'),
+                false_value=expression_module.Variable('false_value'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('condition', True)
+        self.assertIs(
+            'true value',
+            expression_module.IfElse(
+                condition=expression_module.Variable('condition'),
+                true_value=expression_module.Variable('true_value'),
+                false_value=expression_module.Variable('false_value'),
+            ).execute(namespace)
+        )
+
     def test_expressions(self):
         if_else = expression_module.IfElse(
             condition=expression_module.Variable('condition'),
