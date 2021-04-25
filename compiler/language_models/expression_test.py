@@ -1372,68 +1372,362 @@ class BitOrTestCase(unittest.TestCase):
 
 
 class InTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('right', [1, 2, 3])
+
+        namespace.declare('left', 2)
+        self.assertIs(
+            True,
+            expression_module.In(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 6)
+        self.assertIs(
+            False,
+            expression_module.In(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class NotInTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('right', [1, 2, 3])
+
+        namespace.declare('left', 2)
+        self.assertIs(
+            False,
+            expression_module.NotIn(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 6)
+        self.assertIs(
+            True,
+            expression_module.NotIn(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class IsNotTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('right', False)
+
+        namespace.declare('left', False)
+        self.assertIs(
+            False,
+            expression_module.IsNot(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', True)
+        self.assertIs(
+            True,
+            expression_module.IsNot(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class IsTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('right', False)
+
+        namespace.declare('left', False)
+        self.assertIs(
+            True,
+            expression_module.Is(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', True)
+        self.assertIs(
+            False,
+            expression_module.Is(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class LessThanOrEqualTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('right', 10)
+
+        namespace.declare('left', 9)
+        self.assertIs(
+            True,
+            expression_module.LessThanOrEqual(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 10)
+        self.assertIs(
+            True,
+            expression_module.LessThanOrEqual(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 11)
+        self.assertIs(
+            False,
+            expression_module.LessThanOrEqual(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class LessThanTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('right', 10)
+
+        namespace.declare('left', 9)
+        self.assertIs(
+            True,
+            expression_module.LessThan(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 10)
+        self.assertIs(
+            False,
+            expression_module.LessThan(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 11)
+        self.assertIs(
+            False,
+            expression_module.LessThan(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class GreaterThanOrEqualTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('right', 10)
+
+        namespace.declare('left', 9)
+        self.assertIs(
+            False,
+            expression_module.GreaterThanOrEqual(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 10)
+        self.assertIs(
+            True,
+            expression_module.GreaterThanOrEqual(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 11)
+        self.assertIs(
+            True,
+            expression_module.GreaterThanOrEqual(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class GreaterThanTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('right', 10)
+
+        namespace.declare('left', 9)
+        self.assertIs(
+            False,
+            expression_module.GreaterThan(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 10)
+        self.assertIs(
+            False,
+            expression_module.GreaterThan(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 11)
+        self.assertIs(
+            True,
+            expression_module.GreaterThan(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class NotEqualTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('right', 10)
+
+        namespace.declare('left', 9)
+        self.assertIs(
+            True,
+            expression_module.NotEqual(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 10)
+        self.assertIs(
+            False,
+            expression_module.NotEqual(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class EqualTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('right', 10)
+
+        namespace.declare('left', 9)
+        self.assertIs(
+            False,
+            expression_module.Equal(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', 10)
+        self.assertIs(
+            True,
+            expression_module.Equal(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class NotTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('var', True)
+
+        self.assertIs(
+            False,
+            expression_module.Not(
+                expression=expression_module.Variable('var'),
+            ).execute(namespace)
+        )
 
 
 class AndTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+
+        namespace.declare('left', False)
+        namespace.declare('right', False)
+        self.assertIs(
+            False,
+            expression_module.And(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', False)
+        namespace.declare('right', True)
+        self.assertIs(
+            False,
+            expression_module.And(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', True)
+        namespace.declare('right', True)
+        self.assertIs(
+            True,
+            expression_module.And(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class OrTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+
+        namespace.declare('left', False)
+        namespace.declare('right', False)
+        self.assertIs(
+            False,
+            expression_module.Or(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', False)
+        namespace.declare('right', True)
+        self.assertIs(
+            True,
+            expression_module.Or(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
+
+        namespace.declare('left', True)
+        namespace.declare('right', True)
+        self.assertIs(
+            True,
+            expression_module.Or(
+                left=expression_module.Variable('left'),
+                right=expression_module.Variable('right'),
+            ).execute(namespace)
+        )
 
 
 class IfElseTestCase(unittest.TestCase):

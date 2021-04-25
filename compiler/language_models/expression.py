@@ -943,6 +943,9 @@ class In(BinaryOperator):
     higher_precedence_operators = BitOr.higher_precedence_operators | {BitOr}
     token = parser_module.Characters['in']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) in self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class NotIn(BinaryOperator):
@@ -950,6 +953,9 @@ class NotIn(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
     token = parser_module.Regex['not +in']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) not in self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -959,6 +965,9 @@ class IsNot(BinaryOperator):
     higher_precedence_operators = In.higher_precedence_operators
     token = parser_module.Regex['is +not']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) is not self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class Is(BinaryOperator):
@@ -966,6 +975,9 @@ class Is(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
     token = parser_module.Characters['is']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) is self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -975,6 +987,9 @@ class LessThanOrEqual(BinaryOperator):
     higher_precedence_operators = In.higher_precedence_operators
     token = parser_module.Characters['<=']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) <= self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class LessThan(BinaryOperator):
@@ -982,6 +997,9 @@ class LessThan(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
     token = parser_module.Characters['<']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) < self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -991,6 +1009,9 @@ class GreaterThanOrEqual(BinaryOperator):
     higher_precedence_operators = In.higher_precedence_operators
     token = parser_module.Characters['>=']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) >= self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class GreaterThan(BinaryOperator):
@@ -998,6 +1019,9 @@ class GreaterThan(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
     token = parser_module.Characters['>']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) > self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -1007,6 +1031,9 @@ class NotEqual(BinaryOperator):
     higher_precedence_operators = In.higher_precedence_operators
     token = parser_module.Characters['!=']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) != self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class Equal(BinaryOperator):
@@ -1014,6 +1041,9 @@ class Equal(BinaryOperator):
     """
     higher_precedence_operators = In.higher_precedence_operators
     token = parser_module.Characters['==']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) == self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -1024,6 +1054,9 @@ class Not(UnaryOperator):
         In, NotIn, Is, IsNot, LessThan, LessThanOrEqual, GreaterThan, GreaterThanOrEqual, NotEqual, Equal}
     token = parser_module.Characters['not']
 
+    def execute(self, namespace):
+        return not self.expression.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class And(BinaryOperator):
@@ -1032,6 +1065,9 @@ class And(BinaryOperator):
     higher_precedence_operators = Not.higher_precedence_operators | {Not}
     token = parser_module.Characters['and']
 
+    def execute(self, namespace):
+        return self.left.execute(namespace) and self.right.execute(namespace)  # noqa
+
 
 @attr.s(frozen=True, slots=True)
 class Or(BinaryOperator):
@@ -1039,6 +1075,9 @@ class Or(BinaryOperator):
     """
     higher_precedence_operators = And.higher_precedence_operators | {And}
     token = parser_module.Characters['or']
+
+    def execute(self, namespace):
+        return self.left.execute(namespace) or self.right.execute(namespace)  # noqa
 
 
 @attr.s(frozen=True, slots=True)
