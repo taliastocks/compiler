@@ -1090,6 +1090,14 @@ class IfElse(Operator):
 
     higher_precedence_operators = Or.higher_precedence_operators | {Or}
 
+    def execute(self, namespace):
+        condition_result = self.condition.execute(namespace)
+
+        if condition_result:
+            return self.true_value.execute(namespace)
+
+        return self.false_value.execute(namespace)
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
