@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import collections
 import typing
 
 import attr
 
+from . import namespace as namespace_module
 from ..libs import parser as parser_module
 
 
@@ -12,6 +14,57 @@ class ArgumentList(parser_module.Symbol):
     """A list of function arguments.
     """
     arguments: typing.Sequence[Argument] = attr.ib(converter=tuple, default=())
+
+    def unpack_values(self,
+                      positional_values: typing.Sequence[typing.Any],
+                      keyword_values: typing.Mapping[str, typing.Any],
+                      namespace: namespace_module.Namespace):
+
+        # Copy arguments to prevent mutation.
+        positional_values = collections.deque(positional_values)
+        keyword_values = dict(keyword_values)
+        no_value = object()
+        expected_positionals = 0
+
+        for argument in self.arguments:
+            value = no_value
+
+            if argument.is_positional:
+                if argument.is_extra:
+                    # Consume all remaining positional values.
+                    value = list(positional_values)
+                    positional_values.clear()
+                else:
+                    expected_positionals += 1
+                    try:
+                        value = positional_values.popleft()
+                    except IndexError:
+                        pass
+
+            if argument.is_keyword:
+                if argument.is_extra:
+                    # Consume all remaining keyword values.
+                    value = dict(keyword_values)
+                    keyword_values.clear()
+                else:
+                    try:
+                        value = keyword_values.pop(argument.variable.name)
+                    except KeyError:
+                        pass
+
+            if value is no_value:
+                if argument.variable.initializer is not None:
+                    value = argument.variable.initializer.execute(namespace)
+                else:
+                    raise TypeError(f'no value for parameter {argument.variable.name!r}')
+
+            namespace.declare(argument.variable.name, value)
+
+        if positional_values:
+            raise TypeError(f'too many positional arguments: '
+                            f'expected {expected_positionals}, got {expected_positionals + len(positional_values)}')
+        if keyword_values:
+            raise TypeError(f'unexpected keyword argument(s): {", ".join(keyword_values.keys())}')
 
     def __iter__(self):
         return iter(self.arguments)

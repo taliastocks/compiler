@@ -1,10 +1,106 @@
 import unittest
 
-from . import argument_list, expression as expression_module
+from . import argument_list, expression as expression_module, namespace as namespace_module
 from ..libs import parser as parser_module
 
 
 class ArgumentListTestCase(unittest.TestCase):
+    def test_unpack_values(self):
+        arg_list: argument_list.ArgumentList = argument_list.ArgumentList.parse(  # noqa
+            parser_module.Cursor(['a, b, c'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        arg_list.unpack_values(
+            ['A', 'B', 'C'],
+            {},
+            namespace,
+        )
+        self.assertEqual(
+            {
+                'a': 'A',
+                'b': 'B',
+                'c': 'C',
+            },
+            namespace.declarations
+        )
+
+        namespace = namespace_module.Namespace()
+        arg_list.unpack_values(
+            ['A', 'B'],
+            {'c': 'C'},
+            namespace,
+        )
+        self.assertEqual(
+            {
+                'a': 'A',
+                'b': 'B',
+                'c': 'C',
+            },
+            namespace.declarations
+        )
+
+        namespace = namespace_module.Namespace()
+        with self.assertRaisesRegex(TypeError, "no value for parameter 'c'"):
+            arg_list.unpack_values(
+                ['A', 'B'],
+                {},
+                namespace,
+            )
+        with self.assertRaisesRegex(TypeError, "no value for parameter 'c'"):
+            arg_list.unpack_values(
+                ['A'],
+                {'b': 'B'},
+                namespace,
+            )
+        with self.assertRaisesRegex(TypeError, "too many positional arguments: expected 3, got 4"):
+            arg_list.unpack_values(
+                ['A', 'B', 'C', 'D'],
+                {},
+                namespace,
+            )
+        with self.assertRaisesRegex(TypeError, r"unexpected keyword argument\(s\): d, e"):
+            arg_list.unpack_values(
+                ['A', 'B', 'C'],
+                {'d': 'D', 'e': 'E'},
+                namespace,
+            )
+
+    def test_unpack_values_default(self):
+        arg_list: argument_list.ArgumentList = argument_list.ArgumentList.parse(  # noqa
+            parser_module.Cursor(['a, b=a, c=1'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        arg_list.unpack_values(
+            ['A', 'B', 'C'],
+            {},
+            namespace,
+        )
+        self.assertEqual(
+            {
+                'a': 'A',
+                'b': 'B',
+                'c': 'C',
+            },
+            namespace.declarations
+        )
+
+        namespace = namespace_module.Namespace()
+        arg_list.unpack_values(
+            ['A'],
+            {},
+            namespace,
+        )
+        self.assertEqual(
+            {
+                'a': 'A',
+                'b': 'A',
+                'c': 1,
+            },
+            namespace.declarations
+        )
+
     def test_parse_positional_keyword(self):
         self.assertEqual(
             argument_list.ArgumentList.parse(

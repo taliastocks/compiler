@@ -415,7 +415,6 @@ class Parenthesized(Expression):
     end_token = parser_module.Characters[')']
 
     def execute(self, namespace):
-        # TODO: handle comma operator
         return self.expression.execute(namespace)
 
     @classmethod
@@ -459,6 +458,9 @@ class List(Parenthesized):
     """
     begin_token = parser_module.Characters['[']
     end_token = parser_module.Characters[']']
+
+    def execute(self, namespace):
+        return list(super().execute(namespace))  # noqa
 
 
 @attr.s(kw_only=True)  # https://youtrack.jetbrains.com/issue/PY-46406
@@ -1152,6 +1154,14 @@ class Lambda(Operator):
 
     higher_precedence_operators = IfElse.higher_precedence_operators | {IfElse}
 
+    def execute(self, namespace):
+        def function(*args, **kwargs):
+            inner_namespace = namespace_module.Namespace(namespace)
+            self.arguments.unpack_values(args, kwargs, inner_namespace)
+            return self.expression.execute(inner_namespace)
+
+        return function
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
@@ -1359,6 +1369,10 @@ class Comma(BinaryOperator):
     """
     higher_precedence_operators = Comprehension.higher_precedence_operators | {Comprehension}
     token = parser_module.Characters[',']
+
+    def execute(self, namespace):
+        for expression in self.to_expression_list():
+            yield expression.execute(namespace)
 
     def to_expression_list(self) -> typing.Iterable[Expression]:
         """Expand chained Comma operators into an expression list.
