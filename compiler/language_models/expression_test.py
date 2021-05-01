@@ -1774,8 +1774,23 @@ class IfElseTestCase(unittest.TestCase):
 
 
 class LambdaTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        add_one: expression_module.Lambda = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['lambda a, b = a + 1, c = my_global: [a, b, c]'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('my_global', 'My Global Value')
+
+        self.assertEqual(
+            [3, 4, 'My Global Value'],
+            add_one.execute(namespace)(3)
+        )
+
+        self.assertEqual(
+            [3, 'B', 'C'],
+            add_one.execute(namespace)(3, 'B', c='C')
+        )
 
     def test_parse_no_arguments(self):
         self.assertEqual(
