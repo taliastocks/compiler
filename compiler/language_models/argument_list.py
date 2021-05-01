@@ -19,6 +19,7 @@ class ArgumentList(parser_module.Symbol):
                       positional_values: typing.Sequence[typing.Any],
                       keyword_values: typing.Mapping[str, typing.Any],
                       namespace: namespace_module.Namespace):
+        # pylint: disable=too-many-branches
 
         # Copy arguments to prevent mutation.
         positional_values = collections.deque(positional_values)
