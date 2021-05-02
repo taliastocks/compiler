@@ -1847,6 +1847,24 @@ class LambdaTestCase(unittest.TestCase):
 
 
 class AssignmentTestCase(unittest.TestCase):
+    def test_execute(self):
+        assignment: expression_module.Assignment = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['(a := b)'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('b', 'B Value')
+
+        self.assertEqual(
+            'B Value',  # expression evaluates to right hand side value
+            assignment.execute(namespace)
+        )
+
+        self.assertEqual(
+            'B Value',  # and assignment took place
+            namespace.lookup('a')
+        )
+
     def test_expressions(self):
         assignment = expression_module.Assignment(
             left=expression_module.Variable('foo'),

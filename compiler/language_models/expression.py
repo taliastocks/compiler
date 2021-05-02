@@ -1207,6 +1207,12 @@ class Assignment(BinaryOperator):
     higher_precedence_operators = Lambda.higher_precedence_operators | {Lambda}
     token = parser_module.Characters[':=']
 
+    def execute(self, namespace):
+        value = self.right.execute(namespace)
+        left: LValue = self.left  # noqa
+        left.assign(namespace, value)
+        return value
+
     @property
     def variable_assignments(self):
         # https://github.com/python-attrs/attrs/issues/652
