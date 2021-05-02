@@ -739,6 +739,106 @@ class ParenthesizedTestCase(unittest.TestCase):
 
 
 class DictionaryOrSetTestCase(unittest.TestCase):
+    def test_execute_set_one_item(self):
+        mapping: expression_module.DictionaryOrSet = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{1}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+
+        self.assertEqual(
+            {1},
+            mapping.execute(namespace)
+        )
+
+    def test_execute_set_items(self):
+        mapping: expression_module.DictionaryOrSet = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{1, 2, 3}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+
+        self.assertEqual(
+            {1, 2, 3},
+            mapping.execute(namespace)
+        )
+
+    def test_execute_set_star(self):
+        mapping: expression_module.DictionaryOrSet = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{*a}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', {1, 2, 3})
+
+        self.assertEqual(
+            {1, 2, 3},
+            mapping.execute(namespace)
+        )
+
+    def test_execute_set_star_comma(self):
+        mapping: expression_module.DictionaryOrSet = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{4, *a, 5}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', {1, 2, 3})
+
+        self.assertEqual(
+            {1, 2, 3, 4, 5},
+            mapping.execute(namespace)
+        )
+
+    def test_execute_dict_one_item(self):
+        mapping: expression_module.DictionaryOrSet = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{1: 2}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+
+        self.assertEqual(
+            {1: 2},
+            mapping.execute(namespace)
+        )
+
+    def test_execute_dict_items(self):
+        mapping: expression_module.DictionaryOrSet = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{1: 2, 2: 3, 3: 4}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+
+        self.assertEqual(
+            {1: 2, 2: 3, 3: 4},
+            mapping.execute(namespace)
+        )
+
+    def test_execute_dict_starstar(self):
+        mapping: expression_module.DictionaryOrSet = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{**a}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', {1: 2, 2: 3, 3: 4})
+
+        self.assertEqual(
+            {1: 2, 2: 3, 3: 4},
+            mapping.execute(namespace)
+        )
+
+    def test_execute_dict_starstar_comma(self):
+        mapping: expression_module.DictionaryOrSet = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{4: 5, **a, 5: 6}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', {1: 2, 2: 3, 3: 4})
+
+        self.assertEqual(
+            {1: 2, 2: 3, 3: 4, 4: 5, 5: 6},
+            mapping.execute(namespace)
+        )
+
     def test_expressions(self):
         dict_or_set = expression_module.DictionaryOrSet(
             expression=expression_module.Variable('foo'),
@@ -781,6 +881,56 @@ class DictionaryOrSetTestCase(unittest.TestCase):
 
 
 class ListTestCase(unittest.TestCase):
+    def test_execute_one_item(self):
+        mapping: expression_module.List = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['[1]'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+
+        self.assertEqual(
+            [1],
+            mapping.execute(namespace)
+        )
+
+    def test_execute_items(self):
+        mapping: expression_module.List = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['[1, 2, 3]'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+
+        self.assertEqual(
+            [1, 2, 3],
+            mapping.execute(namespace)
+        )
+
+    def test_execute_star(self):
+        mapping: expression_module.List = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['[*a]'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', [1, 2, 3])
+
+        self.assertEqual(
+            [1, 2, 3],
+            mapping.execute(namespace)
+        )
+
+    def test_execute_star_comma(self):
+        mapping: expression_module.List = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['[4, *a, 5]'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', [1, 2, 3])
+
+        self.assertEqual(
+            [4, 1, 2, 3, 5],
+            mapping.execute(namespace)
+        )
+
     def test_expressions(self):
         my_list = expression_module.List(
             expression=expression_module.Variable('foo'),
@@ -1910,13 +2060,61 @@ class AssignmentTestCase(unittest.TestCase):
 
 
 class StarStarTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute_mapping(self):
+        mapping: expression_module.DictionaryOrSet = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{**a, **b}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', {1: 2})
+        namespace.declare('b', {3: 4})
+
+        self.assertEqual(
+            {1: 2, 3: 4},
+            mapping.execute(namespace)
+        )
+
+    def test_execute_function_call(self):
+        pass  # TODO: test function call argument expansion
+
+    def test_execute_assignment(self):
+        pass  # TODO: test assigning into a mapping
 
 
 class StarTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute_list(self):
+        my_list: expression_module.List = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['[*a, *b]'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', [1, 2])
+        namespace.declare('b', [3, 4])
+
+        self.assertEqual(
+            [1, 2, 3, 4],
+            my_list.execute(namespace)
+        )
+
+    def test_execute_set(self):
+        my_list: expression_module.DictionaryOrSet = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{*a, *b}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', [1, 2])
+        namespace.declare('b', [3, 4])
+
+        self.assertEqual(
+            {1, 2, 3, 4},
+            my_list.execute(namespace)
+        )
+
+    def test_execute_function_call(self):
+        pass  # TODO: test function call argument expansion
+
+    def test_execute_assignment(self):
+        pass  # TODO: test assigning into a mapping
 
 
 class ColonTestCase(unittest.TestCase):

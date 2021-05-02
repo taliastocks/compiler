@@ -451,6 +451,27 @@ class DictionaryOrSet(Parenthesized):
     begin_token = parser_module.Characters['{']
     end_token = parser_module.Characters['}']
 
+    def execute(self, namespace):
+        value = self.expression.execute(namespace)
+
+        if isinstance(value, Colon.Pair):
+            return {value.left: value.right}
+
+        if isinstance(self.expression, (Comma, StarStar, Star)):
+            values = list(value)  # noqa
+
+            if any(isinstance(item, Colon.Pair) for item in values):
+
+                if not all(isinstance(item, Colon.Pair) for item in values):
+                    # TODO: this should be enforced by the parser
+                    raise ValueError('expected all items to be pairs: {!r}'.format(values))
+
+                return {item.left: item.right for item in values}
+
+            return set(values)
+
+        return {value}
+
 
 @attr.s(frozen=True, slots=True)
 class List(Parenthesized):
@@ -460,7 +481,18 @@ class List(Parenthesized):
     end_token = parser_module.Characters[']']
 
     def execute(self, namespace):
-        return list(super().execute(namespace))  # noqa
+        value = self.expression.execute(namespace)
+
+        if isinstance(self.expression, (Comma, Star)):
+            values = list(value)  # noqa
+
+            if any(isinstance(item, Colon.Pair) for item in values):
+                # TODO: this should be enforced by the parser
+                raise ValueError('unexpected pairs in list: {!r}'.format(values))
+
+            return values
+
+        return [value]
 
 
 @attr.s(kw_only=True)  # https://youtrack.jetbrains.com/issue/PY-46406
@@ -1229,6 +1261,11 @@ class StarStar(UnaryOperator):
     higher_precedence_operators = Assignment.higher_precedence_operators | {Assignment}
     token = parser_module.Characters['**']
 
+    def execute(self, namespace):
+        # TODO: StarStar should be syntactically disallowed in most places
+        value: typing.Mapping = self.expression.execute(namespace)  # noqa
+        yield from (Colon.Pair(key, value) for key, value in value.items())
+
 
 @attr.s(frozen=True, slots=True)
 class Star(UnaryOperator):
@@ -1237,13 +1274,25 @@ class Star(UnaryOperator):
     higher_precedence_operators = StarStar.higher_precedence_operators
     token = parser_module.Characters['*']
 
+    def execute(self, namespace):
+        # TODO: Star should be syntactically disallowed in most places
+        yield from self.expression.execute(namespace)
+
 
 @attr.s(frozen=True, slots=True)
 class Colon(BinaryOperator):
     """a:b
     """
+    @attr.s(frozen=True, slots=True)
+    class Pair:
+        left = attr.ib()
+        right = attr.ib()
+
     higher_precedence_operators = StarStar.higher_precedence_operators | {StarStar, Star}
     token = parser_module.Characters[':']
+
+    def execute(self, namespace):
+        return Colon.Pair(self.left.execute(namespace), self.right.execute(namespace))
 
 
 @attr.s(frozen=True, slots=True)
@@ -1378,7 +1427,10 @@ class Comma(BinaryOperator):
 
     def execute(self, namespace):
         for expression in self.to_expression_list():
-            yield expression.execute(namespace)
+            if isinstance(expression, (StarStar, Star)):
+                yield from expression.execute(namespace)
+            else:
+                yield expression.execute(namespace)
 
     def to_expression_list(self) -> typing.Iterable[Expression]:
         """Expand chained Comma operators into an expression list.
