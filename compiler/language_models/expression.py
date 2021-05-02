@@ -7,7 +7,7 @@ import typing
 import attr
 import immutabledict
 
-from . import declarable, argument_list, namespace as namespace_module, map_type
+from . import declarable, argument_list, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -452,18 +452,25 @@ class DictionaryOrSet(Parenthesized):
     end_token = parser_module.Characters['}']
 
     def execute(self, namespace):
-        # TODO: handle sets
         value = self.expression.execute(namespace)
 
-        if isinstance(value, typing.Iterable):
-            values = list(value)
-            if any(isinstance(item, map_type.MapItem) for item in values):
-                if not all(isinstance(item, map_type.MapItem) for item in values):
-                    raise ValueError('not all items are MapItem: {!r}'.format(values))
-                return {item.key: item.value for item in values}
+        if isinstance(value, Colon.Pair):
+            return {value.left: value.right}
+
+        if isinstance(self.expression, (Comma, StarStar, Star)):
+            values = list(value)  # noqa
+
+            if any(isinstance(item, Colon.Pair) for item in values):
+
+                if not all(isinstance(item, Colon.Pair) for item in values):
+                    # TODO: this should be enforced by the parser
+                    raise ValueError('expected all items to be pairs: {!r}'.format(values))
+
+                return {item.left: item.right for item in values}
+
             return set(values)
 
-        return value
+        return {value}
 
 
 @attr.s(frozen=True, slots=True)
@@ -474,7 +481,18 @@ class List(Parenthesized):
     end_token = parser_module.Characters[']']
 
     def execute(self, namespace):
-        return list(super().execute(namespace))  # noqa
+        value = self.expression.execute(namespace)
+
+        if isinstance(self.expression, (Comma, Star)):
+            values = list(value)  # noqa
+
+            if any(isinstance(item, Colon.Pair) for item in values):
+                # TODO: this should be enforced by the parser
+                raise ValueError('unexpected pairs in list: {!r}'.format(values))
+
+            return values
+
+        return [value]
 
 
 @attr.s(kw_only=True)  # https://youtrack.jetbrains.com/issue/PY-46406
@@ -1246,7 +1264,7 @@ class StarStar(UnaryOperator):
     def execute(self, namespace):
         # TODO: StarStar should be syntactically disallowed in most places
         value: typing.Mapping = self.expression.execute(namespace)  # noqa
-        yield from (map_type.MapItem(key, value) for key, value in value.items())
+        yield from (Colon.Pair(key, value) for key, value in value.items())
 
 
 @attr.s(frozen=True, slots=True)
@@ -1265,8 +1283,16 @@ class Star(UnaryOperator):
 class Colon(BinaryOperator):
     """a:b
     """
+    @attr.s(frozen=True, slots=True)
+    class Pair:
+        left = attr.ib()
+        right = attr.ib()
+
     higher_precedence_operators = StarStar.higher_precedence_operators | {StarStar, Star}
     token = parser_module.Characters[':']
+
+    def execute(self, namespace):
+        return Colon.Pair(self.left.execute(namespace), self.right.execute(namespace))
 
 
 @attr.s(frozen=True, slots=True)
