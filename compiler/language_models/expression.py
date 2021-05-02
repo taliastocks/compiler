@@ -7,7 +7,7 @@ import typing
 import attr
 import immutabledict
 
-from . import declarable, argument_list, namespace as namespace_module
+from . import declarable, argument_list, namespace as namespace_module, map_type
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -450,6 +450,18 @@ class DictionaryOrSet(Parenthesized):
     """
     begin_token = parser_module.Characters['{']
     end_token = parser_module.Characters['}']
+
+    def execute(self, namespace):
+        # TODO: handle sets
+        value = self.expression.execute(namespace)
+
+        if isinstance(value, typing.Iterable):
+            values = list(value)
+            if any(isinstance(item, map_type.MapItem) for item in values):
+                if not all(isinstance(item, map_type.MapItem) for item in values):
+                    raise ValueError('not all items are MapItem: {!r}'.format(values))
+                return {item.key: item.value for item in values}
+            return set(values)
 
 
 @attr.s(frozen=True, slots=True)
@@ -1229,6 +1241,11 @@ class StarStar(UnaryOperator):
     higher_precedence_operators = Assignment.higher_precedence_operators | {Assignment}
     token = parser_module.Characters['**']
 
+    def execute(self, namespace):
+        # TODO: StarStar should be syntactically disallowed in most places
+        value: typing.Mapping = self.expression.execute(namespace)  # noqa
+        yield from (map_type.MapItem(key, value) for key, value in value.items())
+
 
 @attr.s(frozen=True, slots=True)
 class Star(UnaryOperator):
@@ -1236,6 +1253,10 @@ class Star(UnaryOperator):
     """
     higher_precedence_operators = StarStar.higher_precedence_operators
     token = parser_module.Characters['*']
+
+    def execute(self, namespace):
+        # TODO: Star should be syntactically disallowed in most places
+        yield from self.expression.execute(namespace)
 
 
 @attr.s(frozen=True, slots=True)
@@ -1378,7 +1399,10 @@ class Comma(BinaryOperator):
 
     def execute(self, namespace):
         for expression in self.to_expression_list():
-            yield expression.execute(namespace)
+            if isinstance(expression, (StarStar, Star)):
+                yield from expression.execute(namespace)
+            else:
+                yield expression.execute(namespace)
 
     def to_expression_list(self) -> typing.Iterable[Expression]:
         """Expand chained Comma operators into an expression list.

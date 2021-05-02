@@ -1910,13 +1910,61 @@ class AssignmentTestCase(unittest.TestCase):
 
 
 class StarStarTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute_mapping(self):
+        mapping: expression_module.Assignment = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{**a, **b}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', {1: 2})
+        namespace.declare('b', {3: 4})
+
+        self.assertEqual(
+            {1: 2, 3: 4},
+            mapping.execute(namespace)
+        )
+
+    def test_execute_function_call(self):
+        pass  # TODO: test function call argument expansion
+
+    def test_execute_assignment(self):
+        pass  # TODO: test assigning into a mapping
 
 
 class StarTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute_list(self):
+        my_list: expression_module.Assignment = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['[*a, *b]'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', [1, 2])
+        namespace.declare('b', [3, 4])
+
+        self.assertEqual(
+            [1, 2, 3, 4],
+            my_list.execute(namespace)
+        )
+
+    def test_execute_set(self):
+        my_list: expression_module.Assignment = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{*a, *b}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('a', [1, 2])
+        namespace.declare('b', [3, 4])
+
+        self.assertEqual(
+            {1, 2, 3, 4},
+            my_list.execute(namespace)
+        )
+
+    def test_execute_function_call(self):
+        pass  # TODO: test function call argument expansion
+
+    def test_execute_assignment(self):
+        pass  # TODO: test assigning into a mapping
 
 
 class ColonTestCase(unittest.TestCase):
