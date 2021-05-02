@@ -463,6 +463,8 @@ class DictionaryOrSet(Parenthesized):
                 return {item.key: item.value for item in values}
             return set(values)
 
+        return value
+
 
 @attr.s(frozen=True, slots=True)
 class List(Parenthesized):
