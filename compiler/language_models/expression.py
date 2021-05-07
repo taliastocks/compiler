@@ -110,11 +110,10 @@ class Number(Literal):
                 cursor=cursor,
             ))
 
-        else:
-            return cursor.new_from_symbol(cls(
-                value=digits_part,
-                cursor=cursor,
-            ))
+        return cursor.new_from_symbol(cls(
+            value=digits_part,
+            cursor=cursor,
+        ))
 
 
 @attr.s(frozen=True, slots=True)
