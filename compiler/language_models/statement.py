@@ -106,11 +106,15 @@ class Block(Statement):
     statements: typing.Sequence[Statement] = attr.ib(converter=tuple, factory=list)
 
     def execute(self, namespace):
-        for statement in self.statements:
-            outcome = statement.execute(namespace)
+        try:
+            for statement in self.statements:
+                outcome = statement.execute(namespace)
 
-            if not isinstance(outcome, self.Success):
-                return outcome
+                if not isinstance(outcome, self.Success):
+                    return outcome
+
+        except Exception as exc:  # pylint: disable=broad-except
+            return Raise.Outcome(exc, self)
 
         return self.Success()
 
@@ -201,8 +205,11 @@ class Assignment(Statement):
 
             for receiver in reversed(self.receivers):
                 receiver.assign(namespace, value)
-        except Exception as exc:
+
+        except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
+
+        return self.Success()
 
     @classmethod
     def parse(cls, cursor):
@@ -274,8 +281,10 @@ class Expression(Statement):
     def execute(self, namespace):
         try:
             self.expression.execute(namespace)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
+
+        return self.Success()
 
     @classmethod
     def parse(cls, cursor):
@@ -315,9 +324,10 @@ class If(Statement):
         try:
             if self.condition.execute(namespace):
                 return self.body.execute(namespace)
-            else:
-                return self.else_body.execute(namespace)
-        except Exception as exc:
+
+            return self.else_body.execute(namespace)
+
+        except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
 
     @classmethod
@@ -420,8 +430,10 @@ class While(Statement):
             else:
                 return self.else_body.execute(namespace)
 
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
+
+        return self.Success()
 
     @classmethod
     def parse(cls, cursor):
@@ -526,7 +538,7 @@ class For(Statement):
             else:
                 return self.else_body.execute(namespace)
 
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
 
     @classmethod
@@ -689,7 +701,7 @@ class With(Statement):
             with self.context_manager.execute(namespace) as context_manager:
                 self.receiver.assign(namespace, context_manager)
                 return self.body.execute(namespace)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
 
     @classmethod
@@ -817,7 +829,8 @@ class Try(Statement):
                     exception_type = exception_handler.exception.execute(namespace)
 
                     if isinstance(outcome.exception, exception_type):
-                        exception_handler.receiver.assign(namespace, outcome.exception)
+                        if exception_handler.receiver is not None:
+                            exception_handler.receiver.assign(namespace, outcome.exception)
                         exception_outcome = exception_handler.body.execute(namespace)
                         break
                 else:
@@ -835,7 +848,7 @@ class Try(Statement):
                 return else_outcome
             return exception_outcome
 
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
 
     @classmethod
@@ -1041,7 +1054,10 @@ class Return(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
     def execute(self, namespace):
-        return self.Outcome(self.expression.execute(namespace))
+        try:
+            return self.Outcome(self.expression.execute(namespace))
+        except Exception as exc:  # pylint: disable=broad-except
+            return Raise.Outcome(exc, self)
 
     @classmethod
     def parse(cls, cursor):
@@ -1126,8 +1142,10 @@ class Assert(Statement):
         try:
             if not self.expression.execute(namespace):
                 return Raise.Outcome(AssertionError(), self)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
+
+        return self.Success()
 
     @classmethod
     def parse(cls, cursor):
