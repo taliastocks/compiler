@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import collections
 import decimal
 import typing
 
@@ -58,11 +59,10 @@ class Number(Literal):
 
         Numbers are always interpreted in base ten.
     """
-    digits_part: int = attr.ib(default=0)
-    magnitude_part: int = attr.ib(default=0)
+    value: typing.Union[int, decimal.Decimal] = attr.ib(default=0)
 
     def execute(self, namespace):
-        return decimal.Decimal('{self.digits_part}e{self.magnitude_part}'.format(self=self))
+        return self.value
 
     @classmethod
     def parse(cls, cursor):
@@ -78,11 +78,14 @@ class Number(Literal):
         # Remove any place markers.
         whole_part = whole_part.replace("'", '')
         fraction_part = (fraction_part or '').replace("'", '').rstrip('0')
-        magnitude_part = (magnitude_part or '0').replace("'", '')
+        if magnitude_part:
+            magnitude_part = magnitude_part.replace("'", '')
 
+        is_float = False
         digits_part = int(whole_part)
 
         if magnitude_part:
+            is_float = True
             magnitude_part = int(magnitude_part)
         else:
             magnitude_part = 0
@@ -91,18 +94,24 @@ class Number(Literal):
             magnitude_part *= -1
 
         if fraction_part:
+            is_float = True
             magnitude_part -= len(fraction_part)
             digits_part *= pow(10, len(fraction_part))
             digits_part += int(fraction_part)
 
-        # Normalize.
-        while digits_part % 10 == 0:
-            digits_part //= 10
-            magnitude_part += 1
+        if is_float:
+            # Normalize.
+            while digits_part % 10 == 0:
+                digits_part //= 10
+                magnitude_part += 1
+
+            return cursor.new_from_symbol(cls(
+                value=decimal.Decimal(f'{digits_part}e{magnitude_part}'),
+                cursor=cursor,
+            ))
 
         return cursor.new_from_symbol(cls(
-            digits_part=digits_part,
-            magnitude_part=magnitude_part,
+            value=digits_part,
             cursor=cursor,
         ))
 
@@ -457,7 +466,7 @@ class DictionaryOrSet(Parenthesized):
         if isinstance(value, Colon.Pair):
             return {value.left: value.right}
 
-        if isinstance(self.expression, (Comma, StarStar, Star)):
+        if isinstance(self.expression, (Comma, StarStar, Star, Comprehension)):
             values = list(value)  # noqa
 
             if any(isinstance(item, Colon.Pair) for item in values):
@@ -483,7 +492,7 @@ class List(Parenthesized):
     def execute(self, namespace):
         value = self.expression.execute(namespace)
 
-        if isinstance(self.expression, (Comma, Star)):
+        if isinstance(self.expression, (Comma, Star, Comprehension)):
             values = list(value)  # noqa
 
             if any(isinstance(item, Colon.Pair) for item in values):
@@ -1305,11 +1314,32 @@ class Comprehension(Operator):
         receiver: LValue = attr.ib()
         iterable: typing.Optional[Expression] = attr.ib(default=None)
 
+        def iterate(self, namespace):
+            iterable: collections.Iterable = self.iterable.execute(namespace)  # noqa
+
+            for value in iterable:
+                self.receiver.assign(namespace, value)
+                yield
+
     value: typing.Optional[Expression] = attr.ib(default=None)
     loops: typing.Sequence[Loop] = attr.ib(converter=tuple, default=())
     condition: typing.Optional[Expression] = attr.ib(default=None)
 
     higher_precedence_operators = Colon.higher_precedence_operators | {Colon}
+
+    def execute(self, namespace):
+        inner_namespace = namespace_module.Namespace(namespace)
+
+        def iterate_loops(loop_index: int = 0):
+            for _ in self.loops[loop_index].iterate(inner_namespace):
+                if loop_index + 1 < len(self.loops):
+                    yield from iterate_loops(loop_index + 1)
+                else:
+                    # Inner-most loop.
+                    if self.condition.execute(inner_namespace):
+                        yield self.value.execute(inner_namespace)
+
+        yield from iterate_loops()
 
     @classmethod
     def parse(cls, cursor):

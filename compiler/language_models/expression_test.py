@@ -14,8 +14,7 @@ class NumberTestCase(unittest.TestCase):
         self.assertEqual(
             decimal.Decimal('-12.34e-56'),
             expression_module.Number(
-                digits_part=-1234,
-                magnitude_part=-58,
+                decimal.Decimal('-12.34e-56')
             ).execute(namespace_module.Namespace())
         )
 
@@ -25,20 +24,24 @@ class NumberTestCase(unittest.TestCase):
                 parser_module.Cursor(['12.34e-56'])
             ).last_symbol,
             expression_module.Number(
-                digits_part=1234,
-                magnitude_part=-58,
+                decimal.Decimal('12.34e-56')
             )
         )
 
     def test_parse_integer(self):
+        number: expression_module.Number = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['1234'])
+        ).last_symbol
+
         self.assertEqual(
             expression_module.ExpressionParser.parse(
                 parser_module.Cursor(['1234'])
             ).last_symbol,
-            expression_module.Number(
-                digits_part=1234,
-                magnitude_part=0,
-            )
+            expression_module.Number(1234)
+        )
+        self.assertEqual(
+            int,
+            type(number.value)
         )
 
     def test_parse_float_no_magnitude(self):
@@ -47,8 +50,7 @@ class NumberTestCase(unittest.TestCase):
                 parser_module.Cursor(['12.34'])
             ).last_symbol,
             expression_module.Number(
-                digits_part=1234,
-                magnitude_part=-2,
+                decimal.Decimal('12.34')
             )
         )
 
@@ -58,8 +60,7 @@ class NumberTestCase(unittest.TestCase):
                 parser_module.Cursor(['12e34'])
             ).last_symbol,
             expression_module.Number(
-                digits_part=12,
-                magnitude_part=34,
+                decimal.Decimal('12e34')
             )
         )
         self.assertEqual(
@@ -67,8 +68,7 @@ class NumberTestCase(unittest.TestCase):
                 parser_module.Cursor(['12E34'])
             ).last_symbol,
             expression_module.Number(
-                digits_part=12,
-                magnitude_part=34,
+                decimal.Decimal('12e34')
             )
         )
         self.assertEqual(
@@ -76,8 +76,7 @@ class NumberTestCase(unittest.TestCase):
                 parser_module.Cursor(['12E+34'])
             ).last_symbol,
             expression_module.Number(
-                digits_part=12,
-                magnitude_part=34,
+                decimal.Decimal('12e34')
             )
         )
 
@@ -87,8 +86,7 @@ class NumberTestCase(unittest.TestCase):
                 parser_module.Cursor(['12.100e34'])
             ).last_symbol,
             expression_module.Number(
-                digits_part=121,
-                magnitude_part=33,
+                decimal.Decimal('12.1e34')
             )
         )
 
@@ -98,20 +96,22 @@ class NumberTestCase(unittest.TestCase):
                 parser_module.Cursor(["1'2'3'.1'0'0'e3'4'"])
             ).last_symbol,
             expression_module.Number(
-                digits_part=1231,
-                magnitude_part=33,
+                decimal.Decimal('123.1e34')
             )
         )
 
     def test_parse_normalize_trailing_zeros(self):
+        number: expression_module.Number = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['123000'])
+        ).last_symbol
+
         self.assertEqual(
-            expression_module.ExpressionParser.parse(
-                parser_module.Cursor(['123000'])
-            ).last_symbol,
-            expression_module.Number(
-                digits_part=123,
-                magnitude_part=3,
-            )
+            number,
+            expression_module.Number(123000)
+        )
+        self.assertEqual(
+            int,
+            type(number.value)
         )
 
 
@@ -839,6 +839,32 @@ class DictionaryOrSetTestCase(unittest.TestCase):
             mapping.execute(namespace)
         )
 
+    def test_execute_set_comprehension(self):
+        mapping: expression_module.List = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{i for i in range(4) if i != 2}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+
+        self.assertEqual(
+            {0, 1, 3},  # skip 2
+            mapping.execute(namespace)
+        )
+
+    def test_execute_dict_comprehension(self):
+        mapping: expression_module.List = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['{i: i*i for i in range(6) if i != 2}'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+
+        self.assertEqual(
+            {0: 0, 1: 1, 3: 9, 4: 16, 5: 25},  # skip 2
+            mapping.execute(namespace)
+        )
+
     def test_expressions(self):
         dict_or_set = expression_module.DictionaryOrSet(
             expression=expression_module.Variable('foo'),
@@ -928,6 +954,19 @@ class ListTestCase(unittest.TestCase):
 
         self.assertEqual(
             [4, 1, 2, 3, 5],
+            mapping.execute(namespace)
+        )
+
+    def test_execute_comprehension(self):
+        mapping: expression_module.List = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['[i for i in range(4) if i != 2]'])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+
+        self.assertEqual(
+            [0, 1, 3],
             mapping.execute(namespace)
         )
 
@@ -1299,7 +1338,7 @@ class SubscriptTestCase(unittest.TestCase):
 class ExponentiationTestCase(unittest.TestCase):
     def test_execute(self):
         self.assertEqual(
-            decimal.Decimal(16),
+            16,
             expression_module.Exponentiation(
                 left=expression_module.Number(4),
                 right=expression_module.Number(2),
@@ -1310,7 +1349,7 @@ class ExponentiationTestCase(unittest.TestCase):
 class PositiveTestCase(unittest.TestCase):
     def test_execute(self):
         self.assertEqual(
-            decimal.Decimal(4),
+            4,
             expression_module.Positive(
                 expression_module.Number(4),
             ).execute(namespace_module.Namespace())
@@ -1320,7 +1359,7 @@ class PositiveTestCase(unittest.TestCase):
 class NegativeTestCase(unittest.TestCase):
     def test_execute(self):
         self.assertEqual(
-            decimal.Decimal(-4),
+            -4,
             expression_module.Negative(
                 expression_module.Number(4),
             ).execute(namespace_module.Namespace())
@@ -1343,7 +1382,7 @@ class BitInverseTestCase(unittest.TestCase):
 class MultiplyTestCase(unittest.TestCase):
     def test_execute(self):
         self.assertEqual(
-            decimal.Decimal(8),
+            8,
             expression_module.Multiply(
                 left=expression_module.Number(4),
                 right=expression_module.Number(2),
@@ -2118,11 +2157,54 @@ class StarTestCase(unittest.TestCase):
 
 
 class ColonTestCase(unittest.TestCase):
-    def test_expressions(self):
-        pass
+    def test_execute(self):
+        self.assertEqual(
+            expression_module.Colon.Pair(4, 2),
+            expression_module.Colon(
+                left=expression_module.Number(4),
+                right=expression_module.Number(2),
+            ).execute(namespace_module.Namespace())
+        )
 
 
 class ComprehensionTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('iterable', range(6))
+
+        comprehension: expression_module.Comprehension = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor(['i * i for i in iterable if i != 2'])
+        ).last_symbol
+
+        self.assertEqual(
+            [0, 1, 9, 16, 25],  # exclude 2*2 = 4
+            list(comprehension.execute(namespace))
+        )
+
+    def test_execute_multiple_loops(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('multiplier', range(4))
+        namespace.declare('iterable', range(6))
+
+        comprehension: expression_module.Comprehension = expression_module.ExpressionParser.parse(  # noqa
+            parser_module.Cursor([
+                'outer * inner',
+                'for outer in multiplier',
+                'for inner in iterable',
+                'if outer != inner',
+            ])
+        ).last_symbol
+
+        self.assertEqual(
+            [
+                0, 0, 0, 0, 0,  # multiplier == 0, skip 0*0 = 0
+                0, 2, 3, 4, 5,  # multiplier == 1, skip 1*1 = 1
+                0, 2, 6, 8, 10,  # multiplier == 2, skip 2*2 = 4
+                0, 3, 6, 12, 15,  # multiplier == 3, skip 3*3 = 9
+            ],
+            list(comprehension.execute(namespace))
+        )
+
     def test_expressions(self):
         comprehension = expression_module.Comprehension(
             value=expression_module.Variable('value'),
