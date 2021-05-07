@@ -20,6 +20,7 @@ class Expression(parser_module.Symbol, metaclass=abc.ABCMeta):
     """An Expression is a syntactic entity that may be evaluated to determine
     its value.
     """
+    @abc.abstractmethod
     def execute(self, namespace: namespace_module.Namespace):
         """Execute the expression in a namespace.
         """

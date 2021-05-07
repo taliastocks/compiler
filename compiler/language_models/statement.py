@@ -5,7 +5,7 @@ import typing
 
 import attr
 
-from . import expression as expression_module, declarable
+from . import expression as expression_module, declarable, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -16,6 +16,16 @@ from ..libs import parser as parser_module
 class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
     """A statement represents some action to be carried out.
     """
+    @attr.s(frozen=True, slots=True)
+    class Outcome(metaclass=abc.ABCMeta):
+        """Represents the outcome of a statement.
+        """
+
+    @attr.s(frozen=True, slots=True)
+    class Success(Outcome):
+        """Represents the outcome of a statement.
+        """
+
     @property
     def receivers(self) -> typing.Iterable[expression_module.LValue]:
         """Get all the LValues this statement assigns to, not including
@@ -63,6 +73,11 @@ class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
         for statement in self.statements:
             yield from statement.nonlocal_variables
 
+    @abc.abstractmethod
+    def execute(self, namespace: namespace_module.Namespace) -> Statement.Outcome:
+        """Execute the statement in a namespace.
+        """
+
     @classmethod
     def parse(cls, cursor):
         return cursor.parse_one_symbol([
@@ -89,6 +104,15 @@ class Block(Statement):
     """A sequence of statements to be executed in order.
     """
     statements: typing.Sequence[Statement] = attr.ib(converter=tuple, factory=list)
+
+    def execute(self, namespace):
+        for statement in self.statements:
+            outcome = statement.execute(namespace)
+
+            if not isinstance(outcome, self.Success):
+                return outcome
+
+        return self.Success()
 
     @classmethod
     def parse(cls, cursor):
@@ -119,6 +143,10 @@ class Declaration(Statement):
     """An inline declaration, e.g. of a function, class, or variable.
     """
     declarable: declarable.Declarable = attr.ib()
+
+    def execute(self, namespace):
+        # TODO
+        return self.Success()
 
     @classmethod
     def parse(cls, cursor):
@@ -166,6 +194,15 @@ class Assignment(Statement):
     """
     receivers: typing.Sequence[expression_module.LValue] = attr.ib(converter=tuple)
     expression: expression_module.Expression = attr.ib()
+
+    def execute(self, namespace):
+        try:
+            value = self.expression.execute(namespace)
+
+            for receiver in reversed(self.receivers):
+                receiver.assign(namespace, value)
+        except Exception as exc:
+            return Raise.Outcome(exc, self)
 
     @classmethod
     def parse(cls, cursor):
@@ -234,6 +271,12 @@ class Expression(Statement):
     """
     expression: expression_module.Expression = attr.ib()
 
+    def execute(self, namespace):
+        try:
+            self.expression.execute(namespace)
+        except Exception as exc:
+            return Raise.Outcome(exc, self)
+
     @classmethod
     def parse(cls, cursor):
         cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
@@ -268,6 +311,15 @@ class If(Statement):
     body: Block = attr.ib()
     else_body: typing.Optional[Block] = attr.ib(default=None)
 
+    def execute(self, namespace):
+        try:
+            if self.condition.execute(namespace):
+                return self.body.execute(namespace)
+            else:
+                return self.else_body.execute(namespace)
+        except Exception as exc:
+            return Raise.Outcome(exc, self)
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
@@ -278,7 +330,7 @@ class If(Statement):
             parser_module.Characters[':']
         ], fail=True)
 
-        condition = cursor.last_symbol
+        condition: expression_module.Expression = cursor.last_symbol  # noqa
 
         cursor = cursor.parse_one_symbol([
             parser_module.Characters[':']
@@ -355,6 +407,22 @@ class While(Statement):
     body: Block = attr.ib()
     else_body: typing.Optional[Block] = attr.ib(default=None)
 
+    def execute(self, namespace):
+        try:
+            while self.condition.execute(namespace):
+                outcome = self.body.execute(namespace)
+
+                if isinstance(outcome, (Continue.Outcome, self.Success)):
+                    continue
+                if isinstance(outcome, Break.Outcome):
+                    break
+                return outcome
+            else:
+                return self.else_body.execute(namespace)
+
+        except Exception as exc:
+            return Raise.Outcome(exc, self)
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
@@ -365,7 +433,7 @@ class While(Statement):
             parser_module.Characters[':']
         ], fail=True)
 
-        condition = cursor.last_symbol
+        condition: expression_module.Expression = cursor.last_symbol  # noqa
 
         cursor = cursor.parse_one_symbol([
             parser_module.Characters[':']
@@ -442,6 +510,24 @@ class For(Statement):
     receiver: expression_module.LValue = attr.ib()
     body: Block = attr.ib()
     else_body: typing.Optional[Block] = attr.ib(default=None)
+
+    def execute(self, namespace):
+        try:
+            for value in self.iterable.execute(namespace):
+                self.receiver.assign(namespace, value)
+
+                outcome = self.body.execute(namespace)
+
+                if isinstance(outcome, (Continue.Outcome, self.Success)):
+                    continue
+                if isinstance(outcome, Break.Outcome):
+                    break
+                return outcome
+            else:
+                return self.else_body.execute(namespace)
+
+        except Exception as exc:
+            return Raise.Outcome(exc, self)
 
     @classmethod
     def parse(cls, cursor):
@@ -542,6 +628,13 @@ class For(Statement):
 class Break(Statement):
     """Break out of the current loop.
     """
+    @attr.s(frozen=True, slots=True)
+    class Outcome(Statement.Outcome):
+        pass
+
+    def execute(self, namespace):
+        return self.Outcome()
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
@@ -559,6 +652,13 @@ class Break(Statement):
 class Continue(Statement):
     """Skip the rest of the loop body and begin the next iteration.
     """
+    @attr.s(frozen=True, slots=True)
+    class Outcome(Statement.Outcome):
+        pass
+
+    def execute(self, namespace):
+        return self.Outcome()
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
@@ -583,6 +683,14 @@ class With(Statement):
     context_manager: expression_module.Expression = attr.ib()
     body: Block = attr.ib()
     receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
+
+    def execute(self, namespace):
+        try:
+            with self.context_manager.execute(namespace) as context_manager:
+                self.receiver.assign(namespace, context_manager)
+                return self.body.execute(namespace)
+        except Exception as exc:
+            return Raise.Outcome(exc, self)
 
     @classmethod
     def parse(cls, cursor):
@@ -696,6 +804,39 @@ class Try(Statement):
     exception_handlers: typing.Sequence[ExceptionHandler] = attr.ib(factory=tuple, converter=tuple)
     else_body: typing.Optional[Block] = attr.ib(default=None)
     finally_body: typing.Optional[Block] = attr.ib(default=None)
+
+    def execute(self, namespace):
+        exception_outcome = else_outcome = finally_outcome = self.Success()
+        try:
+            outcome = self.body.execute(namespace)
+
+            if isinstance(outcome, Raise.Outcome):
+                outcome: Raise.Outcome
+
+                for exception_handler in self.exception_handlers:
+                    exception_type = exception_handler.exception.execute(namespace)
+
+                    if isinstance(outcome.exception, exception_type):
+                        exception_handler.receiver.assign(namespace, outcome.exception)
+                        exception_outcome = exception_handler.body.execute(namespace)
+                        break
+                else:
+                    exception_outcome = outcome  # No handler matched.
+
+            elif isinstance(outcome, self.Success) and self.else_body is not None:
+                else_outcome = self.else_body.execute(namespace)
+
+            if self.finally_body is not None:
+                finally_outcome = self.finally_body.execute(namespace)
+
+            if not isinstance(finally_outcome, self.Success):
+                return finally_outcome
+            if not isinstance(else_outcome, self.Success):
+                return else_outcome
+            return exception_outcome
+
+        except Exception as exc:
+            return Raise.Outcome(exc, self)
 
     @classmethod
     def parse(cls, cursor):
@@ -837,7 +978,25 @@ class Try(Statement):
 
 @attr.s(frozen=True, slots=True)
 class Raise(Statement):
+    @attr.s(frozen=True, slots=True)
+    class Outcome(Statement.Outcome):
+        exception: Exception = attr.ib()
+        failed_statement: Statement = attr.ib()
+        raise_from: typing.Optional[Raise.Outcome] = attr.ib(default=None)
+
+        def __str__(self):
+            if self.raise_from is not None:
+                return '\n'.join([
+                    str(self.failed_statement.cursor),
+                    str(self.raise_from),
+                ])
+
+            return str(self.failed_statement.cursor)
+
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
+
+    def execute(self, namespace):
+        return self.Outcome(self.expression.execute(namespace), self)
 
     @classmethod
     def parse(cls, cursor):
@@ -875,7 +1034,14 @@ class Raise(Statement):
 
 @attr.s(frozen=True, slots=True)
 class Return(Statement):
+    @attr.s(frozen=True, slots=True)
+    class Outcome(Statement.Outcome):
+        value: typing.Any = attr.ib()
+
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
+
+    def execute(self, namespace):
+        return self.Outcome(self.expression.execute(namespace))
 
     @classmethod
     def parse(cls, cursor):
@@ -915,6 +1081,9 @@ class Return(Statement):
 class Nonlocal(Statement):
     variables: typing.Sequence[expression_module.Variable] = attr.ib(factory=tuple, converter=tuple)
 
+    def execute(self, namespace):
+        return self.Success()
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
@@ -953,8 +1122,16 @@ class Nonlocal(Statement):
 class Assert(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
+    def execute(self, namespace):
+        try:
+            if not self.expression.execute(namespace):
+                return Raise.Outcome(AssertionError(), self)
+        except Exception as exc:
+            return Raise.Outcome(exc, self)
+
     @classmethod
     def parse(cls, cursor):
+        # TODO: allow failure message
         cursor = cursor.parse_one_symbol([
             parser_module.Characters['assert'],
         ])
@@ -983,6 +1160,9 @@ class Assert(Statement):
 
 @attr.s(frozen=True, slots=True)
 class Pass(Statement):
+    def execute(self, namespace):
+        return self.Success()
+
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
@@ -999,6 +1179,9 @@ class Pass(Statement):
 @attr.s(frozen=True, slots=True)
 class Import(Statement, declarable.Declarable):
     path: typing.Sequence[str] = attr.ib(converter=tuple)
+
+    def execute(self, namespace):
+        pass  # TODO
 
     @classmethod
     def parse(cls, cursor):
