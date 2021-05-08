@@ -1023,6 +1023,7 @@ class Raise(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
     def execute(self, namespace):
+        # TODO: reraise current exception, reraise from exception
         return self.Outcome(self.expression.execute(namespace), self)
 
     @classmethod
