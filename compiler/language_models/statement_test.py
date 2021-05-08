@@ -1,6 +1,8 @@
+import contextlib
+import tempfile
 import unittest
 
-from . import statement, expression, function, class_
+from . import statement, expression, function, class_, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -108,6 +110,62 @@ class StatementTestCase(unittest.TestCase):
 
 
 class BlockTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    b = 2',
+            ])
+        ).last_symbol
+        outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+
+    def test_execute_exception(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    b',  # raise NameError
+                '    c = 2',  # not reached
+            ])
+        ).last_symbol
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(NameError("name 'b' is not defined")),
+            repr(outcome.exception)
+        )
+        self.assertEqual(1, namespace.lookup('a'))
+
+        with self.assertRaisesRegex(KeyError, "no such name 'c'"):
+            namespace.lookup('c')
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('RuntimeError', RuntimeError)
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    raise RuntimeError("error!")',  # raise RuntimeError
+                '    c = 2',  # not reached
+            ])
+        ).last_symbol
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(RuntimeError('error!')),
+            repr(outcome.exception)
+        )
+        self.assertEqual(1, namespace.lookup('a'))
+
+        with self.assertRaisesRegex(KeyError, "no such name 'c'"):
+            namespace.lookup('c')
+
     def test_parse(self):
         self.assertEqual(
             statement.Block.parse(
@@ -247,6 +305,32 @@ class DeclarationTestCase(unittest.TestCase):
 
 
 class AssignmentTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'a = b = 1'
+            ])
+        ).last_symbol
+        outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('a'))
+        self.assertEqual(1, namespace.lookup('b'))
+
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                '[(a), b], c = [[1], 2], 3'
+            ])
+        ).last_symbol
+        outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+        self.assertEqual(3, namespace.lookup('c'))
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
@@ -331,6 +415,18 @@ class AssignmentTestCase(unittest.TestCase):
 
 
 class ExpressionTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'a: b = 1'
+            ])
+        ).last_symbol
+        outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('a'))
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
@@ -383,6 +479,47 @@ class ExpressionTestCase(unittest.TestCase):
 
 
 class IfTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'if a == 1:',
+                '    b = 1',
+                'else if a == 2:',
+                '    b = 2',
+                'else:',
+                '    b = 3',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('b'))
+
+        namespace.declare('a', 2)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(2, namespace.lookup('b'))
+
+        namespace.declare('a', 100)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(3, namespace.lookup('b'))
+
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'if a == 1:',
+                '    b = 1',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('b'))
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
@@ -558,6 +695,76 @@ class IfTestCase(unittest.TestCase):
 
 
 class WhileTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'while a < 10:',
+                '    a = a + 1',
+                'else:',
+                '    b = 2',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(10, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'while a < 10:',
+                '    a = a + 1',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(10, namespace.lookup('a'))
+
+    def test_execute_continue(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'while a < 10:',
+                '    a = a + 1',
+                '    continue',
+                '    a = 1000',  # not reached
+                'else:',
+                '    b = 2',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(10, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+
+    def test_execute_break(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'while a < 10:',
+                '    a = a + 1',  # executed once
+                '    break',
+                '    a = 1000',  # not reached
+                'else:',
+                '    b = 2',  # not reached
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(2, namespace.lookup('a'))
+
+        with self.assertRaises(KeyError):
+            namespace.lookup('b')
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
@@ -733,6 +940,80 @@ class WhileTestCase(unittest.TestCase):
 
 
 class ForTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'for i in range(4):',
+                '    a = a + i',
+                'else:',
+                '    b = 2',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 0)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(6, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'for i in range(4):',
+                '    a = a + i',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 0)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(6, namespace.lookup('a'))
+
+    def test_execute_continue(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'for i in range(4):',
+                '    a = a + i',
+                '    continue',
+                '    a = 1000',  # not reached
+                'else:',
+                '    b = 2',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 0)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(6, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+
+    def test_execute_break(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'for i in range(4, 10):',
+                '    a = a + i',  # executed once
+                '    break',
+                '    a = 1000',  # not reached
+                'else:',
+                '    b = 2',  # not reached
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 0)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(4, namespace.lookup('a'))
+
+        with self.assertRaises(KeyError):
+            namespace.lookup('b')
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
@@ -993,6 +1274,48 @@ class ContinueTestCase(unittest.TestCase):
 
 
 class WithTestCase(unittest.TestCase):
+    def test_execute(self):
+        with tempfile.NamedTemporaryFile('r') as named_file:
+            namespace = namespace_module.Namespace()
+            namespace.declare('open', open)
+            namespace.declare('file_name', named_file.name)
+            test_statement: statement.Statement = statement.Statement.parse(  # noqa
+                parser_module.Cursor([
+                    'with open(file_name, "w") as file:',
+                    '    file.write("hello world!")',
+                ])
+            ).last_symbol
+
+            outcome = test_statement.execute(namespace)
+            self.assertIsInstance(outcome, statement.Statement.Success)
+            self.assertEqual('hello world!', named_file.read())
+
+    def test_execute_no_receiver(self):
+        events = []
+
+        @contextlib.contextmanager
+        def context_manager():
+            events.append('before enter')
+            yield
+            events.append('after exit')
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('context_manager', context_manager)
+        namespace.declare('events', events)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'with context_manager():',
+                '    events.append("within context manager")',
+            ])
+        ).last_symbol
+
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['before enter', 'within context manager', 'after exit'],
+            events
+        )
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
@@ -1261,6 +1584,244 @@ class WithTestCase(unittest.TestCase):
 
 
 class TryTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('repr', repr)
+        namespace.declare('RuntimeError', RuntimeError)
+        namespace.declare('ValueError', ValueError)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'try:',
+                '    events.append("try begin")',
+                '    if exception_class is not None:',
+                '        raise exception_class("error!")',
+                '    events.append("try end")',
+                'except RuntimeError as exc:',
+                '    events.append(repr(exc))',
+                'except ValueError:',
+                '    events.append("ValueError")',
+                'else:',
+                '    events.append("else")',
+                'finally:',
+                '    events.append("finally")',
+            ])
+        ).last_symbol
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', None)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'try end', 'else', 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', RuntimeError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', "RuntimeError('error!')", 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', ValueError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'ValueError', 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', TypeError)  # not caught
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(TypeError('error!')),
+            repr(outcome.exception)
+        )
+        self.assertEqual(
+            ['try begin', 'finally'],
+            events
+        )
+
+    def test_execute_no_finally(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('repr', repr)
+        namespace.declare('RuntimeError', RuntimeError)
+        namespace.declare('ValueError', ValueError)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'try:',
+                '    events.append("try begin")',
+                '    if exception_class is not None:',
+                '        raise exception_class("error!")',
+                '    events.append("try end")',
+                'except RuntimeError as exc:',
+                '    events.append(repr(exc))',
+                'except ValueError:',
+                '    events.append("ValueError")',
+                'else:',
+                '    events.append("else")',
+            ])
+        ).last_symbol
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', None)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'try end', 'else'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', RuntimeError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', "RuntimeError('error!')"],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', ValueError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'ValueError'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', TypeError)  # not caught
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(TypeError('error!')),
+            repr(outcome.exception)
+        )
+        self.assertEqual(
+            ['try begin'],
+            events
+        )
+
+    def test_execute_no_else(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('repr', repr)
+        namespace.declare('RuntimeError', RuntimeError)
+        namespace.declare('ValueError', ValueError)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'try:',
+                '    events.append("try begin")',
+                '    if exception_class is not None:',
+                '        raise exception_class("error!")',
+                '    events.append("try end")',
+                'except RuntimeError as exc:',
+                '    events.append(repr(exc))',
+                'except ValueError:',
+                '    events.append("ValueError")',
+                'finally:',
+                '    events.append("finally")',
+            ])
+        ).last_symbol
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', None)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'try end', 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', RuntimeError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', "RuntimeError('error!')", 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', ValueError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'ValueError', 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', TypeError)  # not caught
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(TypeError('error!')),
+            repr(outcome.exception)
+        )
+        self.assertEqual(
+            ['try begin', 'finally'],
+            events
+        )
+
+    def test_execute_no_except(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('repr', repr)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'try:',
+                '    events.append("try begin")',
+                '    if exception_class is not None:',
+                '        raise exception_class("error!")',
+                '    events.append("try end")',
+                'else:',
+                '    events.append("else")',
+                'finally:',
+                '    events.append("finally")',
+            ])
+        ).last_symbol
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', None)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'try end', 'else', 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', TypeError)  # not caught
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(TypeError('error!')),
+            repr(outcome.exception)
+        )
+        self.assertEqual(
+            ['try begin', 'finally'],
+            events
+        )
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
@@ -1798,6 +2359,45 @@ class RaiseTestCase(unittest.TestCase):
 
 
 class ReturnTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    return 42',
+                '    c = 2',  # not reached
+            ])
+        ).last_symbol
+        outcome: statement.Return.Outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Return.Outcome)
+        self.assertEqual(
+            42,
+            outcome.value
+        )
+        self.assertEqual(1, namespace.lookup('a'))
+
+        with self.assertRaisesRegex(KeyError, "no such name 'c'"):
+            namespace.lookup('c')
+
+    def test_execute_no_value(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    return',
+                '    c = 2',  # not reached
+            ])
+        ).last_symbol
+        outcome: statement.Return.Outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Return.Outcome)
+        self.assertIsNone(outcome.value)
+        self.assertEqual(1, namespace.lookup('a'))
+
+        with self.assertRaisesRegex(KeyError, "no such name 'c'"):
+            namespace.lookup('c')
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
@@ -1919,6 +2519,30 @@ class NonlocalTestCase(unittest.TestCase):
 
 
 class AssertTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    assert a == b',
+                '    a = 2',
+            ])
+        ).last_symbol
+
+        namespace.declare('b', 0)  # cause assertion error
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            'AssertionError()',
+            repr(outcome.exception)
+        )
+        self.assertEqual(1, namespace.lookup('a'))
+
+        namespace.declare('b', 1)  # no assertion error
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(2, namespace.lookup('a'))
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
