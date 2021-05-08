@@ -1540,6 +1540,9 @@ class ExpressionParser(parser_module.Parser):
                 return None
             cursor = new_cursor
 
+            # Consume all the immediate operators.
+            cursor = cls._consume_immediate_operators(cursor, operators, operands)
+
             # Detect stop symbols.
             try:
                 cursor.parse_one_symbol(stop_symbols)
@@ -1548,9 +1551,6 @@ class ExpressionParser(parser_module.Parser):
             else:
                 # End the expression.
                 break
-
-            # Consume all the immediate operators.
-            cursor = cls._consume_immediate_operators(cursor, operators, operands)
 
             # Consume an infix operator.
             new_cursor = cls._consume_infix_operator(

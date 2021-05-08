@@ -723,6 +723,46 @@ class WhileTestCase(unittest.TestCase):
         self.assertIsInstance(outcome, statement.Statement.Success)
         self.assertEqual(10, namespace.lookup('a'))
 
+    def test_execute_continue(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'while a < 10:',
+                '    a = a + 1',
+                '    continue',
+                '    a = 1000',  # not reached
+                'else:',
+                '    b = 2',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(10, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+
+    def test_execute_break(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'while a < 10:',
+                '    a = a + 1',  # executed once
+                '    break',
+                '    a = 1000',  # not reached
+                'else:',
+                '    b = 2',  # not reached
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(2, namespace.lookup('a'))
+
+        with self.assertRaises(KeyError):
+            namespace.lookup('b')
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
@@ -898,6 +938,80 @@ class WhileTestCase(unittest.TestCase):
 
 
 class ForTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'for i in range(4):',
+                '    a = a + i',
+                'else:',
+                '    b = 2',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 0)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(6, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'for i in range(4):',
+                '    a = a + i',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 0)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(6, namespace.lookup('a'))
+
+    def test_execute_continue(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'for i in range(4):',
+                '    a = a + i',
+                '    continue',
+                '    a = 1000',  # not reached
+                'else:',
+                '    b = 2',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 0)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(6, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+
+    def test_execute_break(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('range', range)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'for i in range(4, 10):',
+                '    a = a + i',  # executed once
+                '    break',
+                '    a = 1000',  # not reached
+                'else:',
+                '    b = 2',  # not reached
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 0)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(4, namespace.lookup('a'))
+
+        with self.assertRaises(KeyError):
+            namespace.lookup('b')
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
