@@ -413,6 +413,18 @@ class AssignmentTestCase(unittest.TestCase):
 
 
 class ExpressionTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'a: b = 1'
+            ])
+        ).last_symbol
+        outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('a'))
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
