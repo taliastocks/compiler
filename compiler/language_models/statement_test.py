@@ -505,6 +505,19 @@ class IfTestCase(unittest.TestCase):
         self.assertIsInstance(outcome, statement.Statement.Success)
         self.assertEqual(3, namespace.lookup('b'))
 
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'if a == 1:',
+                '    b = 1',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('b'))
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(

@@ -332,8 +332,10 @@ class If(Statement):
             if self.condition.execute(namespace):
                 return self.body.execute(namespace)
 
-            return self.else_body.execute(namespace)
+            if self.else_body is not None:
+                return self.else_body.execute(namespace)
 
+            return self.Success()
         except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
 
