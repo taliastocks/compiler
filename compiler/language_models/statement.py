@@ -712,7 +712,8 @@ class With(Statement):
     def execute(self, namespace):
         try:
             with self.context_manager.execute(namespace) as context_manager:
-                self.receiver.assign(namespace, context_manager)
+                if self.receiver is not None:
+                    self.receiver.assign(namespace, context_manager)
                 return self.body.execute(namespace)
         except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)

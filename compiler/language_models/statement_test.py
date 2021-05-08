@@ -1,3 +1,5 @@
+import contextlib
+import tempfile
 import unittest
 
 from . import statement, expression, function, class_, namespace as namespace_module
@@ -1272,6 +1274,48 @@ class ContinueTestCase(unittest.TestCase):
 
 
 class WithTestCase(unittest.TestCase):
+    def test_execute(self):
+        with tempfile.NamedTemporaryFile('r') as named_file:
+            namespace = namespace_module.Namespace()
+            namespace.declare('open', open)
+            namespace.declare('file_name', named_file.name)
+            test_statement: statement.Statement = statement.Statement.parse(  # noqa
+                parser_module.Cursor([
+                    'with open(file_name, "w") as file:',
+                    '    file.write("hello world!")',
+                ])
+            ).last_symbol
+
+            outcome = test_statement.execute(namespace)
+            self.assertIsInstance(outcome, statement.Statement.Success)
+            self.assertEqual('hello world!', named_file.read())
+
+    def test_execute_no_receiver(self):
+        events = []
+
+        @contextlib.contextmanager
+        def context_manager():
+            events.append('before enter')
+            yield
+            events.append('after exit')
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('context_manager', context_manager)
+        namespace.declare('events', events)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'with context_manager():',
+                '    events.append("within context manager")',
+            ])
+        ).last_symbol
+
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['before enter', 'within context manager', 'after exit'],
+            events
+        )
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
