@@ -110,7 +110,6 @@ class StatementTestCase(unittest.TestCase):
 class BlockTestCase(unittest.TestCase):
     def test_execute(self):
         namespace = namespace_module.Namespace()
-
         test_statement: statement.Statement = statement.Block.parse(  # noqa
             parser_module.Cursor([
                 '    a = 1',
@@ -304,6 +303,32 @@ class DeclarationTestCase(unittest.TestCase):
 
 
 class AssignmentTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'a = b = 1'
+            ])
+        ).last_symbol
+        outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('a'))
+        self.assertEqual(1, namespace.lookup('b'))
+
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                '[(a), b], c = [[1], 2], 3'
+            ])
+        ).last_symbol
+        outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+        self.assertEqual(3, namespace.lookup('c'))
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
