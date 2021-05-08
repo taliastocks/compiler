@@ -693,6 +693,36 @@ class IfTestCase(unittest.TestCase):
 
 
 class WhileTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'while a < 10:',
+                '    a = a + 1',
+                'else:',
+                '    b = 2',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(10, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'while a < 10:',
+                '    a = a + 1',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(10, namespace.lookup('a'))
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(

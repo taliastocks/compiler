@@ -236,7 +236,7 @@ class Assignment(Statement):
 
         cursor = cursor.parse_one_symbol([
             parser_module.EndLine,
-            parser_module.Characters['=']
+            parser_module.Characters['=']  # TODO: +=, -=, *=, /=, etc assignment operators
         ])
 
         if isinstance(cursor.last_symbol, parser_module.EndLine):
@@ -437,7 +437,8 @@ class While(Statement):
                     break
                 return outcome
             else:
-                return self.else_body.execute(namespace)
+                if self.else_body is not None:
+                    return self.else_body.execute(namespace)
 
         except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
