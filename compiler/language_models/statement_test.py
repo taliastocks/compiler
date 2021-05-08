@@ -2359,6 +2359,45 @@ class RaiseTestCase(unittest.TestCase):
 
 
 class ReturnTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    return 42',
+                '    c = 2',  # not reached
+            ])
+        ).last_symbol
+        outcome: statement.Return.Outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Return.Outcome)
+        self.assertEqual(
+            42,
+            outcome.value
+        )
+        self.assertEqual(1, namespace.lookup('a'))
+
+        with self.assertRaisesRegex(KeyError, "no such name 'c'"):
+            namespace.lookup('c')
+
+    def test_execute_no_value(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    return',
+                '    c = 2',  # not reached
+            ])
+        ).last_symbol
+        outcome: statement.Return.Outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Return.Outcome)
+        self.assertIsNone(outcome.value)
+        self.assertEqual(1, namespace.lookup('a'))
+
+        with self.assertRaisesRegex(KeyError, "no such name 'c'"):
+            namespace.lookup('c')
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(

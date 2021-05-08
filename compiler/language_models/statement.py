@@ -1064,13 +1064,15 @@ class Raise(Statement):
 class Return(Statement):
     @attr.s(frozen=True, slots=True)
     class Outcome(Statement.Outcome):
-        value: typing.Any = attr.ib()
+        value: typing.Any = attr.ib(default=None)
 
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
     def execute(self, namespace):
         try:
-            return self.Outcome(self.expression.execute(namespace))
+            if self.expression is not None:
+                return self.Outcome(self.expression.execute(namespace))
+            return self.Outcome()
         except Exception as exc:  # pylint: disable=broad-except
             return Raise.Outcome(exc, self)
 
