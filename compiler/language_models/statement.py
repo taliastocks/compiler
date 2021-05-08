@@ -1115,6 +1115,7 @@ class Nonlocal(Statement):
     variables: typing.Sequence[expression_module.Variable] = attr.ib(factory=tuple, converter=tuple)
 
     def execute(self, namespace):
+        # TODO: namespace needs to support nonlocal
         return self.Success()
 
     @classmethod

@@ -2519,6 +2519,30 @@ class NonlocalTestCase(unittest.TestCase):
 
 
 class AssertTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    assert a == b',
+                '    a = 2',
+            ])
+        ).last_symbol
+
+        namespace.declare('b', 0)  # cause assertion error
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            'AssertionError()',
+            repr(outcome.exception)
+        )
+        self.assertEqual(1, namespace.lookup('a'))
+
+        namespace.declare('b', 1)  # no assertion error
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(2, namespace.lookup('a'))
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
