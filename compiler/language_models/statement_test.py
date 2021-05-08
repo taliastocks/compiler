@@ -1584,6 +1584,244 @@ class WithTestCase(unittest.TestCase):
 
 
 class TryTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('repr', repr)
+        namespace.declare('RuntimeError', RuntimeError)
+        namespace.declare('ValueError', ValueError)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'try:',
+                '    events.append("try begin")',
+                '    if exception_class is not None:',
+                '        raise exception_class("error!")',
+                '    events.append("try end")',
+                'except RuntimeError as exc:',
+                '    events.append(repr(exc))',
+                'except ValueError:',
+                '    events.append("ValueError")',
+                'else:',
+                '    events.append("else")',
+                'finally:',
+                '    events.append("finally")',
+            ])
+        ).last_symbol
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', None)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'try end', 'else', 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', RuntimeError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', "RuntimeError('error!')", 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', ValueError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'ValueError', 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', TypeError)  # not caught
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(TypeError('error!')),
+            repr(outcome.exception)
+        )
+        self.assertEqual(
+            ['try begin', 'finally'],
+            events
+        )
+
+    def test_execute_no_finally(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('repr', repr)
+        namespace.declare('RuntimeError', RuntimeError)
+        namespace.declare('ValueError', ValueError)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'try:',
+                '    events.append("try begin")',
+                '    if exception_class is not None:',
+                '        raise exception_class("error!")',
+                '    events.append("try end")',
+                'except RuntimeError as exc:',
+                '    events.append(repr(exc))',
+                'except ValueError:',
+                '    events.append("ValueError")',
+                'else:',
+                '    events.append("else")',
+            ])
+        ).last_symbol
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', None)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'try end', 'else'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', RuntimeError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', "RuntimeError('error!')"],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', ValueError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'ValueError'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', TypeError)  # not caught
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(TypeError('error!')),
+            repr(outcome.exception)
+        )
+        self.assertEqual(
+            ['try begin'],
+            events
+        )
+
+    def test_execute_no_else(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('repr', repr)
+        namespace.declare('RuntimeError', RuntimeError)
+        namespace.declare('ValueError', ValueError)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'try:',
+                '    events.append("try begin")',
+                '    if exception_class is not None:',
+                '        raise exception_class("error!")',
+                '    events.append("try end")',
+                'except RuntimeError as exc:',
+                '    events.append(repr(exc))',
+                'except ValueError:',
+                '    events.append("ValueError")',
+                'finally:',
+                '    events.append("finally")',
+            ])
+        ).last_symbol
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', None)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'try end', 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', RuntimeError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', "RuntimeError('error!')", 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', ValueError)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'ValueError', 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', TypeError)  # not caught
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(TypeError('error!')),
+            repr(outcome.exception)
+        )
+        self.assertEqual(
+            ['try begin', 'finally'],
+            events
+        )
+
+    def test_execute_no_except(self):
+        namespace = namespace_module.Namespace()
+        namespace.declare('repr', repr)
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'try:',
+                '    events.append("try begin")',
+                '    if exception_class is not None:',
+                '        raise exception_class("error!")',
+                '    events.append("try end")',
+                'else:',
+                '    events.append("else")',
+                'finally:',
+                '    events.append("finally")',
+            ])
+        ).last_symbol
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', None)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(
+            ['try begin', 'try end', 'else', 'finally'],
+            events
+        )
+
+        events = []
+        namespace.declare('events', events)
+        namespace.declare('exception_class', TypeError)  # not caught
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(TypeError('error!')),
+            repr(outcome.exception)
+        )
+        self.assertEqual(
+            ['try begin', 'finally'],
+            events
+        )
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
