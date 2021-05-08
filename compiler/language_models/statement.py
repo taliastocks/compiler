@@ -149,7 +149,14 @@ class Declaration(Statement):
     declarable: declarable.Declarable = attr.ib()
 
     def execute(self, namespace):
-        # TODO
+        try:
+            if isinstance(self.declarable, expression_module.Expression):
+                self.declarable.execute(namespace)
+
+            # TODO: other declarations
+        except Exception as exc:  # pylint: disable=broad-except
+            return Raise.Outcome(exc, self)
+
         return self.Success()
 
     @classmethod

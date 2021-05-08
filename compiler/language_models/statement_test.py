@@ -1,6 +1,6 @@
 import unittest
 
-from . import statement, expression, function, class_
+from . import statement, expression, function, class_, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -108,6 +108,63 @@ class StatementTestCase(unittest.TestCase):
 
 
 class BlockTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    b = 2',
+            ])
+        ).last_symbol
+        outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('a'))
+        self.assertEqual(2, namespace.lookup('b'))
+
+    def test_execute_exception(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    b',  # raise NameError
+                '    c = 2',  # not reached
+            ])
+        ).last_symbol
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(NameError("name 'b' is not defined")),
+            repr(outcome.exception)
+        )
+        self.assertEqual(1, namespace.lookup('a'))
+
+        with self.assertRaisesRegex(KeyError, "no such name 'c'"):
+            namespace.lookup('c')
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('RuntimeError', RuntimeError)
+        test_statement: statement.Statement = statement.Block.parse(  # noqa
+            parser_module.Cursor([
+                '    a = 1',
+                '    raise RuntimeError("error!")',  # raise RuntimeError
+                '    c = 2',  # not reached
+            ])
+        ).last_symbol
+        outcome: statement.Raise.Outcome = test_statement.execute(namespace)
+
+        self.assertIsInstance(outcome, statement.Raise.Outcome)
+        self.assertEqual(
+            repr(RuntimeError('error!')),
+            repr(outcome.exception)
+        )
+        self.assertEqual(1, namespace.lookup('a'))
+
+        with self.assertRaisesRegex(KeyError, "no such name 'c'"):
+            namespace.lookup('c')
+
     def test_parse(self):
         self.assertEqual(
             statement.Block.parse(
