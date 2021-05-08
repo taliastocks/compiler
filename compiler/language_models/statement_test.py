@@ -477,6 +477,34 @@ class ExpressionTestCase(unittest.TestCase):
 
 
 class IfTestCase(unittest.TestCase):
+    def test_execute(self):
+        namespace = namespace_module.Namespace()
+        test_statement: statement.Statement = statement.Statement.parse(  # noqa
+            parser_module.Cursor([
+                'if a == 1:',
+                '    b = 1',
+                'else if a == 2:',
+                '    b = 2',
+                'else:',
+                '    b = 3',
+            ])
+        ).last_symbol
+
+        namespace.declare('a', 1)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(1, namespace.lookup('b'))
+
+        namespace.declare('a', 2)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(2, namespace.lookup('b'))
+
+        namespace.declare('a', 100)
+        outcome = test_statement.execute(namespace)
+        self.assertIsInstance(outcome, statement.Statement.Success)
+        self.assertEqual(3, namespace.lookup('b'))
+
     def test_parse(self):
         self.assertEqual(
             statement.Statement.parse(
