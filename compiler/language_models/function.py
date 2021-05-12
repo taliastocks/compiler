@@ -5,7 +5,7 @@ import typing
 import attr
 import immutabledict
 
-from . import statement, declarable, expression, argument_list
+from . import statement, declarable, expression, argument_list, namespace as namespace_module
 from ..libs import parser as parser_module
 
 
@@ -49,6 +49,30 @@ class Function(declarable.Declarable, parser_module.Symbol):
     locals: typing.Mapping[str, declarable.Declarable] = attr.ib(converter=immutabledict.immutabledict,
                                                                  init=False,
                                                                  repr=False)
+
+    def execute(self, namespace: namespace_module.Namespace):
+        # TODO: decorators
+        # TODO: bindings
+
+        def function(*args, **kwargs):
+            inner_namespace = namespace_module.Namespace(namespace)
+            self.arguments.unpack_values(args, kwargs, inner_namespace)
+            outcome = self.body.execute(inner_namespace)
+
+            if isinstance(outcome, statement.Statement.Success):
+                return None
+
+            if isinstance(outcome, statement.Return.Outcome):
+                outcome: statement.Return.Outcome
+                return outcome.value
+
+            if isinstance(outcome, statement.Raise.Outcome):
+                outcome: statement.Raise.Outcome
+                raise outcome.exception
+
+            raise RuntimeError('this should be unreachable')
+
+        return function
 
     @classmethod
     def parse(cls, cursor):

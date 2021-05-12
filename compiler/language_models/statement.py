@@ -1011,6 +1011,13 @@ class Raise(Statement):
         failed_statement: Statement = attr.ib()
         raise_from: typing.Optional[Raise.Outcome] = attr.ib(default=None)
 
+        def add_stack_frame(self, statement: Statement):
+            return Raise.Outcome(
+                exception=self.exception,
+                failed_statement=statement,
+                raise_from=self,
+            )
+
         def __str__(self):
             if self.raise_from is not None:
                 return '\n'.join([
