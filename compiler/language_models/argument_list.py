@@ -5,7 +5,7 @@ import typing
 
 import attr
 
-from . import namespace as namespace_module
+from . import namespace as namespace_module, exceptions
 from ..libs import parser as parser_module
 
 
@@ -57,15 +57,16 @@ class ArgumentList(parser_module.Symbol):
                 if argument.variable.initializer is not None:
                     value = argument.variable.initializer.execute(namespace)
                 else:
-                    raise TypeError(f'no value for parameter {argument.variable.name!r}')
+                    raise exceptions.TypeError(f'no value for parameter {argument.variable.name!r}')
 
             namespace.declare(argument.variable.name, value)
 
         if positional_values:
-            raise TypeError(f'too many positional arguments: '
-                            f'expected {expected_positionals}, got {expected_positionals + len(positional_values)}')
+            raise exceptions.TypeError(f'too many positional arguments: '
+                                       f'expected {expected_positionals}, '
+                                       f'got {expected_positionals + len(positional_values)}')
         if keyword_values:
-            raise TypeError(f'unexpected keyword argument(s): {", ".join(keyword_values.keys())}')
+            raise exceptions.TypeError(f'unexpected keyword argument(s): {", ".join(keyword_values.keys())}')
 
     def __iter__(self):
         return iter(self.arguments)
@@ -180,11 +181,11 @@ class ArgumentList(parser_module.Symbol):
             if argument.is_extra:
                 if argument.is_positional:
                     if has_extra_positionals:
-                        raise ValueError('multiple "extra positional" arguments not allowed')
+                        raise exceptions.ValueError('multiple "extra positional" arguments not allowed')
                     has_extra_positionals = True
                 if argument.is_keyword:
                     if has_extra_keywords:
-                        raise ValueError('multiple "extra keyword" arguments not allowed')
+                        raise exceptions.ValueError('multiple "extra keyword" arguments not allowed')
                     has_extra_keywords = True
 
 
@@ -200,13 +201,13 @@ class Argument:
     @is_keyword.validator
     def _check_is_keyword(self, _, is_keyword):
         if not is_keyword and not self.is_positional:
-            raise ValueError('all arguments must be positional or keyword or both')
+            raise exceptions.ValueError('all arguments must be positional or keyword or both')
 
     @is_extra.validator
     def _check_is_extra(self, _, is_extra):
         if is_extra:
             if self.is_positional and self.is_keyword:
-                raise ValueError('"extra" arguments cannot be both positional and keyword')
+                raise exceptions.ValueError('"extra" arguments cannot be both positional and keyword')
 
 
 # pylint: disable=wrong-import-position, cyclic-import

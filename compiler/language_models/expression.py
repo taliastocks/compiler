@@ -8,7 +8,7 @@ import typing
 import attr
 import immutabledict
 
-from . import declarable, argument_list, namespace as namespace_module
+from . import declarable, argument_list, namespace as namespace_module, exceptions
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -72,7 +72,7 @@ class Number(Literal):
             regex_class
         ])
         if not isinstance(cursor.last_symbol, regex_class):
-            raise RuntimeError('this should be unreachable')
+            raise exceptions.RuntimeError('this should be unreachable')
 
         whole_part, fraction_part, magnitude_sign, magnitude_part = cursor.last_symbol.groups[1:]  # noqa
 
@@ -203,7 +203,7 @@ class Boolean(Literal):
                 value=False,
             ))
 
-        raise RuntimeError('this should be unreachable')
+        raise exceptions.RuntimeError('this should be unreachable')
 
 
 @attr.s(frozen=True, slots=True)
@@ -225,7 +225,7 @@ class NoneValue(Literal):
                 cursor=cursor,
             ))
 
-        raise RuntimeError('this should be unreachable')
+        raise exceptions.RuntimeError('this should be unreachable')
 
 
 @attr.s
@@ -288,7 +288,7 @@ class Variable(declarable.Declarable, LValue):
         try:
             return namespace.lookup(self.name)
         except KeyError as exc:
-            raise NameError('name {!r} is not defined'.format(self.name)) from exc
+            raise exceptions.NameError('name {!r} is not defined'.format(self.name)) from exc
 
     @classmethod
     def parse(cls,
@@ -384,20 +384,20 @@ class Unpack(LValue):
         ]
 
         if len(items) < len(self.lvalues):
-            raise ValueError('not enough values to unpack')
+            raise exceptions.ValueError('not enough values to unpack')
 
         if len(items) > len(self.lvalues):
-            raise ValueError('too many values to unpack')
+            raise exceptions.ValueError('too many values to unpack')
 
         for lvalue, item in zip(self.lvalues, items):
             lvalue.assign(namespace, item)
 
     def execute(self, namespace):
-        raise RuntimeError('this should be unreachable')
+        raise exceptions.RuntimeError('this should be unreachable')
 
     @classmethod
     def parse(cls, cursor):
-        raise RuntimeError('this should be unreachable')
+        raise exceptions.RuntimeError('this should be unreachable')
 
     @property
     def expressions(self):
@@ -474,7 +474,7 @@ class DictionaryOrSet(Parenthesized):
 
                 if not all(isinstance(item, Colon.Pair) for item in values):
                     # TODO: this should be enforced by the parser
-                    raise ValueError('expected all items to be pairs: {!r}'.format(values))
+                    raise exceptions.ValueError('expected all items to be pairs: {!r}'.format(values))
 
                 return {item.left: item.right for item in values}
 
@@ -498,7 +498,7 @@ class List(Parenthesized):
 
             if any(isinstance(item, Colon.Pair) for item in values):
                 # TODO: this should be enforced by the parser
-                raise ValueError('unexpected pairs in list: {!r}'.format(values))
+                raise exceptions.ValueError('unexpected pairs in list: {!r}'.format(values))
 
             return values
 
@@ -728,7 +728,7 @@ class Dot(Operator, LValue):
                 cursor=cursor,
             ))
 
-        raise RuntimeError('this should be unreachable')
+        raise exceptions.RuntimeError('this should be unreachable')
 
     @property
     def expressions(self):
@@ -1215,7 +1215,7 @@ class Lambda(Operator):
         cursor = argument_list.ArgumentList.parse(cursor, parse_annotations=False)
 
         if not isinstance(cursor.last_symbol, argument_list.ArgumentList):
-            raise RuntimeError('this should be unreachable')
+            raise exceptions.RuntimeError('this should be unreachable')
 
         arguments = cursor.last_symbol
 
@@ -1356,7 +1356,7 @@ class Comprehension(Operator):
             ], fail=True)
 
             if not isinstance(cursor.last_symbol, Expression):
-                raise RuntimeError('this should be unreachable')
+                raise exceptions.RuntimeError('this should be unreachable')
 
             receiver: LValue = LValue.from_expression(cursor.last_symbol)
 
@@ -1408,7 +1408,7 @@ class Comprehension(Operator):
         if len(operands) < 2:
             raise parser_module.ParseError('not enough operands', cursor)
         if len(self.loops) < 1:
-            raise RuntimeError('this should be unreachable')
+            raise exceptions.RuntimeError('this should be unreachable')
 
         # Instantiate value and iterable/condition in reverse order because we're popping from a stack.
         iterable_or_condition = operands.pop()
@@ -1568,12 +1568,12 @@ class ExpressionParser(parser_module.Parser):
         while operators:
             operand = operators.pop().new_from_operand_stack(cursor, operands)
             if operand.cursor is None:
-                raise RuntimeError('this should be unreachable')
+                raise exceptions.RuntimeError('this should be unreachable')
             operands.append(operand)
 
         # There should be exactly one operand left if all went well.
         if len(operands) != 1:
-            raise RuntimeError('this should be unreachable')
+            raise exceptions.RuntimeError('this should be unreachable')
 
         return cursor.new_from_symbol(operands[-1])
 
