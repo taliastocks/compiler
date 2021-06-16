@@ -2,7 +2,7 @@ import contextlib
 import tempfile
 import unittest
 
-from . import statement, expression, function, class_, namespace as namespace_module, exceptions
+from . import statement, expression, function, class_, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -147,11 +147,11 @@ class BlockTestCase(unittest.TestCase):
             namespace.lookup('c')
 
         namespace = namespace_module.Namespace()
-        namespace.declare('RuntimeError', exceptions.RuntimeError)
+        namespace.declare('RuntimeError', RuntimeError)
         test_statement: statement.Statement = statement.Block.parse(  # noqa
             parser_module.Cursor([
                 '    a = 1',
-                '    raise RuntimeError("error!")',  # raise exceptions.RuntimeError
+                '    raise RuntimeError("error!")',  # raise RuntimeError
                 '    c = 2',  # not reached
             ])
         ).last_symbol
@@ -1588,8 +1588,8 @@ class TryTestCase(unittest.TestCase):
     def test_execute(self):
         namespace = namespace_module.Namespace()
         namespace.declare('repr', repr)
-        namespace.declare('RuntimeError', exceptions.RuntimeError)
-        namespace.declare('ValueError', exceptions.ValueError)
+        namespace.declare('RuntimeError', RuntimeError)
+        namespace.declare('ValueError', ValueError)
         test_statement: statement.Statement = statement.Statement.parse(  # noqa
             parser_module.Cursor([
                 'try:',
@@ -1620,7 +1620,7 @@ class TryTestCase(unittest.TestCase):
 
         events = []
         namespace.declare('events', events)
-        namespace.declare('exception_class', exceptions.RuntimeError)
+        namespace.declare('exception_class', RuntimeError)
         outcome = test_statement.execute(namespace)
         self.assertIsInstance(outcome, statement.Statement.Success)
         self.assertEqual(
@@ -1630,7 +1630,7 @@ class TryTestCase(unittest.TestCase):
 
         events = []
         namespace.declare('events', events)
-        namespace.declare('exception_class', exceptions.ValueError)
+        namespace.declare('exception_class', ValueError)
         outcome = test_statement.execute(namespace)
         self.assertIsInstance(outcome, statement.Statement.Success)
         self.assertEqual(
@@ -1640,7 +1640,7 @@ class TryTestCase(unittest.TestCase):
 
         events = []
         namespace.declare('events', events)
-        namespace.declare('exception_class', exceptions.TypeError)  # not caught
+        namespace.declare('exception_class', TypeError)  # not caught
         outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
         self.assertIsInstance(outcome, statement.Raise.Outcome)
         self.assertEqual(
@@ -1655,8 +1655,8 @@ class TryTestCase(unittest.TestCase):
     def test_execute_no_finally(self):
         namespace = namespace_module.Namespace()
         namespace.declare('repr', repr)
-        namespace.declare('RuntimeError', exceptions.RuntimeError)
-        namespace.declare('ValueError', exceptions.ValueError)
+        namespace.declare('RuntimeError', RuntimeError)
+        namespace.declare('ValueError', ValueError)
         test_statement: statement.Statement = statement.Statement.parse(  # noqa
             parser_module.Cursor([
                 'try:',
@@ -1685,7 +1685,7 @@ class TryTestCase(unittest.TestCase):
 
         events = []
         namespace.declare('events', events)
-        namespace.declare('exception_class', exceptions.RuntimeError)
+        namespace.declare('exception_class', RuntimeError)
         outcome = test_statement.execute(namespace)
         self.assertIsInstance(outcome, statement.Statement.Success)
         self.assertEqual(
@@ -1695,7 +1695,7 @@ class TryTestCase(unittest.TestCase):
 
         events = []
         namespace.declare('events', events)
-        namespace.declare('exception_class', exceptions.ValueError)
+        namespace.declare('exception_class', ValueError)
         outcome = test_statement.execute(namespace)
         self.assertIsInstance(outcome, statement.Statement.Success)
         self.assertEqual(
@@ -1705,7 +1705,7 @@ class TryTestCase(unittest.TestCase):
 
         events = []
         namespace.declare('events', events)
-        namespace.declare('exception_class', exceptions.TypeError)  # not caught
+        namespace.declare('exception_class', TypeError)  # not caught
         outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
         self.assertIsInstance(outcome, statement.Raise.Outcome)
         self.assertEqual(
@@ -1720,8 +1720,8 @@ class TryTestCase(unittest.TestCase):
     def test_execute_no_else(self):
         namespace = namespace_module.Namespace()
         namespace.declare('repr', repr)
-        namespace.declare('RuntimeError', exceptions.RuntimeError)
-        namespace.declare('ValueError', exceptions.ValueError)
+        namespace.declare('RuntimeError', RuntimeError)
+        namespace.declare('ValueError', ValueError)
         test_statement: statement.Statement = statement.Statement.parse(  # noqa
             parser_module.Cursor([
                 'try:',
@@ -1750,7 +1750,7 @@ class TryTestCase(unittest.TestCase):
 
         events = []
         namespace.declare('events', events)
-        namespace.declare('exception_class', exceptions.RuntimeError)
+        namespace.declare('exception_class', RuntimeError)
         outcome = test_statement.execute(namespace)
         self.assertIsInstance(outcome, statement.Statement.Success)
         self.assertEqual(
@@ -1760,7 +1760,7 @@ class TryTestCase(unittest.TestCase):
 
         events = []
         namespace.declare('events', events)
-        namespace.declare('exception_class', exceptions.ValueError)
+        namespace.declare('exception_class', ValueError)
         outcome = test_statement.execute(namespace)
         self.assertIsInstance(outcome, statement.Statement.Success)
         self.assertEqual(
@@ -1770,7 +1770,7 @@ class TryTestCase(unittest.TestCase):
 
         events = []
         namespace.declare('events', events)
-        namespace.declare('exception_class', exceptions.TypeError)  # not caught
+        namespace.declare('exception_class', TypeError)  # not caught
         outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
         self.assertIsInstance(outcome, statement.Raise.Outcome)
         self.assertEqual(
@@ -1811,7 +1811,7 @@ class TryTestCase(unittest.TestCase):
 
         events = []
         namespace.declare('events', events)
-        namespace.declare('exception_class', exceptions.TypeError)  # not caught
+        namespace.declare('exception_class', TypeError)  # not caught
         outcome: statement.Raise.Outcome = test_statement.execute(namespace)  # noqa
         self.assertIsInstance(outcome, statement.Raise.Outcome)
         self.assertEqual(

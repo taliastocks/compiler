@@ -3,11 +3,11 @@ from __future__ import annotations
 import abc
 import contextlib
 import typing
-import weakref
 
 import attr
+import cachetools
 
-from . import expression as expression_module, declarable, namespace as namespace_module, exceptions
+from . import expression as expression_module, declarable, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -992,8 +992,8 @@ class Try(Statement):
 class Raise(Statement):
     @attr.s(frozen=True, slots=True)
     class Outcome(Statement.Outcome):
-        _tracebacks = weakref.WeakKeyDictionary()
-        _failed_statements = weakref.WeakKeyDictionary()
+        _tracebacks = cachetools.LRUCache(maxsize=1000)  # this should be WeakKeyDictionary
+        _failed_statements = cachetools.LRUCache(maxsize=1000)  # and this, but exceptions don't support weakref
 
         exception: Exception = attr.ib()
         failed_statement: Statement = attr.ib()
@@ -1174,7 +1174,7 @@ class Assert(Statement):
     def execute(self, namespace):
         with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             if not self.expression.execute(namespace):
-                return Raise.Outcome(exceptions.AssertionError(), self)
+                return Raise.Outcome(AssertionError(), self)
 
         return get_outcome()  # noqa, this is reachable if exception thrown
 

@@ -4,8 +4,6 @@ import typing
 
 import attr
 
-from . import exceptions
-
 
 @attr.s(frozen=True, slots=True)
 class Namespace:
@@ -19,7 +17,7 @@ class Namespace:
         if self.parent:
             return self.parent.lookup(name)
 
-        raise exceptions.KeyError('no such name {!r}'.format(name))
+        raise KeyError('no such name {!r}'.format(name))
 
     def declare(self, name: str, value: typing.Any):
         self.declarations[name] = value

@@ -8,7 +8,6 @@ import immutabledict
 from . import (
     declarable as declarable_module,
     statement as statement_module,
-    exceptions,
 )
 from ..libs import parser as parser_module
 
@@ -54,7 +53,7 @@ class Module(parser_module.Symbol):
                 if isinstance(receiver, declarable_module.Declarable):
                     declarable: declarable_module.Declarable = receiver
                     if declarable.name in global_declarations:
-                        raise exceptions.ValueError('{!r} cannot be declared with the same name as {!r}'.format(
+                        raise ValueError('{!r} cannot be declared with the same name as {!r}'.format(
                             declarable,
                             global_declarations[declarable.name]
                         ))

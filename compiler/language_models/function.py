@@ -5,7 +5,7 @@ import typing
 import attr
 import immutabledict
 
-from . import statement, declarable, expression, argument_list, namespace as namespace_module, exceptions
+from . import statement, declarable, expression, argument_list, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -72,7 +72,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
                 outcome: statement.Raise.Outcome
                 raise outcome.exception
 
-            raise exceptions.RuntimeError('this should be unreachable')
+            raise RuntimeError('this should be unreachable')
 
         return function
 
@@ -179,7 +179,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
 
         for argument in self.arguments:
             if argument.variable.name in local_declarations:
-                raise exceptions.ValueError('{!r}: repeated argument name not allowed'.format(
+                raise ValueError('{!r}: repeated argument name not allowed'.format(
                     argument.variable.name
                 ))
 
@@ -206,7 +206,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
 
         argument_names_declared_nonlocal = argument_names & nonlocal_variable_names
         if argument_names_declared_nonlocal:
-            raise exceptions.ValueError('arguments cannot be declared nonlocal: {}'.format(
+            raise ValueError('arguments cannot be declared nonlocal: {}'.format(
                 ', '.join(sorted(argument_names_declared_nonlocal))
             ))
 

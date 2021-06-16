@@ -2,8 +2,6 @@ import unicodedata
 
 import regex
 
-from . import exceptions
-
 
 def unescape_text(escaped: str) -> str:
     return _ESCAPE_TEXT_REGEX.sub(
@@ -37,7 +35,7 @@ def _unescape_text(match):
     if special_case:
         return _SPECIAL_CASE_ESCAPES_TEXT.get(special_case, special_case)
 
-    raise exceptions.RuntimeError('this should be unreachable')
+    raise RuntimeError('this should be unreachable')
 
 
 def _unescape_bytes(match):
@@ -58,7 +56,7 @@ def _unescape_bytes(match):
     if special_case:
         return _SPECIAL_CASE_ESCAPES_BYTES.get(special_case, special_case)
 
-    raise exceptions.RuntimeError('this should be unreachable')
+    raise RuntimeError('this should be unreachable')
 
 
 _SPECIAL_CASE_ESCAPES_TEXT = {
