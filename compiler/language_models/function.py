@@ -9,6 +9,7 @@ from . import statement, declarable, expression, argument_list, namespace as nam
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
+from ..meta import generic
 
 
 @attr.s(frozen=True, slots=True)
@@ -53,26 +54,30 @@ class Function(declarable.Declarable, parser_module.Symbol):
                                                                  repr=False)
 
     def execute(self, namespace: namespace_module.Namespace):
-        # TODO: decorators
-        # TODO: bindings
+        @generic.Generic
+        def bind_function(*binding_args, **binding_kwargs):
+            binding_namespace = namespace_module.Namespace(namespace)
+            self.bindings.unpack_values(binding_args, binding_kwargs, binding_namespace)
 
-        def function(*args, **kwargs):
-            inner_namespace = namespace_module.Namespace(namespace)
-            self.arguments.unpack_values(args, kwargs, inner_namespace)
-            outcome = self.body.execute(inner_namespace)
+            def function_instance(*args, **kwargs):
+                function_namespace = namespace_module.Namespace(binding_namespace)
+                self.arguments.unpack_values(args, kwargs, function_namespace)
+                return self.body.execute(function_namespace).get_value()
 
-            if isinstance(outcome, statement.Statement.Success):
-                return None
+            return function_instance
 
-            if isinstance(outcome, statement.Return.Outcome):
-                outcome: statement.Return.Outcome
-                return outcome.value
+        if self.bindings:
+            function = bind_function
+        else:
+            function = bind_function[()]
 
-            if isinstance(outcome, statement.Raise.Outcome):
-                outcome: statement.Raise.Outcome
-                raise outcome.exception
+        for decorator in reversed(self.decorators):
+            with statement.Raise.Outcome.catch(decorator) as get_outcome:
+                decorator_value: typing.Callable = decorator.value.execute(namespace).get_value()
+                assert callable(decorator_value), 'decorator not callable'
+                function = decorator_value(function)
 
-            raise RuntimeError('this should be unreachable')
+            get_outcome().get_value()  # reraise any exception, with decorator added to traceback
 
         return function
 

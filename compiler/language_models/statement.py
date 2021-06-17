@@ -23,10 +23,18 @@ class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
         """Represents the outcome of a statement.
         """
 
+        @abc.abstractmethod
+        def get_value(self):
+            """Get the value of this outcome, if any, or raise.
+            """
+
     @attr.s(frozen=True, slots=True)
     class Success(Outcome):
         """Represents the outcome of a statement.
         """
+
+        def get_value(self):
+            return None
 
     @property
     def receivers(self) -> typing.Iterable[expression_module.LValue]:
@@ -639,7 +647,8 @@ class Break(Statement):
     """
     @attr.s(frozen=True, slots=True)
     class Outcome(Statement.Outcome):
-        pass
+        def get_value(self):
+            raise NotImplementedError('this should be unreachable')
 
     def execute(self, namespace):
         return self.Outcome()
@@ -663,7 +672,8 @@ class Continue(Statement):
     """
     @attr.s(frozen=True, slots=True)
     class Outcome(Statement.Outcome):
-        pass
+        def get_value(self):
+            raise NotImplementedError('this should be unreachable')
 
     def execute(self, namespace):
         return self.Outcome()
@@ -993,22 +1003,22 @@ class Raise(Statement):
     @attr.s(frozen=True, slots=True)
     class Outcome(Statement.Outcome):
         _tracebacks = cachetools.LRUCache(maxsize=1000)  # this should be WeakKeyDictionary
-        _failed_statements = cachetools.LRUCache(maxsize=1000)  # and this, but exceptions don't support weakref
+        _failed_symbols = cachetools.LRUCache(maxsize=1000)  # and this, but exceptions don't support weakref
 
         exception: Exception = attr.ib()
-        failed_statement: Statement = attr.ib()
+        failed_symbol: parser_module.Symbol = attr.ib()
         raise_from: typing.Optional[Raise.Outcome] = attr.ib(default=None)
 
         @classmethod
         @contextlib.contextmanager
-        def catch(cls, statement: Statement):
+        def catch(cls, symbol: parser_module.Symbol) -> typing.ContextManager[typing.Callable[[], Statement.Outcome]]:
             """Context manager for catching exceptions and converting them to Raise.Outcome.
             """
             exc = None
             try:
                 yield lambda: cls.reraise_from(exc)
             except Exception as exception:  # pylint: disable=broad-except
-                cls._failed_statements[exception] = statement
+                cls._failed_symbols[exception] = symbol
                 exc = exception
 
         @classmethod
@@ -1018,18 +1028,21 @@ class Raise(Statement):
 
             return Raise.Outcome(
                 exception=exception,
-                failed_statement=cls._failed_statements.get(exception),
+                failed_symbol=cls._failed_symbols.get(exception),
                 raise_from=cls._tracebacks.get(exception),
             )
+
+        def get_value(self):
+            raise self.exception
 
         def __str__(self):
             if self.raise_from is not None:
                 return '\n'.join([
-                    str(self.failed_statement.cursor),
+                    str(self.failed_symbol.cursor),
                     str(self.raise_from),
                 ])
 
-            return str(self.failed_statement.cursor)
+            return str(self.failed_symbol.cursor)
 
         @exception.validator
         def _register_exception(self, _, exception):
@@ -1080,6 +1093,9 @@ class Return(Statement):
     @attr.s(frozen=True, slots=True)
     class Outcome(Statement.Outcome):
         value: typing.Any = attr.ib(default=None)
+
+        def get_value(self):
+            return self.value
 
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 

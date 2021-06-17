@@ -118,7 +118,6 @@ class BlockTestCase(unittest.TestCase):
                 '    b = 2',
             ])
         ).last_symbol
-        print('asneothuasnteuh', test_statement)
         outcome = test_statement.execute(namespace)
 
         self.assertIsInstance(outcome, statement.Statement.Success)
