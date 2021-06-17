@@ -4,10 +4,11 @@ import typing
 
 import attr
 
-from . import declarable, expression, argument_list, statement
+from . import declarable, expression, argument_list, statement, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
+from ..meta import generic
 
 
 @attr.s(frozen=True, slots=True)
@@ -24,7 +25,7 @@ class Class(parser_module.Symbol, declarable.Declarable):
                 parser_module.Characters['@']
             ])
 
-            cursor = expression.ExpressionParser.parse(cursor, stop_symbols=[
+            expr_cursor = cursor = expression.ExpressionParser.parse(cursor, stop_symbols=[
                 parser_module.EndLine
             ], fail=True)
 
@@ -36,7 +37,7 @@ class Class(parser_module.Symbol, declarable.Declarable):
             ], fail=True)
 
             return cursor.new_from_symbol(cls(
-                cursor=cursor,
+                cursor=expr_cursor,
                 value=value,
             ))
 
@@ -45,6 +46,49 @@ class Class(parser_module.Symbol, declarable.Declarable):
     bindings: argument_list.ArgumentList = attr.ib(factory=argument_list.ArgumentList, repr=False)
     decorators: typing.Sequence[Decorator] = attr.ib(converter=tuple, default=(), repr=False)
     bases: typing.Sequence[expression.Expression] = attr.ib(converter=tuple, default=(), repr=False)
+
+    def execute(self, namespace: namespace_module.Namespace):
+        @generic.Generic
+        def bind_class(*binding_args, **binding_kwargs):
+            binding_namespace = namespace_module.Namespace(namespace)
+            self.bindings.unpack_values(binding_args, binding_kwargs, binding_namespace)
+            class_namespace = namespace_module.Namespace(binding_namespace)
+
+            bases = []
+            for base in self.bases:
+                with statement.Raise.Outcome.catch(base) as get_outcome:
+                    base_value = base.execute(binding_namespace)
+                    assert isinstance(base_value, type), 'bases must be types'
+                    bases.append(base_value)
+
+                get_outcome().get_value()  # reraise any exception, with base expr added to traceback
+
+            with statement.Raise.Outcome.catch(self.body) as get_outcome:
+                self.body.execute(class_namespace).get_value()
+
+            get_outcome().get_value()  # reraise any exception, with class body added to traceback
+
+            with statement.Raise.Outcome.catch(self) as get_outcome:
+                class_instance = type(self.name, tuple(bases), class_namespace.declarations)
+
+            get_outcome().get_value()  # reraise any exception, with class added to traceback
+
+            return class_instance
+
+        if self.bindings:
+            new_class = bind_class
+        else:
+            new_class = bind_class[()]
+
+        for decorator in reversed(self.decorators):
+            with statement.Raise.Outcome.catch(decorator) as get_outcome:
+                decorator_value: typing.Callable = decorator.value.execute(namespace)
+                assert callable(decorator_value), 'decorator not callable'
+                new_class = decorator_value(new_class)
+
+            get_outcome().get_value()  # reraise any exception, with decorator added to traceback
+
+        namespace.declare(self.name, new_class)
 
     @classmethod
     def parse(cls, cursor):
