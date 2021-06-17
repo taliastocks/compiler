@@ -1,10 +1,152 @@
 import unittest
 
-from . import function, expression, statement, argument_list
+from . import function, expression, statement, argument_list, namespace as namespace_module
 from ..libs import parser as parser_module
 
 
 class FunctionTestCase(unittest.TestCase):
+    def test_execute_basic(self):
+        test_function: function.Function = function.Function.parse(  # noqa
+            parser_module.Cursor([
+                'def add_a(b):',
+                '    return A + b',
+            ])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('A', 3)
+        test_function.execute(namespace)
+
+        add_a = namespace.lookup('add_a')
+        self.assertTrue(callable(add_a))
+        self.assertEqual(
+            7,
+            add_a(4)  # 3 + 4 = 7
+        )
+        self.assertEqual(
+            9,
+            add_a(b=6)  # 3 + 4 = 9
+        )
+
+    def test_execute_exception(self):
+        test_function: function.Function = function.Function.parse(  # noqa
+            parser_module.Cursor([
+                'def test_function():',
+                '    test_function_2()',
+            ])
+        ).last_symbol
+        test_function_2: function.Function = function.Function.parse(  # noqa
+            parser_module.Cursor([
+                'def test_function_2():',
+                '    raise RuntimeError("hello world")',
+            ])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('RuntimeError', RuntimeError)
+        test_function.execute(namespace)
+        test_function_2.execute(namespace)
+
+        with statement.Raise.Outcome.catch(test_function) as get_outcome:
+            namespace.lookup('test_function')()
+
+        outcome = get_outcome()
+
+        self.assertEqual(
+            '\n'.join([
+                '0, 20: def test_function():',
+                '                           ^',
+                '1, 21:     test_function_2()',
+                '                            ^',
+                '1, 37:     raise RuntimeError("hello world")',
+                '                                            ^',
+                "RuntimeError('hello world')",
+            ]),
+            str(outcome)
+        )
+
+    def test_execute_generic(self):
+        test_function: function.Function = function.Function.parse(  # noqa
+            parser_module.Cursor([
+                'def test_function[A, B](c, d):',
+                '    return [A, B, c, d]',
+            ])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        test_function.execute(namespace)
+
+        test_func = namespace.lookup('test_function')
+        self.assertTrue(callable(test_func[1, 2]))
+        self.assertEqual(
+            [1, 2, 3, 4],
+            test_func[1, 2](3, 4)
+        )
+
+    def test_execute_decorator(self):
+        test_function: function.Function = function.Function.parse(  # noqa
+            parser_module.Cursor([
+                '@outer_decorator',
+                '@inner_decorator',
+                'def test_function(a):',
+                '    return [a]',
+            ])
+        ).last_symbol
+
+        def inner_decorator(func):
+            return lambda a: ['inner_decorator', func(a)]
+
+        def outer_decorator(func):
+            return lambda a: ['outer_decorator', func(a)]
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('inner_decorator', inner_decorator)
+        namespace.declare('outer_decorator', outer_decorator)
+        test_function.execute(namespace)
+
+        test_func = namespace.lookup('test_function')
+        self.assertTrue(callable(test_func))
+        self.assertEqual(
+            ['outer_decorator', ['inner_decorator', ['arg']]],
+            test_func('arg')
+        )
+
+    def test_execute_decorator_exception(self):
+        test_function: function.Function = function.Function.parse(  # noqa
+            parser_module.Cursor([
+                '@outer_decorator',
+                '@inner_decorator',
+                'def test_function(a):',
+                '    return [a]',
+            ])
+        ).last_symbol
+
+        def inner_decorator(_):
+            raise RuntimeError('runtime error')
+
+        def outer_decorator(func):
+            return lambda a: ['outer_decorator', func(a)]
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('inner_decorator', inner_decorator)
+        namespace.declare('outer_decorator', outer_decorator)
+
+        with statement.Raise.Outcome.catch(test_function) as get_outcome:
+            test_function.execute(namespace)
+
+        outcome = get_outcome()
+
+        self.assertEqual(
+            '\n'.join([
+                '2, 21: def test_function(a):',
+                '                            ^',
+                '1, 16: @inner_decorator',
+                '                       ^',
+                "RuntimeError('runtime error')",
+            ]),
+            str(outcome)
+        )
+
     def test_parse(self):
         self.assertEqual(
             function.Function.parse(

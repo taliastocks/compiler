@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import abc
+import contextlib
 import typing
 
 import attr
+import cachetools
 
 from . import expression as expression_module, declarable, namespace as namespace_module
 from ..libs import parser as parser_module
@@ -21,10 +23,18 @@ class Statement(parser_module.Symbol, metaclass=abc.ABCMeta):
         """Represents the outcome of a statement.
         """
 
+        @abc.abstractmethod
+        def get_value(self):
+            """Get the value of this outcome, if any, or raise.
+            """
+
     @attr.s(frozen=True, slots=True)
     class Success(Outcome):
         """Represents the outcome of a statement.
         """
+
+        def get_value(self):
+            return None
 
     @property
     def receivers(self) -> typing.Iterable[expression_module.LValue]:
@@ -106,17 +116,14 @@ class Block(Statement):
     statements: typing.Sequence[Statement] = attr.ib(converter=tuple, factory=list)
 
     def execute(self, namespace):
-        try:
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             for statement in self.statements:
                 outcome = statement.execute(namespace)
 
                 if not isinstance(outcome, self.Success):
                     return outcome
 
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
-
-        return self.Success()
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
@@ -149,15 +156,13 @@ class Declaration(Statement):
     declarable: declarable.Declarable = attr.ib()
 
     def execute(self, namespace):
-        try:
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             if isinstance(self.declarable, expression_module.Expression):
                 self.declarable.execute(namespace)
 
             # TODO: other declarations
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
 
-        return self.Success()
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
@@ -207,16 +212,13 @@ class Assignment(Statement):
     expression: expression_module.Expression = attr.ib()
 
     def execute(self, namespace):
-        try:
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             value = self.expression.execute(namespace)
 
             for receiver in reversed(self.receivers):
                 receiver.assign(namespace, value)
 
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
-
-        return self.Success()
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
@@ -286,16 +288,14 @@ class Expression(Statement):
     expression: expression_module.Expression = attr.ib()
 
     def execute(self, namespace):
-        try:
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             self.expression.execute(namespace)
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
 
-        return self.Success()
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
-        cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+        expr_cursor = cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
             parser_module.EndLine,
         ])
 
@@ -309,7 +309,7 @@ class Expression(Statement):
         ], fail=True)
 
         return cursor.new_from_symbol(cls(
-            cursor=cursor,
+            cursor=expr_cursor,
             expression=expression,
         ))
 
@@ -328,16 +328,14 @@ class If(Statement):
     else_body: typing.Optional[Block] = attr.ib(default=None)
 
     def execute(self, namespace):
-        try:
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             if self.condition.execute(namespace):
                 return self.body.execute(namespace)
 
             if self.else_body is not None:
                 return self.else_body.execute(namespace)
 
-            return self.Success()
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
@@ -427,7 +425,7 @@ class While(Statement):
     else_body: typing.Optional[Block] = attr.ib(default=None)
 
     def execute(self, namespace):
-        try:
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             while self.condition.execute(namespace):
                 outcome = self.body.execute(namespace)
 
@@ -440,10 +438,7 @@ class While(Statement):
                 if self.else_body is not None:
                     return self.else_body.execute(namespace)
 
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
-
-        return self.Success()
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
@@ -534,7 +529,7 @@ class For(Statement):
     else_body: typing.Optional[Block] = attr.ib(default=None)
 
     def execute(self, namespace):
-        try:
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             for value in self.iterable.execute(namespace):
                 self.receiver.assign(namespace, value)
 
@@ -549,10 +544,7 @@ class For(Statement):
                 if self.else_body is not None:
                     return self.else_body.execute(namespace)
 
-            return self.Success()
-
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
@@ -655,7 +647,8 @@ class Break(Statement):
     """
     @attr.s(frozen=True, slots=True)
     class Outcome(Statement.Outcome):
-        pass
+        def get_value(self):
+            raise NotImplementedError('this should be unreachable')
 
     def execute(self, namespace):
         return self.Outcome()
@@ -679,7 +672,8 @@ class Continue(Statement):
     """
     @attr.s(frozen=True, slots=True)
     class Outcome(Statement.Outcome):
-        pass
+        def get_value(self):
+            raise NotImplementedError('this should be unreachable')
 
     def execute(self, namespace):
         return self.Outcome()
@@ -710,13 +704,14 @@ class With(Statement):
     receiver: typing.Optional[expression_module.LValue] = attr.ib(default=None)
 
     def execute(self, namespace):
-        try:
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             with self.context_manager.execute(namespace) as context_manager:
                 if self.receiver is not None:
                     self.receiver.assign(namespace, context_manager)
+
                 return self.body.execute(namespace)
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
+
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
@@ -833,7 +828,8 @@ class Try(Statement):
 
     def execute(self, namespace):
         exception_outcome = else_outcome = finally_outcome = self.Success()
-        try:
+
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             outcome = self.body.execute(namespace)
 
             if isinstance(outcome, Raise.Outcome):
@@ -862,8 +858,7 @@ class Try(Statement):
                 return else_outcome
             return exception_outcome
 
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
@@ -1007,18 +1002,56 @@ class Try(Statement):
 class Raise(Statement):
     @attr.s(frozen=True, slots=True)
     class Outcome(Statement.Outcome):
+        _tracebacks = cachetools.LRUCache(maxsize=1000)  # this should be WeakKeyDictionary
+        _failed_symbols = cachetools.LRUCache(maxsize=1000)  # and this, but exceptions don't support weakref
+
         exception: Exception = attr.ib()
-        failed_statement: Statement = attr.ib()
+        failed_symbol: parser_module.Symbol = attr.ib()
         raise_from: typing.Optional[Raise.Outcome] = attr.ib(default=None)
 
-        def __str__(self):
-            if self.raise_from is not None:
-                return '\n'.join([
-                    str(self.failed_statement.cursor),
-                    str(self.raise_from),
-                ])
+        @classmethod
+        @contextlib.contextmanager
+        def catch(cls, symbol: parser_module.Symbol) -> typing.ContextManager[typing.Callable[[], Statement.Outcome]]:
+            """Context manager for catching exceptions and converting them to Raise.Outcome.
+            """
+            exc = None
+            try:
+                yield lambda: cls.reraise_from(exc)
+            except Exception as exception:  # pylint: disable=broad-except
+                cls._failed_symbols[exception] = symbol
+                exc = exception
 
-            return str(self.failed_statement.cursor)
+        @classmethod
+        def reraise_from(cls, exception):
+            if exception is None:
+                return Statement.Success()
+
+            return Raise.Outcome(
+                exception=exception,
+                failed_symbol=cls._failed_symbols.get(exception),
+                raise_from=cls._tracebacks.get(exception),
+            )
+
+        def get_value(self):
+            raise self.exception
+
+        def __str__(self):
+            to_join = [
+                str(self.failed_symbol.cursor),
+            ]
+
+            if self.raise_from is not None:
+                if self.exception != self.raise_from.exception:
+                    to_join.append(repr(self.exception))
+                to_join.append(str(self.raise_from))
+            else:
+                to_join.append(repr(self.exception))
+
+            return '\n'.join(to_join)
+
+        @exception.validator
+        def _register_exception(self, _, exception):
+            self._tracebacks[exception] = self
 
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
@@ -1028,7 +1061,7 @@ class Raise(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        cursor = cursor.parse_one_symbol([
+        raise_cursor = cursor = cursor.parse_one_symbol([
             parser_module.Characters['raise'],
         ]).parse_one_symbol([
             parser_module.EndLine,
@@ -1038,7 +1071,7 @@ class Raise(Statement):
         expression = None
 
         if isinstance(cursor.last_symbol, parser_module.Always):
-            cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+            raise_cursor = cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
                 parser_module.EndLine
             ], fail=True)
 
@@ -1050,7 +1083,7 @@ class Raise(Statement):
             ], fail=True)
 
         return cursor.new_from_symbol(cls(
-            cursor=cursor,
+            cursor=raise_cursor,
             expression=expression,
         ))
 
@@ -1066,15 +1099,18 @@ class Return(Statement):
     class Outcome(Statement.Outcome):
         value: typing.Any = attr.ib(default=None)
 
+        def get_value(self):
+            return self.value
+
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
     def execute(self, namespace):
-        try:
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             if self.expression is not None:
                 return self.Outcome(self.expression.execute(namespace))
             return self.Outcome()
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
+
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
@@ -1157,13 +1193,11 @@ class Assert(Statement):
     expression: typing.Optional[expression_module.Expression] = attr.ib(default=None)
 
     def execute(self, namespace):
-        try:
+        with Raise.Outcome.catch(self) as get_outcome:  # noqa, is used
             if not self.expression.execute(namespace):
                 return Raise.Outcome(AssertionError(), self)
-        except Exception as exc:  # pylint: disable=broad-except
-            return Raise.Outcome(exc, self)
 
-        return self.Success()
+        return get_outcome()  # noqa, this is reachable if exception thrown
 
     @classmethod
     def parse(cls, cursor):
@@ -1172,7 +1206,7 @@ class Assert(Statement):
             parser_module.Characters['assert'],
         ])
 
-        cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+        expr_cursor = cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
             parser_module.EndLine
         ], fail=True)
 
@@ -1184,7 +1218,7 @@ class Assert(Statement):
         ], fail=True)
 
         return cursor.new_from_symbol(cls(
-            cursor=cursor,
+            cursor=expr_cursor,
             expression=expression,
         ))
 

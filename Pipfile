@@ -7,6 +7,7 @@ name = "pypi"
 attrs = "*"
 immutabledict = "*"
 regex = "*"
+cachetools = "*"
 
 [dev-packages]
 pytest = "*"

@@ -118,9 +118,10 @@ class Class(parser_module.Symbol, declarable.Declarable):
                         parser_module.Characters[')'],
                     ], fail=True)
 
-        cursor = cursor.parse_one_symbol([
+        colon_cursor = cursor = cursor.parse_one_symbol([
             parser_module.Characters[':']
-        ], fail=True).parse_one_symbol([
+        ], fail=True)
+        cursor = cursor.parse_one_symbol([
             parser_module.EndLine
         ], fail=True).parse_one_symbol([
             statement.Block
@@ -130,7 +131,7 @@ class Class(parser_module.Symbol, declarable.Declarable):
         body = cursor.last_symbol
 
         return cursor.new_from_symbol(cls(
-            cursor=cursor,
+            cursor=colon_cursor,
             name=name,
             bindings=bindings,
             decorators=decorators,

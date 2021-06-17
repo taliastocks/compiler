@@ -5,8 +5,11 @@ import typing
 import attr
 import immutabledict
 
-from . import statement, declarable, expression, argument_list
+from . import statement, declarable, expression, argument_list, namespace as namespace_module
 from ..libs import parser as parser_module
+
+# pylint: disable=fixme
+from ..meta import generic
 
 
 @attr.s(frozen=True, slots=True)
@@ -23,7 +26,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
                 parser_module.Characters['@']
             ])
 
-            cursor = expression.ExpressionParser.parse(cursor, stop_symbols=[
+            expr_cursor = cursor = expression.ExpressionParser.parse(cursor, stop_symbols=[
                 parser_module.EndLine
             ], fail=True)
 
@@ -35,7 +38,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
             ], fail=True)
 
             return cursor.new_from_symbol(cls(
-                cursor=cursor,
+                cursor=expr_cursor,
                 value=value,
             ))
 
@@ -49,6 +52,34 @@ class Function(declarable.Declarable, parser_module.Symbol):
     locals: typing.Mapping[str, declarable.Declarable] = attr.ib(converter=immutabledict.immutabledict,
                                                                  init=False,
                                                                  repr=False)
+
+    def execute(self, namespace: namespace_module.Namespace):
+        @generic.Generic
+        def bind_function(*binding_args, **binding_kwargs):
+            binding_namespace = namespace_module.Namespace(namespace)
+            self.bindings.unpack_values(binding_args, binding_kwargs, binding_namespace)
+
+            def function_instance(*args, **kwargs):
+                function_namespace = namespace_module.Namespace(binding_namespace)
+                self.arguments.unpack_values(args, kwargs, function_namespace)
+                return self.body.execute(function_namespace).get_value()
+
+            return function_instance
+
+        if self.bindings:
+            function = bind_function
+        else:
+            function = bind_function[()]
+
+        for decorator in reversed(self.decorators):
+            with statement.Raise.Outcome.catch(decorator) as get_outcome:
+                decorator_value: typing.Callable = decorator.value.execute(namespace)
+                assert callable(decorator_value), 'decorator not callable'
+                function = decorator_value(function)
+
+            get_outcome().get_value()  # reraise any exception, with decorator added to traceback
+
+        namespace.declare(self.name, function)
 
     @classmethod
     def parse(cls, cursor):
@@ -126,9 +157,10 @@ class Function(declarable.Declarable, parser_module.Symbol):
         else:
             return_type = None
 
-        cursor = cursor.parse_one_symbol([
+        colon_cursor = cursor = cursor.parse_one_symbol([
             parser_module.Characters[':']
-        ], fail=True).parse_one_symbol([
+        ], fail=True)
+        cursor = cursor.parse_one_symbol([
             parser_module.EndLine
         ], fail=True).parse_one_symbol([
             statement.Block
@@ -138,7 +170,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
         body = cursor.last_symbol
 
         return cursor.new_from_symbol(cls(
-            cursor=cursor,
+            cursor=colon_cursor,
             name=name,
             bindings=bindings,
             arguments=arguments,

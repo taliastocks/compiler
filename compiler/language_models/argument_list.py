@@ -63,7 +63,8 @@ class ArgumentList(parser_module.Symbol):
 
         if positional_values:
             raise TypeError(f'too many positional arguments: '
-                            f'expected {expected_positionals}, got {expected_positionals + len(positional_values)}')
+                            f'expected {expected_positionals}, '
+                            f'got {expected_positionals + len(positional_values)}')
         if keyword_values:
             raise TypeError(f'unexpected keyword argument(s): {", ".join(keyword_values.keys())}')
 
@@ -170,6 +171,9 @@ class ArgumentList(parser_module.Symbol):
             arguments=arguments,
             cursor=cursor,
         ))
+
+    def __bool__(self):
+        return bool(self.arguments)
 
     @arguments.validator
     def _check_arguments(self, _, arguments: typing.Sequence[Argument]):
