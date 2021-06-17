@@ -295,7 +295,7 @@ class Expression(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+        expr_cursor = cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
             parser_module.EndLine,
         ])
 
@@ -309,7 +309,7 @@ class Expression(Statement):
         ], fail=True)
 
         return cursor.new_from_symbol(cls(
-            cursor=cursor,
+            cursor=expr_cursor,
             expression=expression,
         ))
 
@@ -1036,13 +1036,18 @@ class Raise(Statement):
             raise self.exception
 
         def __str__(self):
-            if self.raise_from is not None:
-                return '\n'.join([
-                    str(self.failed_symbol.cursor),
-                    str(self.raise_from),
-                ])
+            to_join = [
+                str(self.failed_symbol.cursor),
+            ]
 
-            return str(self.failed_symbol.cursor)
+            if self.raise_from is not None:
+                if self.exception != self.raise_from.exception:
+                    to_join.append(repr(self.exception))
+                to_join.append(str(self.raise_from))
+            else:
+                to_join.append(repr(self.exception))
+
+            return '\n'.join(to_join)
 
         @exception.validator
         def _register_exception(self, _, exception):
@@ -1056,7 +1061,7 @@ class Raise(Statement):
 
     @classmethod
     def parse(cls, cursor):
-        cursor = cursor.parse_one_symbol([
+        raise_cursor = cursor = cursor.parse_one_symbol([
             parser_module.Characters['raise'],
         ]).parse_one_symbol([
             parser_module.EndLine,
@@ -1066,7 +1071,7 @@ class Raise(Statement):
         expression = None
 
         if isinstance(cursor.last_symbol, parser_module.Always):
-            cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+            raise_cursor = cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
                 parser_module.EndLine
             ], fail=True)
 
@@ -1078,7 +1083,7 @@ class Raise(Statement):
             ], fail=True)
 
         return cursor.new_from_symbol(cls(
-            cursor=cursor,
+            cursor=raise_cursor,
             expression=expression,
         ))
 
@@ -1201,7 +1206,7 @@ class Assert(Statement):
             parser_module.Characters['assert'],
         ])
 
-        cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
+        expr_cursor = cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
             parser_module.EndLine
         ], fail=True)
 
@@ -1213,7 +1218,7 @@ class Assert(Statement):
         ], fail=True)
 
         return cursor.new_from_symbol(cls(
-            cursor=cursor,
+            cursor=expr_cursor,
             expression=expression,
         ))
 

@@ -172,6 +172,9 @@ class ArgumentList(parser_module.Symbol):
             cursor=cursor,
         ))
 
+    def __bool__(self):
+        return bool(self.arguments)
+
     @arguments.validator
     def _check_arguments(self, _, arguments: typing.Sequence[Argument]):
         has_extra_positionals = False

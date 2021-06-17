@@ -26,7 +26,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
                 parser_module.Characters['@']
             ])
 
-            cursor = expression.ExpressionParser.parse(cursor, stop_symbols=[
+            expr_cursor = cursor = expression.ExpressionParser.parse(cursor, stop_symbols=[
                 parser_module.EndLine
             ], fail=True)
 
@@ -38,7 +38,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
             ], fail=True)
 
             return cursor.new_from_symbol(cls(
-                cursor=cursor,
+                cursor=expr_cursor,
                 value=value,
             ))
 
@@ -73,13 +73,13 @@ class Function(declarable.Declarable, parser_module.Symbol):
 
         for decorator in reversed(self.decorators):
             with statement.Raise.Outcome.catch(decorator) as get_outcome:
-                decorator_value: typing.Callable = decorator.value.execute(namespace).get_value()
+                decorator_value: typing.Callable = decorator.value.execute(namespace)
                 assert callable(decorator_value), 'decorator not callable'
                 function = decorator_value(function)
 
             get_outcome().get_value()  # reraise any exception, with decorator added to traceback
 
-        return function
+        namespace.declare(self.name, function)
 
     @classmethod
     def parse(cls, cursor):
@@ -157,9 +157,10 @@ class Function(declarable.Declarable, parser_module.Symbol):
         else:
             return_type = None
 
-        cursor = cursor.parse_one_symbol([
+        colon_cursor = cursor = cursor.parse_one_symbol([
             parser_module.Characters[':']
-        ], fail=True).parse_one_symbol([
+        ], fail=True)
+        cursor = cursor.parse_one_symbol([
             parser_module.EndLine
         ], fail=True).parse_one_symbol([
             statement.Block
@@ -169,7 +170,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
         body = cursor.last_symbol
 
         return cursor.new_from_symbol(cls(
-            cursor=cursor,
+            cursor=colon_cursor,
             name=name,
             bindings=bindings,
             arguments=arguments,
