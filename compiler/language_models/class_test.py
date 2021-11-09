@@ -1,6 +1,6 @@
 import unittest
 
-from . import class_, expression, argument_list, statement
+from . import class_, expression, argument_list, statement, namespace as namespace_module
 from ..libs import parser as parser_module
 
 
@@ -218,6 +218,29 @@ class ClassTestCase(unittest.TestCase):
                     'class foo():',
                 ])
             )
+
+    def test_execute(self):
+        test_class: class_.Class = class_.Class.parse(  # noqa
+            parser_module.Cursor([
+                'class Accumulator:',
+                '    sum: int = 0',
+                '    def add(self, additional):',
+                '        self.sum = self.sum + additional',
+            ])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        test_class.execute(namespace)
+        Accumulator = namespace.lookup('Accumulator')  # noqa, pylint: disable=invalid-name
+
+        accumulator = Accumulator()
+        self.assertEqual(0, accumulator.sum)
+
+        accumulator.add(3)
+        self.assertEqual(3, accumulator.sum)
+
+        accumulator.add(10)
+        self.assertEqual(13, accumulator.sum)
 
 
 class ClassDecoratorTestCase(unittest.TestCase):

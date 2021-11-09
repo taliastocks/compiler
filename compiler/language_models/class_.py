@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import types
 import typing
 
 import attr
 
-from . import declarable, expression, argument_list, statement, namespace as namespace_module
+from . import declarable, expression, argument_list, statement, function, namespace as namespace_module
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -48,7 +49,7 @@ class Class(parser_module.Symbol, declarable.Declarable):
     bases: typing.Sequence[expression.Expression] = attr.ib(converter=tuple, default=(), repr=False)
 
     def execute(self, namespace: namespace_module.Namespace):
-        @generic.Generic
+        @GenericClassBase
         def bind_class(*binding_args, **binding_kwargs):
             binding_namespace = namespace_module.Namespace(namespace)
             self.bindings.unpack_values(binding_args, binding_kwargs, binding_namespace)
@@ -69,7 +70,31 @@ class Class(parser_module.Symbol, declarable.Declarable):
             get_outcome().get_value()  # reraise any exception, with class body added to traceback
 
             with statement.Raise.Outcome.catch(self) as get_outcome:
-                class_instance = type(self.name, tuple(bases), class_namespace.declarations)
+                # TODO: There's probably a better way to separate these than by runtime type.
+                # They can probably be separated at compile time.
+                class_attributes = {}
+                instance_attributes = {}
+                for key, value in class_namespace.declarations.items():
+                    if isinstance(value, (types.FunctionType, function.GenericFunctionBase, type, GenericClassBase)):
+                        class_attributes[key] = value
+                    else:
+                        instance_attributes[key] = value
+
+                def init(self, **kwargs):  # noqa
+                    # TODO: call constructor(s)?
+                    attributes = instance_attributes.copy()
+                    for key, value in class_attributes.items():  # noqa
+                        # For generic functions, we have to bind the self_arg ourselves.
+                        if isinstance(value, function.GenericFunctionBase):
+                            attributes[key] = attr.evolve(value, self_arg=self)
+
+                    attributes.update(kwargs)
+                    for key, value in attributes.items():  # noqa
+                        setattr(self, key, value)
+
+                class_attributes['__init__'] = init
+
+                class_instance = type(self.name, tuple(bases), class_attributes)
 
             get_outcome().get_value()  # reraise any exception, with class added to traceback
 
@@ -81,12 +106,12 @@ class Class(parser_module.Symbol, declarable.Declarable):
             new_class = bind_class[()]
 
         for decorator in reversed(self.decorators):
-            with statement.Raise.Outcome.catch(decorator) as get_outcome:
+            with statement.Raise.Outcome.catch(decorator) as decorator_get_outcome:
                 decorator_value: typing.Callable = decorator.value.execute(namespace)
                 assert callable(decorator_value), 'decorator not callable'
                 new_class = decorator_value(new_class)
 
-            get_outcome().get_value()  # reraise any exception, with decorator added to traceback
+            decorator_get_outcome().get_value()  # reraise any exception, with decorator added to traceback
 
         namespace.declare(self.name, new_class)
 
@@ -182,3 +207,8 @@ class Class(parser_module.Symbol, declarable.Declarable):
             bases=bases,
             body=body,
         ))
+
+
+class GenericClassBase(generic.Generic):
+    """This is literally just to help with type checking.
+    """

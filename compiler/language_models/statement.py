@@ -160,6 +160,9 @@ class Declaration(Statement):
             if isinstance(self.declarable, expression_module.Expression):
                 self.declarable.execute(namespace)
 
+            if isinstance(self.declarable, (function.Function, class_.Class)):
+                self.declarable.execute(namespace)
+
             # TODO: other declarations
 
         return get_outcome()  # noqa, this is reachable if exception thrown
