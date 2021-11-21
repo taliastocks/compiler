@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: [3.9, 3.10]
 
     env:
       VIRTUAL_ENV: /home/runner/virtualenv
@@ -98,7 +98,7 @@ jobs:
           if [ ! -d "$VIRTUAL_ENV" ]; then  # Skip if cache restored, even an older cache.
             set -v
             git -c advice.detachedHead=0 clone https://github.com/actions/setup-python -b v2 --depth 1 /tmp/setup-python
-            env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/index.js
+            env INPUT_PYTHON-VERSION=${{ matrix.python-version }} node /tmp/setup-python/dist/setup/index.js
           fi
 
       - name: Set up virtualenv
