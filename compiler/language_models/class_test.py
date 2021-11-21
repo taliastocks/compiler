@@ -375,6 +375,7 @@ class ClassTestCase(unittest.TestCase):
 
         self.assertEqual(3, accumulator.get_sum())
 
+    # pylint: disable=fixme
     # TODO: test exceptions in decorators, class body, methods, etc
 
 
