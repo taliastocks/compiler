@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import abc
-import collections
 import decimal
 import typing
 
@@ -1316,7 +1315,7 @@ class Comprehension(Operator):
         iterable: typing.Optional[Expression] = attr.ib(default=None)
 
         def iterate(self, namespace):
-            iterable: collections.Iterable = self.iterable.execute(namespace)  # noqa
+            iterable: typing.Iterable = self.iterable.execute(namespace)  # noqa
 
             for value in iterable:
                 self.receiver.assign(namespace, value)
