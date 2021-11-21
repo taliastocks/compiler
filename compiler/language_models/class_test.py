@@ -1,6 +1,7 @@
 import unittest
+from unittest import mock
 
-from . import class_, expression, argument_list, statement
+from . import class_, expression, argument_list, statement, namespace as namespace_module
 from ..libs import parser as parser_module
 
 
@@ -218,6 +219,164 @@ class ClassTestCase(unittest.TestCase):
                     'class foo():',
                 ])
             )
+
+    def test_execute(self):
+        test_class: class_.Class = class_.Class.parse(  # noqa
+            parser_module.Cursor([
+                'class Accumulator:',
+                '    sum: int = 0',
+                '    def add(self, additional):',
+                '        self.sum = self.sum + additional',
+            ])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        test_class.execute(namespace)
+        Accumulator = namespace.lookup('Accumulator')  # noqa, pylint: disable=invalid-name
+
+        accumulator = Accumulator()
+        self.assertEqual(0, accumulator.sum)
+
+        accumulator.add(3)
+        self.assertEqual(3, accumulator.sum)
+
+        accumulator.add(10)
+        self.assertEqual(13, accumulator.sum)
+
+    def test_execute_multiple_instances(self):
+        test_class: class_.Class = class_.Class.parse(  # noqa
+            parser_module.Cursor([
+                'class Accumulator:',
+                '    sum: int = 0',
+                '    def add(self, additional):',
+                '        self.sum = self.sum + additional',
+            ])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        test_class.execute(namespace)
+        Accumulator = namespace.lookup('Accumulator')  # noqa, pylint: disable=invalid-name
+
+        accumulator_1 = Accumulator()
+        accumulator_2 = Accumulator()
+
+        accumulator_1.add(3)
+        accumulator_2.add(5)
+
+        self.assertEqual(3, accumulator_1.sum)
+        self.assertEqual(5, accumulator_2.sum)
+
+    def test_execute_generic(self):
+        test_class: class_.Class = class_.Class.parse(  # noqa
+            parser_module.Cursor([
+                'class Accumulator[start]:',
+                '    sum: int = start',
+                '    def add(self, additional):',
+                '        self.sum = self.sum + additional',
+            ])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        test_class.execute(namespace)
+        Accumulator = namespace.lookup('Accumulator')  # noqa, pylint: disable=invalid-name
+
+        accumulator = Accumulator[5]()
+        self.assertEqual(5, accumulator.sum)
+
+        accumulator.add(2)
+        self.assertEqual(7, accumulator.sum)
+
+    def test_execute_constructor(self):
+        test_class: class_.Class = class_.Class.parse(  # noqa
+            parser_module.Cursor([
+                'class Accumulator:',
+                '    sum: int = 0',
+                '    def add(self, additional):',
+                '        self.sum = self.sum + additional',
+            ])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        test_class.execute(namespace)
+        Accumulator = namespace.lookup('Accumulator')  # noqa, pylint: disable=invalid-name
+
+        accumulator = Accumulator(sum=5)
+        self.assertEqual(5, accumulator.sum)
+
+        accumulator.add(2)
+        self.assertEqual(7, accumulator.sum)
+
+    def test_execute_extra_kwargs(self):
+        test_class: class_.Class = class_.Class.parse(  # noqa
+            parser_module.Cursor([
+                'class Accumulator:',
+                '    sum: int = 0',
+                '    def add(self, additional):',
+                '        self.sum = self.sum + additional',
+            ])
+        ).last_symbol
+
+        namespace = namespace_module.Namespace()
+        test_class.execute(namespace)
+        Accumulator = namespace.lookup('Accumulator')  # noqa, pylint: disable=invalid-name
+
+        with self.assertRaisesRegex(TypeError, r'unexpected keyword argument\(s\): a, b'):
+            Accumulator(a=1, b=2)
+
+    def test_execute_decorator(self):
+        test_class: class_.Class = class_.Class.parse(  # noqa
+            parser_module.Cursor([
+                '@my_decorator',
+                'class Accumulator:',
+                '    sum: int = 0',
+                '    def add(self, additional):',
+                '        self.sum = self.sum + additional',
+            ])
+        ).last_symbol
+
+        my_decorator = mock.Mock()
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('my_decorator', my_decorator)
+        test_class.execute(namespace)
+        Accumulator = namespace.lookup('Accumulator')  # noqa, pylint: disable=invalid-name
+
+        OriginalAccumulator = my_decorator.call_args[0][0]  # noqa, pylint: disable=invalid-name
+        accumulator = OriginalAccumulator(sum=4)
+        accumulator.add(2)
+        self.assertEqual(6, accumulator.sum)
+
+        self.assertIsInstance(Accumulator, mock.Mock)
+
+    def test_execute_inheritance(self):
+        test_class: class_.Class = class_.Class.parse(  # noqa
+            parser_module.Cursor([
+                'class Accumulator(MyBase):',
+                '    sum: int = 0',
+                '    def add(self, additional):',
+                '        self.sum = self.sum + additional',
+            ])
+        ).last_symbol
+
+        class MyBase:
+            sum = None
+
+            def get_sum(self):
+                return self.sum
+
+        namespace = namespace_module.Namespace()
+        namespace.declare('MyBase', MyBase)
+        test_class.execute(namespace)
+        Accumulator = namespace.lookup('Accumulator')  # noqa, pylint: disable=invalid-name
+
+        accumulator = Accumulator(sum=3)
+        self.assertIsInstance(accumulator, Accumulator)
+        self.assertIsInstance(accumulator, MyBase)
+
+        self.assertEqual(3, accumulator.get_sum())
+
+    # pylint: disable=fixme
+    # TODO: test exceptions in decorators, class body, methods, etc
 
 
 class ClassDecoratorTestCase(unittest.TestCase):

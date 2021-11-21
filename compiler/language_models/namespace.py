@@ -8,7 +8,7 @@ import attr
 @attr.s(frozen=True, slots=True)
 class Namespace:
     parent: typing.Optional[Namespace] = attr.ib(default=None)
-    declarations: typing.MutableMapping[str, typing.Any] = attr.ib(factory=dict, init=False)
+    declarations: dict[str, typing.Any] = attr.ib(factory=dict, init=False)
 
     def lookup(self, name: str) -> typing.Any:
         if name in self.declarations:

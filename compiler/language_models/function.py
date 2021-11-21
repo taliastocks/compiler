@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import typing
 
 import attr
@@ -54,7 +55,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
                                                                  repr=False)
 
     def execute(self, namespace: namespace_module.Namespace):
-        @generic.Generic
+        @GenericFunctionBase
         def bind_function(*binding_args, **binding_kwargs):
             binding_namespace = namespace_module.Namespace(namespace)
             self.bindings.unpack_values(binding_args, binding_kwargs, binding_namespace)
@@ -219,3 +220,17 @@ class Function(declarable.Declarable, parser_module.Symbol):
             local_declarations[local_name] = expression.Variable(name=local_name)
 
         return local_declarations
+
+
+@attr.s(frozen=True, slots=True)
+class GenericFunctionBase(generic.Generic):
+    """This is mostly just to help with type checking, but also allows binding
+    to a class instance.
+    """
+    self_arg: typing.Type = attr.ib(default=None)
+
+    def __getitem__(self, item):
+        func = super().__getitem__(item)
+        if self.self_arg is not None:
+            return functools.partial(func, self.self_arg)
+        return func
