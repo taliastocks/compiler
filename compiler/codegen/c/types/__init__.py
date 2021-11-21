@@ -43,17 +43,14 @@ class Pointer(TypeBase):
 
     @property
     def name(self):
-        return '_{}_Ptr'.format(self.contained_type.name)
+        return f'_{self.contained_type.name}_Ptr'
 
     @property
     def dependencies(self):
         yield self.contained_type
 
     def render_program_part(self):
-        yield 'typedef {} *{};'.format(
-            self.contained_type.name,
-            self.name,
-        )
+        yield f'typedef {self.contained_type.name} *{self.name};'
 
 
 @attr.s(frozen=True, slots=True)
@@ -71,12 +68,10 @@ class FunctionPointer(TypeBase):
 
     @property
     def name(self):
-        return '_{}_Returns_{}_FnPtr'.format(
-            '_'.join(
-                argument.name for argument in self.argument_types
-            ),
-            self.return_type.name
+        arg_names = '_'.join(
+            argument.name for argument in self.argument_types
         )
+        return f'_{arg_names}_Returns_{self.return_type.name}_FnPtr'
 
     @property
     def dependencies(self):
@@ -84,7 +79,7 @@ class FunctionPointer(TypeBase):
         yield self.return_type
 
     def render_program_part(self):
-        yield 'typedef {} (*{})('.format(self.return_type.name, self.name)
+        yield f'typedef {self.return_type.name} (*{self.name})('
 
         for i, argument_type in enumerate(self.argument_types):
             if i < len(self.argument_types) - 1:
@@ -127,10 +122,7 @@ class Struct(TypeBase):
         yield 'typedef struct {'
 
         for field in self.fields:
-            yield self.indent, '{} {};'.format(
-                field.type.name,
-                field.name,
-            )
+            yield self.indent, f'{field.type.name} {field.name};'
 
         yield '} ', self.name, ';'
 
@@ -167,9 +159,6 @@ class Union(TypeBase):
         yield 'typedef union {'
 
         for field in self.fields:
-            yield self.indent, '{} {};'.format(
-                field.type.name,
-                field.name,
-            )
+            yield self.indent, f'{field.type.name} {field.name};'
 
         yield '} ', self.name, ';'

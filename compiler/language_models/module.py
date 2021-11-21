@@ -53,10 +53,8 @@ class Module(parser_module.Symbol):
                 if isinstance(receiver, declarable_module.Declarable):
                     declarable: declarable_module.Declarable = receiver
                     if declarable.name in global_declarations:
-                        raise ValueError('{!r} cannot be declared with the same name as {!r}'.format(
-                            declarable,
-                            global_declarations[declarable.name]
-                        ))
+                        raise ValueError(f'{declarable!r} cannot be declared with the same name '
+                                         f'as {global_declarations[declarable.name]!r}')
                     global_declarations[declarable.name] = declarable
 
         return global_declarations

@@ -17,7 +17,7 @@ class Namespace:
         if self.parent:
             return self.parent.lookup(name)
 
-        raise KeyError('no such name {!r}'.format(name))
+        raise KeyError(f'no such name {name!r}')
 
     def declare(self, name: str, value: typing.Any):
         self.declarations[name] = value

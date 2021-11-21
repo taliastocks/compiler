@@ -3,7 +3,7 @@ def escape_bytes(buffer: bytes) -> str:
 
 
 _escapes = [
-    chr(c) if 32 <= c < 127 else '\\{:03o}'.format(c)
+    chr(c) if 32 <= c < 127 else f'\\{c:03o}'
     for c in range(256)
 ]
 # Special cases (https://en.cppreference.com/w/cpp/language/escape)

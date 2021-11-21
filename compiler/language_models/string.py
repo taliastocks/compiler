@@ -76,17 +76,16 @@ _SPECIAL_CASE_ESCAPES_BYTES = {
     _key.encode('utf8'): _val.encode('utf8')
     for _key, _val in _SPECIAL_CASE_ESCAPES_TEXT.items()
 }
+_SPECIAL_CASE_ESCAPES_TEXT_RE = '|'.join(
+    regex.escape(_key)
+    for _key in _SPECIAL_CASE_ESCAPES_TEXT
+)
 _ESCAPE_REGEX_STR = (
     r'\\x([0-9a-fA-F]{2})|' +  # hex
     r'\\N{([A-Z0-9\- ]+)}|' +  # unicode character names
     r'\\u([0-9a-fA-F]{4})|' +  # 16-bit unicode
     r'\\U([0-9a-fA-F]{8})|' +  # 32-bit unicode
-    r'({})'.format(  # special cases
-        '|'.join(
-            regex.escape(_key)
-            for _key in _SPECIAL_CASE_ESCAPES_TEXT
-        )
-    )
+    fr'({_SPECIAL_CASE_ESCAPES_TEXT_RE})'  # special cases
 )
 _ESCAPE_TEXT_REGEX = regex.compile(_ESCAPE_REGEX_STR)
 _ESCAPE_BYTES_REGEX = regex.compile(_ESCAPE_REGEX_STR.encode('utf8'))

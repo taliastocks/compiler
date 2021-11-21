@@ -33,15 +33,13 @@ class IntegerLiteral(LiteralExpression):
     signed: bool = attr.ib(validator=attr.validators.instance_of(bool))
 
     def render_expression(self):
-        yield '{value}{sign_suffix}{width_suffix}'.format(
-            value=self.value,
-            sign_suffix='' if self.signed else 'u',
-            width_suffix={
-                16: '',
-                32: 'l',
-                64: 'll',
-            }[self.width]
-        )
+        sign_suffix = '' if self.signed else 'u'
+        width_suffix = {
+            16: '',
+            32: 'l',
+            64: 'll',
+        }[self.width]
+        yield f'{self.value}{sign_suffix}{width_suffix}'
 
     @width.default
     def _init_width(self):
@@ -67,11 +65,7 @@ class IntegerLiteral(LiteralExpression):
                 valid = False
 
         if not valid:
-            raise ValueError('value {} out of range (signed={}, width={})'.format(
-                value,
-                self.signed,
-                self.width,
-            ))
+            raise ValueError(f'value {value} out of range (signed={self.signed}, width={self.width})')
 
 
 @attr.s(frozen=True, slots=True)
@@ -89,7 +83,8 @@ class BytesLiteral(LiteralExpression):
             yield '""'
         else:
             for i, chunk in enumerate(chunks):
-                escaped_chunk = '"{}"'.format(string.escape_bytes(chunk))
+                escape_bytes = string.escape_bytes(chunk)
+                escaped_chunk = f'"{escape_bytes}"'
                 if i == 0:
                     yield escaped_chunk
                 else:
@@ -282,7 +277,7 @@ class Cast(UnaryOperatorExpression):
 
     @property
     def operator(self):
-        return '({})'.format(self.type.name)
+        return f'({self.type.name})'
 
 
 @attr.s(frozen=True, slots=True)

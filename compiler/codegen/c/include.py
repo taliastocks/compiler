@@ -14,6 +14,6 @@ class Include(program.ProgramPartBase):
 
     def render_program_part(self):
         if self.builtin:
-            yield '#include <{}>'.format(self.path)
+            yield f'#include <{self.path}>'
         else:
-            yield '#include "{}"'.format(self.path)
+            yield f'#include "{self.path}"'

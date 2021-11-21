@@ -185,9 +185,7 @@ class Function(declarable.Declarable, parser_module.Symbol):
 
         for argument in self.arguments:
             if argument.variable.name in local_declarations:
-                raise ValueError('{!r}: repeated argument name not allowed'.format(
-                    argument.variable.name
-                ))
+                raise ValueError(f'{argument.variable.name!r}: repeated argument name not allowed')
 
             var = expression.Variable(
                 name=argument.variable.name,
@@ -212,9 +210,8 @@ class Function(declarable.Declarable, parser_module.Symbol):
 
         argument_names_declared_nonlocal = argument_names & nonlocal_variable_names
         if argument_names_declared_nonlocal:
-            raise ValueError('arguments cannot be declared nonlocal: {}'.format(
-                ', '.join(sorted(argument_names_declared_nonlocal))
-            ))
+            argument_names_str = ', '.join(sorted(argument_names_declared_nonlocal))
+            raise ValueError(f'arguments cannot be declared nonlocal: {argument_names_str}')
 
         # Declare all the local variables (anything assigned and not declared nonlocal),
         # but skip arguments (which were already declared above).
