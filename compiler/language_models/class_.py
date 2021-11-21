@@ -88,6 +88,10 @@ class Class(parser_module.Symbol, declarable.Declarable):
                         if isinstance(value, function.GenericFunctionBase):
                             attributes[key] = attr.evolve(value, self_arg=self)
 
+                    extra_kwargs = set(kwargs) - set(attributes)
+                    if extra_kwargs:
+                        raise TypeError(f'unexpected keyword argument(s): {", ".join(sorted(extra_kwargs))}')
+
                     attributes.update(kwargs)
                     for key, value in attributes.items():  # noqa
                         setattr(self, key, value)
