@@ -83,10 +83,8 @@ class FundamentalIntBase(IntBase, metaclass=abc.ABCMeta):
 
     def render_program_part(self):
         if '_' in self.name:  # Create an alias type without the inconvenient spaces.
-            yield 'typedef {} {};'.format(
-                self.name.replace('_', ' '),
-                self.name
-            )
+            name_with_spaces = self.name.replace('_', ' ')
+            yield f'typedef {name_with_spaces} {self.name};'
 
 
 @attr.s(frozen=True, slots=True)

@@ -37,7 +37,7 @@ class Function(program.ProgramPartBase):
             yield self.return_type
 
         def render_program_part(self):
-            yield '{} {}('.format(self.return_type.name, self.name)
+            yield f'{self.return_type.name} {self.name}('
 
             for i, argument_type in enumerate(self.argument_types):
                 if i == len(self.argument_types) - 1:
@@ -87,7 +87,7 @@ class Function(program.ProgramPartBase):
         yield from self.statements
 
     def render_program_part(self):
-        yield '{} {}('.format(self.return_type.name, self.name)
+        yield f'{self.return_type.name} {self.name}('
 
         for i, argument in enumerate(self.arguments):
             if i == len(self.arguments) - 1:

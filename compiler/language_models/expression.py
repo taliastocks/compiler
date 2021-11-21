@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import abc
-import collections
 import decimal
 import typing
 
@@ -288,7 +287,7 @@ class Variable(declarable.Declarable, LValue):
         try:
             return namespace.lookup(self.name)
         except KeyError as exc:
-            raise NameError('name {!r} is not defined'.format(self.name)) from exc
+            raise NameError(f'name {self.name!r} is not defined') from exc
 
     @classmethod
     def parse(cls,
@@ -474,7 +473,7 @@ class DictionaryOrSet(Parenthesized):
 
                 if not all(isinstance(item, Colon.Pair) for item in values):
                     # TODO: this should be enforced by the parser
-                    raise ValueError('expected all items to be pairs: {!r}'.format(values))
+                    raise ValueError(f'expected all items to be pairs: {values!r}')
 
                 return {item.left: item.right for item in values}
 
@@ -498,7 +497,7 @@ class List(Parenthesized):
 
             if any(isinstance(item, Colon.Pair) for item in values):
                 # TODO: this should be enforced by the parser
-                raise ValueError('unexpected pairs in list: {!r}'.format(values))
+                raise ValueError(f'unexpected pairs in list: {values!r}')
 
             return values
 
@@ -1316,7 +1315,7 @@ class Comprehension(Operator):
         iterable: typing.Optional[Expression] = attr.ib(default=None)
 
         def iterate(self, namespace):
-            iterable: collections.Iterable = self.iterable.execute(namespace)  # noqa
+            iterable: typing.Iterable = self.iterable.execute(namespace)  # noqa
 
             for value in iterable:
                 self.receiver.assign(namespace, value)

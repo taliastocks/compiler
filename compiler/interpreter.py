@@ -30,5 +30,5 @@ class Program:
                 if ext.lower() != '.sib':
                     continue
 
-                with open(file_path) as file:
+                with open(file_path, encoding='utf-8') as file:
                     self.load_module(package + '.' + module_name, file.read())

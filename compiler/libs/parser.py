@@ -86,8 +86,9 @@ class Cursor:
                     return next_cursor
 
         if fail:
+            symbols = ', '.join(symbol.symbol_name() for symbol in one_of)
             raise ParseError(
-                message='expected one of ({})'.format(', '.join(symbol.symbol_name() for symbol in one_of)),
+                message=f'expected one of ({symbols})',
                 cursor=cursor,
             )
 
@@ -98,10 +99,10 @@ class Cursor:
         )
 
     def __str__(self):
-        heading = '{}, {}: '.format(self.line, self.column)
+        heading = f'{self.line}, {self.column}: '
         line_text = self.line_text()
         pointer_indent = ' ' * (len(heading) + self.column)
-        return '{}{}\n{}^'.format(heading, line_text, pointer_indent)
+        return f'{heading}{line_text}\n{pointer_indent}^'
 
 
 @attr.s(frozen=True, slots=True)
@@ -110,7 +111,7 @@ class ParseError(Exception):
     cursor: typing.Optional[Cursor] = attr.ib()
 
     def __str__(self):
-        return '{}\n{}'.format(self.message, self.cursor)
+        return f'{self.message}\n{self.cursor}'
 
 
 @attr.s(frozen=True, slots=True)
@@ -309,7 +310,7 @@ class MultilineWhitespace(Token):
 @generic.Generic
 def Regex(pattern):  # noqa
     # pylint: disable=invalid-name
-    compiled_pattern = regex.compile(r'^ *({})(?:$|\b|(?=\W))'.format(pattern), regex.V1)
+    compiled_pattern = regex.compile(fr'^ *({pattern})(?:$|\b|(?=\W))', regex.V1)
 
     @attr.s(frozen=True, slots=True)
     class Regex(Token):  # noqa
@@ -318,7 +319,7 @@ def Regex(pattern):  # noqa
 
         @classmethod
         def symbol_name(cls):
-            return '{}[{!r}]'.format(cls.__name__, pattern)
+            return f'{cls.__name__}[{pattern!r}]'
 
         @classmethod
         def parse(cls, cursor: Cursor):
