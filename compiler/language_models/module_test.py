@@ -1,7 +1,7 @@
 import textwrap
 import unittest
 
-from . import module, function, class_, expression, statement
+from . import module, function, expression, statement
 from ..libs import parser as parser_module
 
 
@@ -64,7 +64,7 @@ class ModuleTestCase(unittest.TestCase):
             '''\
             def foo():
                 return 'bar'
-                
+
             def add(a, b):
                 return a + b
             '''

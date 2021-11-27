@@ -43,10 +43,10 @@ class NamespaceTestCase(unittest.TestCase):
             child.lookup('something_else')
 
     def test_as_object(self):
-        ns = namespace.Namespace()
-        ns.declare('foo', 'bar')
+        my_namespace = namespace.Namespace()
+        my_namespace.declare('foo', 'bar')
 
-        obj = ns.as_object()
+        obj = my_namespace.as_object()
 
         self.assertEqual(
             'bar',

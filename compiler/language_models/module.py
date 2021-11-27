@@ -3,10 +3,8 @@ from __future__ import annotations
 import typing
 
 import attr
-import immutabledict
 
 from . import (
-    declarable as declarable_module,
     statement as statement_module,
     namespace as namespace_module,
 )
