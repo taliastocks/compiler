@@ -59,43 +59,23 @@ class ModuleTestCase(unittest.TestCase):
             ])
         )
 
-    def test_init_globals(self):
-        my_module = module.Module(
-            statements=[
-                statement.Declaration(
-                    statement.Import('foo', ['foo'])
-                ),
-                statement.Declaration(
-                    function.Function('bar')
-                ),
-                statement.Declaration(
-                    class_.Class('Baz')
-                ),
-                statement.Declaration(
-                    expression.Variable('bip')
-                ),
-            ],
+    def test_execute(self):
+        my_module = module.Module.from_string(textwrap.dedent(
+            '''\
+            def foo():
+                return 'bar'
+                
+            def add(a, b):
+                return a + b
+            '''
+        )).execute()
+
+        self.assertEqual(
+            'bar',
+            my_module.foo()  # noqa
         )
 
         self.assertEqual(
-            {
-                'foo': statement.Import('foo', ['foo']),
-                'bar': function.Function('bar'),
-                'Baz': class_.Class('Baz'),
-                'bip': expression.Variable('bip'),
-            },
-            my_module.globals
+            7,
+            my_module.add(3, 4)
         )
-
-        with self.assertRaisesRegex(ValueError, r"Variable\(name='foo'\) cannot be declared with the same "
-                                                r"name as Function\(name='foo'\)"):
-            module.Module(
-                statements=[
-                    statement.Declaration(
-                        function.Function('foo')
-                    ),
-                    statement.Declaration(
-                        expression.Variable('foo')
-                    ),
-                ],
-            )

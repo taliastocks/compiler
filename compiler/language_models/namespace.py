@@ -10,6 +10,16 @@ class Namespace:
     parent: typing.Optional[Namespace] = attr.ib(default=None)
     declarations: dict[str, typing.Any] = attr.ib(factory=dict, init=False)
 
+    @attr.s(frozen=True, slots=True)
+    class Object:
+        __namespace: Namespace = attr.ib()
+
+        def __getattr__(self, item):
+            return self.__namespace[item]
+
+    def as_object(self):
+        return Namespace.Object(self)
+
     def lookup(self, name: str) -> typing.Any:
         if name in self.declarations:
             return self.declarations[name]
