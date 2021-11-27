@@ -3,11 +3,10 @@ from __future__ import annotations
 import typing
 
 import attr
-import immutabledict
 
 from . import (
-    declarable as declarable_module,
     statement as statement_module,
+    namespace as namespace_module,
 )
 from ..libs import parser as parser_module
 
@@ -15,15 +14,12 @@ from ..libs import parser as parser_module
 @attr.s(frozen=True, slots=True)
 class Module(parser_module.Symbol):
     statements: typing.Sequence[statement_module.Statement] = attr.ib(converter=tuple)
-    globals: typing.Mapping[declarable_module.Declarable] = attr.ib(converter=immutabledict.immutabledict,
-                                                                    init=False,
-                                                                    repr=False)
 
     @classmethod
     def from_string(cls, code: str) -> Module:
         cursor = parser_module.Cursor(code.splitlines())
 
-        return cls.parse(cursor).last_symbol
+        return cls.parse(cursor).last_symbol  # noqa
 
     @classmethod
     def parse(cls, cursor: parser_module.Cursor):
@@ -44,17 +40,15 @@ class Module(parser_module.Symbol):
             statements=statements,
         ))
 
-    @globals.default
-    def _init_globals(self):
-        global_declarations = {}
+    def execute(self):
+        """Get a runtime module object.
+        """
+        global_namespace = namespace_module.Namespace()
 
-        for statement in self.statements:
-            for receiver in statement.receivers:
-                if isinstance(receiver, declarable_module.Declarable):
-                    declarable: declarable_module.Declarable = receiver
-                    if declarable.name in global_declarations:
-                        raise ValueError(f'{declarable!r} cannot be declared with the same name '
-                                         f'as {global_declarations[declarable.name]!r}')
-                    global_declarations[declarable.name] = declarable
+        with statement_module.Raise.Outcome.catch(self) as get_outcome:
+            for statement in self.statements:
+                statement.execute(global_namespace)
 
-        return global_declarations
+        get_outcome().get_value()  # reraise any exception, with module added to traceback
+
+        return global_namespace.as_object()

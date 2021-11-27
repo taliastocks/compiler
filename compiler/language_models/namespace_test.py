@@ -41,3 +41,14 @@ class NamespaceTestCase(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             child.lookup('something_else')
+
+    def test_as_object(self):
+        my_namespace = namespace.Namespace()
+        my_namespace.declare('foo', 'bar')
+
+        obj = my_namespace.as_object()
+
+        self.assertEqual(
+            'bar',
+            obj.foo
+        )
