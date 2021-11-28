@@ -8,7 +8,7 @@ import attr
 @attr.s(frozen=True, slots=True)
 class Namespace:
     parent: typing.Optional[Namespace] = attr.ib(default=None)
-    program: program_module.Program = attr.ib()
+    program: typing.Optional[program_module.Program] = attr.ib()
     module_path: typing.Sequence[str] = attr.ib(converter=tuple)
     declarations: dict[str, typing.Any] = attr.ib(factory=dict, init=False)
 
@@ -41,7 +41,7 @@ class Namespace:
     def _init_program(self):
         if self.parent is not None:
             return self.parent.program
-        return program_module.Program()
+        return None
 
     @module_path.default
     def _init_module_path(self):
