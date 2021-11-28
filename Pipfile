@@ -14,3 +14,4 @@ pytest = "*"
 pytest-pylint = "*"
 pytest-flake8 = "*"
 pylint = "*"
+flake8 = "==3.*"  # https://github.com/tholo/pytest-flake8/issues/81

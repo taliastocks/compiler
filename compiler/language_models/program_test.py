@@ -1,9 +1,13 @@
 import os
 import unittest
 
-from . import interpreter
-from .language_models import module, statement, expression
-from .libs import parser
+from ..libs import parser
+from . import (
+    expression,
+    module,
+    program as program_module,
+    statement,
+)
 
 
 class ProgramTestCase(unittest.TestCase):
@@ -12,16 +16,16 @@ class ProgramTestCase(unittest.TestCase):
         'interpreter_test_files',
     )
 
-    def test_load_directory(self):
-        program = interpreter.Program()
-        program.load_directory(
-            'package',
+    def test_register_package(self):
+        program = program_module.Program()
+        program.register_package(
+            ['package'],
             os.path.join(self.test_files_path, 'test_load_directory')
         )
 
         self.assertEqual(
             {
-                'package.subdir.sub_level': module.Module(
+                ('package', 'subdir', 'sub_level'): module.Module(
                     statements=[
                         statement.Declaration(
                             expression.Variable(
@@ -33,11 +37,17 @@ class ProgramTestCase(unittest.TestCase):
                                     ],
                                 )
                             )
-                        )
+                        ),
                     ]
                 ),
-                'package.top_level': module.Module(
+                ('package', 'top_level'): module.Module(
                     statements=[
+                        statement.Declaration(
+                            statement.Import(
+                                name='sub_level',
+                                path=('.', 'subdir', 'sub_level')
+                            )
+                        ),
                         statement.Declaration(
                             expression.Variable(
                                 name='foo',
@@ -48,9 +58,33 @@ class ProgramTestCase(unittest.TestCase):
                                     ],
                                 )
                             )
-                        )
+                        ),
                     ]
                 ),
             },
             program.modules
+        )
+
+    def test_get_module(self):
+        program = program_module.Program()
+        program.register_package(
+            ['package'],
+            os.path.join(self.test_files_path, 'test_load_directory')
+        )
+
+        top_level = program.get_module(('package', 'top_level'))
+
+        self.assertEqual(
+            'top_level.sib',
+            top_level.foo
+        )
+        self.assertEqual(
+            'sub_level.sib',
+            top_level.sub_level.bar
+        )
+
+        # Only initialize modules once.
+        self.assertIs(
+            top_level,
+            program.get_module(('package', 'top_level'))
         )

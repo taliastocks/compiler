@@ -1190,7 +1190,7 @@ class IfElse(Operator):
 class Lambda(Operator):
     """Inline function definition.
     """
-    arguments: argument_list.ArgumentList = attr.ib(factory=argument_list.ArgumentList)
+    arguments: argument_list.ArgumentList = attr.ib(factory=lambda: argument_list.ArgumentList())
     expression: typing.Optional[Expression] = attr.ib(default=None)
 
     higher_precedence_operators = IfElse.higher_precedence_operators | {IfElse}
