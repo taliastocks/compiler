@@ -1,0 +1,2 @@
+import .subdir.sub_level
+foo = 'top_level.sib'

@@ -45,8 +45,8 @@ class Function(declarable.Declarable, parser_module.Symbol):
 
     body: statement.Block = attr.ib(factory=statement.Block, repr=False)
 
-    bindings: argument_list.ArgumentList = attr.ib(factory=argument_list.ArgumentList, repr=False)
-    arguments: argument_list.ArgumentList = attr.ib(factory=argument_list.ArgumentList, repr=False)
+    bindings: argument_list.ArgumentList = attr.ib(factory=lambda: argument_list.ArgumentList(), repr=False)
+    arguments: argument_list.ArgumentList = attr.ib(factory=lambda: argument_list.ArgumentList(), repr=False)
     decorators: typing.Sequence[Decorator] = attr.ib(converter=tuple, default=(), repr=False)
     return_type: typing.Optional[expression.Expression] = attr.ib(default=None, repr=False)
 

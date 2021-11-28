@@ -163,7 +163,8 @@ class Declaration(Statement):
             if isinstance(self.declarable, (function.Function, class_.Class)):
                 self.declarable.execute(namespace)
 
-            # TODO: other declarations
+            if isinstance(self.declarable, Import):
+                self.declarable.execute(namespace)
 
         return get_outcome()  # noqa, this is reachable if exception thrown
 
@@ -1254,7 +1255,16 @@ class Import(Statement, declarable.Declarable):
     path: typing.Sequence[str] = attr.ib(converter=tuple)
 
     def execute(self, namespace):
-        pass  # TODO
+        path = self.path
+
+        if path[0][0] == '.':
+            # This is a relative path. Make it absolute.
+            up_levels = len(path[0])
+            module_path = namespace.module_path
+            path = tuple(module_path[:len(module_path) - up_levels]) + tuple(path[1:])
+
+        module = namespace.program.get_module(path)
+        namespace.declare(self.name, module)
 
     @classmethod
     def parse(cls, cursor):

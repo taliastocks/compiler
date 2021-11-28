@@ -40,15 +40,22 @@ class Module(parser_module.Symbol):
             statements=statements,
         ))
 
-    def execute(self):
+    def execute(self,
+                program: typing.Optional[program_module.Program] = None,
+                path: typing.Sequence[str] = ()):
         """Get a runtime module object.
         """
-        global_namespace = namespace_module.Namespace()
+        if program is None:
+            program = program_module.Program()
+        global_namespace = namespace_module.Namespace(program=program, module_path=path)
 
         with statement_module.Raise.Outcome.catch(self) as get_outcome:
             for statement in self.statements:
-                statement.execute(global_namespace)
+                statement.execute(global_namespace).get_value()
 
         get_outcome().get_value()  # reraise any exception, with module added to traceback
 
         return global_namespace.as_object()
+
+
+from . import program as program_module  # noqa, pylint: disable=cyclic-import, wrong-import-position
