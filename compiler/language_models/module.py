@@ -11,6 +11,10 @@ from . import (
 from ..libs import parser as parser_module
 
 
+builtin_namespace = namespace_module.Namespace()
+builtin_namespace.declare('print', print)
+
+
 @attr.s(frozen=True, slots=True)
 class Module(parser_module.Symbol):
     statements: typing.Sequence[statement_module.Statement] = attr.ib(converter=tuple)
@@ -47,7 +51,12 @@ class Module(parser_module.Symbol):
         """
         if program is None:
             program = program_module.Program()
-        global_namespace = namespace_module.Namespace(program=program, module_path=path)
+
+        global_namespace = namespace_module.Namespace(
+            parent=builtin_namespace,
+            program=program,
+            module_path=path,
+        )
 
         with statement_module.Raise.Outcome.catch(self) as get_outcome:
             for statement in self.statements:

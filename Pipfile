@@ -8,6 +8,7 @@ attrs = "*"
 immutabledict = "*"
 regex = "*"
 cachetools = "*"
+fire = "*"
 
 [dev-packages]
 pytest = "*"
