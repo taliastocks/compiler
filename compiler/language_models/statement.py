@@ -1274,6 +1274,7 @@ class Import(Statement, declarable.Declarable):
 
         cursor = cursor.parse_one_symbol([
             parser_module.Characters['.'],
+            parser_module.OneLineString,
             parser_module.Identifier,
         ], fail=True)
 
@@ -1283,6 +1284,7 @@ class Import(Statement, declarable.Declarable):
 
             cursor = cursor.parse_one_symbol([
                 parser_module.Characters['.'],
+                parser_module.OneLineString,
                 parser_module.Identifier,
             ], fail=True)
 
@@ -1291,9 +1293,14 @@ class Import(Statement, declarable.Declarable):
             path.append('.' * dots)
 
         while True:
-            assert isinstance(cursor.last_symbol, parser_module.Identifier)
-            path.append(cursor.last_symbol.identifier)
-            name = cursor.last_symbol.identifier
+            if isinstance(cursor.last_symbol, parser_module.OneLineString):
+                assert isinstance(cursor.last_symbol.value, str), 'expected str, not bytes'
+                path.append(cursor.last_symbol.value)
+                name = None
+            else:
+                assert isinstance(cursor.last_symbol, parser_module.Identifier)
+                path.append(cursor.last_symbol.identifier)
+                name = cursor.last_symbol.identifier
 
             cursor = cursor.parse_one_symbol([
                 parser_module.Characters['.'],
@@ -1304,7 +1311,8 @@ class Import(Statement, declarable.Declarable):
                 break
 
             cursor = cursor.parse_one_symbol([
-                parser_module.Identifier
+                parser_module.OneLineString,
+                parser_module.Identifier,
             ], fail=True)
 
         cursor = cursor.parse_one_symbol([
@@ -1323,6 +1331,8 @@ class Import(Statement, declarable.Declarable):
         cursor = cursor.parse_one_symbol([
             parser_module.EndLine
         ], fail=True)
+
+        assert name is not None, 'expected asset name'
 
         return cursor.new_from_symbol(cls(
             cursor=cursor,

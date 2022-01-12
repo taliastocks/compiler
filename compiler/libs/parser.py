@@ -426,6 +426,10 @@ class OneLineString(Regex[r'(bf?r?|br?f?|fb?r?|fr?b|rb?f?|rf?b?|)(?P<quote>[\'"]
             return string.unescape_bytes(value)
         return string.unescape_text(value)
 
+    @classmethod
+    def symbol_name(cls):
+        return cls.__name__
+
 
 @attr.s(frozen=True, slots=True)
 class MultilineString(Token):
