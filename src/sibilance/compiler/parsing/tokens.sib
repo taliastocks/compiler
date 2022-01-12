@@ -1,0 +1,5 @@
+class Token:
+    pass
+
+
+# todo: define tokens

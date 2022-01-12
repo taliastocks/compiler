@@ -1,0 +1,28 @@
+# todo: implement str, open, print, etc
+
+class String:
+    pass
+
+
+class List:
+    pass
+
+
+class Sequence:
+    pass
+
+
+class Class:
+    pass
+
+
+def type(instance) -> Class:
+    pass
+
+
+def issubclass(child_type, parent_type):
+    pass
+
+
+def isinstance(instance, instance_type, /):
+    return issubclass(type(instance), instance_type)

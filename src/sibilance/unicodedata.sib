@@ -1,0 +1,4 @@
+import .unicodedata."UnicodeData.txt" as unicodedata_txt
+
+
+# todo: implement the same spec as https://docs.python.org/3/library/unicodedata.html
