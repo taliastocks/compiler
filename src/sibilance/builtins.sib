@@ -4,6 +4,10 @@ class String:
     pass
 
 
+class Integer:
+    pass
+
+
 class List:
     pass
 
@@ -26,3 +30,7 @@ def issubclass(child_type, parent_type):
 
 def isinstance(instance, instance_type, /):
     return issubclass(type(instance), instance_type)
+
+
+def print(*args, /, file=None):
+    pass

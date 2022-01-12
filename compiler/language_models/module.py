@@ -13,6 +13,12 @@ from ..libs import parser as parser_module
 
 builtin_namespace = namespace_module.Namespace()
 builtin_namespace.declare('print', print)
+builtin_namespace.declare('String', str)
+builtin_namespace.declare('Integer', int)
+builtin_namespace.declare('List', list)
+builtin_namespace.declare('type', type)
+builtin_namespace.declare('issubclass', issubclass)
+builtin_namespace.declare('isinstance', isinstance)
 
 
 @attr.s(frozen=True, slots=True)
