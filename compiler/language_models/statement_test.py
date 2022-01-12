@@ -2686,15 +2686,30 @@ class ImportTestCase(unittest.TestCase):
             )
         )
 
+        self.assertEqual(
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import ."hello.txt" as hello_text',
+                    'next line',
+                ])
+            ).last_symbol,
+            statement.Declaration(
+                statement.Import(
+                    name='hello_text',
+                    path=['.', 'hello.txt'],
+                )
+            )
+        )
+
     def test_parse_error(self):
-        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'.\', Identifier\)'):
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'.\', OneLineString, Identifier\)'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'import'
                 ])
             )
 
-        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'.\', Identifier\)'):
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'.\', OneLineString, Identifier\)'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'import .'
@@ -2712,6 +2727,13 @@ class ImportTestCase(unittest.TestCase):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'import .foo as bar garbage'
+                ])
+            )
+
+        with self.assertRaisesRegex(AssertionError, r'expected asset name'):
+            statement.Statement.parse(
+                parser_module.Cursor([
+                    'import "hello"'
                 ])
             )
 

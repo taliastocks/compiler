@@ -17,6 +17,7 @@ class ProgramTestCase(unittest.TestCase):
     )
 
     def test_register_package(self):
+        self.maxDiff = None  # pylint: disable=invalid-name
         program = program_module.Program()
         program.register_package(
             ['package'],
@@ -61,6 +62,9 @@ class ProgramTestCase(unittest.TestCase):
                         ),
                     ]
                 ),
+                ('package', 'subdir', 'ignored_file.txt'): b'',
+                ('package', 'subdir', 'sub_level.sib'): b"bar = 'sub_level.sib'\n",
+                ('package', 'top_level.sib'): b"import .subdir.sub_level\nfoo = 'top_level.sib'\n"
             },
             program.modules
         )

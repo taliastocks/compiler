@@ -4,6 +4,8 @@ from .language_models import program as program_module
 
 
 def main(package_path: str, entrypoint: str = 'main.main'):
+    """Compile and execute a Sibilance package entrypoint.
+    """
     program = program_module.Program()
     program.register_package((), package_path)
 

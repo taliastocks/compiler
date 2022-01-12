@@ -1,0 +1,21 @@
+class Expression:
+    pass
+
+
+class Statement:
+    pass
+
+
+class Function:
+    pass
+
+
+class Class:
+    pass
+
+
+class Module:
+    pass
+
+
+# todo: implement AST nodes

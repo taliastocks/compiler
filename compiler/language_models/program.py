@@ -10,7 +10,7 @@ from . import module as module_module
 
 @attr.s(frozen=True, slots=True)
 class Program:
-    modules: dict[typing.Sequence[str], module_module.Module] = attr.ib(factory=dict, init=False)
+    modules: dict[typing.Sequence[str], typing.Union[module_module.Module, bytes]] = attr.ib(factory=dict, init=False)
     initialized_modules: dict[typing.Sequence[str], namespace_module.Namespace.Object] = \
         attr.ib(factory=dict, init=False)
 
@@ -25,9 +25,15 @@ class Program:
 
     def register_package(self, path: typing.Sequence[str], root_path: str):
         path = tuple(path)
-        for sib_file_path in pathlib.Path(root_path).glob('**/*.sib'):
-            sib_path = path + sib_file_path.relative_to(root_path).with_suffix('').parts
-            self.register_module_from_string(sib_path, sib_file_path.read_text())
+        for file_path in pathlib.Path(root_path).glob('**/*'):
+            if file_path.is_file():
+                if file_path.suffix == '.sib':
+                    sib_path = path + file_path.relative_to(root_path).with_suffix('').parts
+                    self.register_module_from_string(sib_path, file_path.read_text())
+
+                self.modules[
+                    path + file_path.relative_to(root_path).parts
+                ] = file_path.read_bytes()
 
     def get_module(self, path: typing.Sequence[str]):
         path = tuple(path)
