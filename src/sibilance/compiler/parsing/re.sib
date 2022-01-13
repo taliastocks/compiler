@@ -1,0 +1,154 @@
+@immutable
+class Cursor:
+    """
+    A cursor represents a particular position within some text.
+    """
+
+    class OffsetError(ValueError):
+        pass
+
+    text: String
+    offset: Integer = 0
+
+    def new(self, offset: Integer) -> Cursor:
+        """
+        Create a new Cursor to the same text at a given offset. The offset
+        may be directly after the end of the text, but no larger.
+        """
+        if offset < 0 or offset > self.text.length():
+            raise Cursor.OffsetError(
+                f"invalid offset {offset} not between 0 and {self.text.length()}"
+            )
+
+        return Cursor(
+            text=self.text,
+            offset=new_offset,
+        )
+
+
+@abstract
+class Pattern:
+    """
+    Abstract base class for regular expression patterns.
+    """
+
+    @abstract
+    def match(self, cursor: Cursor) -> Cursor|None:
+        """
+        On match, return a new Cursor directly after the match. Otherwise,
+        return None.
+        """
+
+
+class Or(Pattern):
+    """
+    Return the first match from a sequence of Patterns, or None.
+    """
+
+    patterns: FrozenList[Pattern]
+
+    def match(self, cursor):
+        for pattern in self.patterns:
+            new_cursor = pattern.match(cursor)
+            if new_cursor is not None:
+                return new_cursor
+
+
+class OneOrMore(Pattern):
+    """
+    Matches a given pattern one or more times.
+    """
+
+    pattern: Pattern
+
+    def match(self, cursor):
+        new_cursor = self.pattern.match(cursor)
+
+        if new_cursor is None:
+            return None
+
+        while new_cursor is not None:
+            cursor = new_cursor
+            new_cursor = self.pattern.match(cursor)
+
+        return cursor
+
+
+class _Start(Pattern):
+    """
+    Matches the start of text.
+    """
+
+    def match(self, cursor):
+        if cursor.offset == 0:
+            return cursor
+
+
+class _End(Pattern):
+    """
+    Matches the end of text.
+    """
+
+    def match(self, cursor):
+        if cursor.offset == cursor.text.length():
+            return cursor
+
+
+class _StartLine(Pattern):
+    """
+    Matches the start of a line of text.
+    """
+
+    def match(self, cursor):
+        if cursor.offset == 0:
+            return cursor
+
+        if cursor.text[cursor.offset - 1] == "\n":
+            return cursor
+
+
+class _EndLine(Pattern):
+    """
+    Matches the end of a line of text.
+    """
+
+    def match(self, cursor):
+        if cursor.offset == cursor.text.length():
+            return cursor
+
+        if cursor.text[cursor.offset] == "\n":
+            return cursor
+
+
+@immutable
+class _CharacterPattern:
+    """
+    Patterns matching one character in a sequence.
+    """
+
+    character_test: (Character) -> Boolean
+
+    def match(self, cursor):
+        if cursor.offset > cursor.text.length():
+            return None
+
+        if self.character_test(cursor.text[cursor.offset]):
+            return cursor.new(cursor.offset + 1)
+
+
+def character_set(characters: FrozenSet[Character]):
+    return _CharacterPattern((character) -> character in characters)
+
+
+START = _Start()
+END = _End()
+START_LINE = _StartLine()
+END_LINE = _EndLine()
+
+ALPHA = _CharacterPattern((character) -> character.is_alpha())
+NUMERIC = _CharacterPattern((character) -> character.is_numeric())
+ALPHANUMERIC = _CharacterPattern((character) -> character.is_alphanumeric())
+DIGIT = _CharacterPattern((character) -> character.is_digit())
+DECIMAL = _CharacterPattern((character) -> character.is_decimal())
+WORD = _CharacterPattern((character) -> character.is_alphanumeric() or character == "_")
+SPACE = _CharacterPattern((character) -> character.is_space())

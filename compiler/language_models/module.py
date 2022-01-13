@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing
 
 import attr
+import immutabledict
 
 from . import (
     statement as statement_module,
@@ -11,14 +12,39 @@ from . import (
 from ..libs import parser as parser_module
 
 
+class _String(str):
+    is_alpha = str.isalpha
+    is_digit = str.isdigit
+    is_numeric = str.isnumeric
+    is_decimal = str.isdecimal
+    is_alphanumeric = str.isalnum
+    is_space = str.isspace
+
+
 builtin_namespace = namespace_module.Namespace()
+builtin_namespace.declare('True', True)
+builtin_namespace.declare('False', False)
+builtin_namespace.declare('None', None)
+builtin_namespace.declare('RuntimeError', RuntimeError)
+builtin_namespace.declare('ValueError', ValueError)
+builtin_namespace.declare('TypeError', TypeError)
+builtin_namespace.declare('Exception', Exception)
 builtin_namespace.declare('print', print)
-builtin_namespace.declare('String', str)
+builtin_namespace.declare('Boolean', bool)
+builtin_namespace.declare('String', _String)
+builtin_namespace.declare('Character', str)
 builtin_namespace.declare('Integer', int)
 builtin_namespace.declare('List', list)
+builtin_namespace.declare('FrozenList', tuple)
+builtin_namespace.declare('Set', set)
+builtin_namespace.declare('FrozenSet', frozenset)
+builtin_namespace.declare('Map', dict)
+builtin_namespace.declare('FrozenMap', immutabledict.immutabledict)
 builtin_namespace.declare('type', type)
 builtin_namespace.declare('issubclass', issubclass)
 builtin_namespace.declare('isinstance', isinstance)
+builtin_namespace.declare('immutable', lambda x: x)  # don't bother implementing yet
+builtin_namespace.declare('abstract', lambda x: x)  # don't bother implementing yet
 
 
 @attr.s(frozen=True, slots=True)
