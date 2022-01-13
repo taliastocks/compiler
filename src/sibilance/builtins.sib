@@ -1,23 +1,15 @@
 # todo: implement str, open, print, etc
 
-class String:
-    pass
-
-
-class Integer:
-    pass
-
-
-class List:
-    pass
-
-
-class Sequence:
-    pass
-
-
 class Class:
-    pass
+    """
+    Un-instantiated classes inherit from Class.
+    """
+
+
+class Object:
+    """
+    Everything implicitly inherits from Object, except Class.
+    """
 
 
 def type(instance) -> Class:
@@ -32,5 +24,59 @@ def isinstance(instance, instance_type, /):
     return issubclass(type(instance), instance_type)
 
 
+class Sequence[T=Object]:
+    pass
+
+
+class MutableSequence[T=Object](Sequence[T]):
+    pass
+
+
+class String:
+    pass
+
+
+class Character(String):
+    """
+    A string of length one.
+    """
+
+
+class Integer:
+    pass
+
+
+class Boolean:
+    pass
+
+
+class List[T=Object](MutableSequence[T]):
+    pass
+
+
+class FrozenList[T=Object](Sequence[T]):
+    pass
+
+
+class Map[K, V]:
+    pass
+
+
+class FrozenMap[K, V]:
+    pass
+
+
+class Set[T]:
+    pass
+
+
+class FrozenSet[T]:
+    pass
+
+
 def print(*args, /, file=None):
     pass
+
+
+# todo: decorator: @immutable
+# todo: decorator: @abstract

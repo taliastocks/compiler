@@ -1,25 +1,25 @@
 import .parsing.ast
 
 
-def tokenize(text: String) -> Sequence[tokens.Token]:
+def tokenize(code: String) -> Sequence[tokens.Token]:
     pass
 
 
-def parse_expression(code: Sequence[tokens.Token]) -> ast.Expression:
+def parse_expression(code: String) -> ast.Expression:
     pass
 
 
-def parse_statement(code: Sequence[tokens.Token]) -> ast.Statement:
+def parse_statement(code: String) -> ast.Statement:
     pass
 
 
-def parse_function(code: Sequence[tokens.Token]) -> ast.Function:
+def parse_function(code: String) -> ast.Function:
     pass
 
 
-def parse_class(code: Sequence[tokens.Token]) -> ast.Class:
+def parse_class(code: String) -> ast.Class:
     pass
 
 
-def parse_module(code: Sequence[tokens.Token]) -> ast.Module:
+def parse_module(code: String) -> ast.Module:
     pass

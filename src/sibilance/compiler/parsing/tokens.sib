@@ -1,5 +1,6 @@
 class Token:
-    pass
+    start: Cursor
+    end: Cursor
 
 
 # todo: define tokens
