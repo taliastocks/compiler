@@ -283,23 +283,6 @@ class ArgumentListTestCase(unittest.TestCase):
             ])
         )
 
-    def test_parse_variable_no_annotations(self):
-        self.assertEqual(
-            argument_list.ArgumentList.parse(
-                parser_module.Cursor(['a: b']),
-                parse_annotations=False,
-            ).last_symbol,
-            argument_list.ArgumentList([
-                argument_list.Argument(
-                    expression_module.Variable(
-                        'a',  # parsing stopped at the ":"
-                    ),
-                    is_positional=True,
-                    is_keyword=True,
-                ),
-            ])
-        )
-
     def test_parse_expected_variable(self):
         with self.assertRaisesRegex(parser_module.ParseError, 'expected Variable'):
             argument_list.ArgumentList.parse(

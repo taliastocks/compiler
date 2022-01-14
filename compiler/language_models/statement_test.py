@@ -1596,9 +1596,9 @@ class TryTestCase(unittest.TestCase):
                 '    if exception_class is not None:',
                 '        raise exception_class("error!")',
                 '    events.append("try end")',
-                'except RuntimeError as exc:',
+                'catch RuntimeError as exc:',
                 '    events.append(repr(exc))',
-                'except ValueError:',
+                'catch ValueError:',
                 '    events.append("ValueError")',
                 'else:',
                 '    events.append("else")',
@@ -1663,9 +1663,9 @@ class TryTestCase(unittest.TestCase):
                 '    if exception_class is not None:',
                 '        raise exception_class("error!")',
                 '    events.append("try end")',
-                'except RuntimeError as exc:',
+                'catch RuntimeError as exc:',
                 '    events.append(repr(exc))',
-                'except ValueError:',
+                'catch ValueError:',
                 '    events.append("ValueError")',
                 'else:',
                 '    events.append("else")',
@@ -1728,9 +1728,9 @@ class TryTestCase(unittest.TestCase):
                 '    if exception_class is not None:',
                 '        raise exception_class("error!")',
                 '    events.append("try end")',
-                'except RuntimeError as exc:',
+                'catch RuntimeError as exc:',
                 '    events.append(repr(exc))',
-                'except ValueError:',
+                'catch ValueError:',
                 '    events.append("ValueError")',
                 'finally:',
                 '    events.append("finally")',
@@ -1828,9 +1828,9 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    body',
-                    'except exception as receiver:',
+                    'catch exception as receiver:',
                     '    exception_body',
-                    'except exception_2:',
+                    'catch exception_2:',
                     '    exception_body_2',
                     'else:',
                     '    else_body',
@@ -1882,7 +1882,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    body',
-                    'except exception as receiver:',
+                    'catch exception as receiver:',
                     '    exception_body',
                     'next line',
                 ])
@@ -1912,7 +1912,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    body',
-                    'except exception as receiver:',
+                    'catch exception as receiver:',
                     '    exception_body',
                     'else:',
                     '    else_body',
@@ -1949,7 +1949,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    body',
-                    'except exception as receiver:',
+                    'catch exception as receiver:',
                     '    exception_body',
                     'finally:',
                     '    finally_body',
@@ -2028,7 +2028,7 @@ class TryTestCase(unittest.TestCase):
                 ])
             )
 
-        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'except\', \'else\', \'finally\'\)'):
+        with self.assertRaisesRegex(parser_module.ParseError, r'expected one of \(\'catch\', \'else\', \'finally\'\)'):
             statement.Statement.parse(
                 parser_module.Cursor([
                     'try:',
@@ -2041,7 +2041,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    a',
-                    'except',
+                    'catch',
                 ])
             )
 
@@ -2050,7 +2050,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    a',
-                    'except a',
+                    'catch a',
                 ])
             )
 
@@ -2059,7 +2059,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    a',
-                    'except a as',
+                    'catch a as',
                 ])
             )
 
@@ -2068,7 +2068,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    a',
-                    'except a as 3',
+                    'catch a as 3',
                 ])
             )
 
@@ -2077,7 +2077,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    a',
-                    'except a as b',
+                    'catch a as b',
                 ])
             )
 
@@ -2086,7 +2086,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    a',
-                    'except a as b:a',
+                    'catch a as b:a',
                 ])
             )
 
@@ -2095,7 +2095,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    a',
-                    'except a as b:',
+                    'catch a as b:',
                 ])
             )
 
@@ -2104,7 +2104,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    a',
-                    'except a:',
+                    'catch a:',
                     '    b',
                     'else',
                 ])
@@ -2115,7 +2115,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    a',
-                    'except a:',
+                    'catch a:',
                     '    b',
                     'else:a',
                 ])
@@ -2126,7 +2126,7 @@ class TryTestCase(unittest.TestCase):
                 parser_module.Cursor([
                     'try:',
                     '    a',
-                    'except a:',
+                    'catch a:',
                     '    b',
                     'else:',
                 ])
