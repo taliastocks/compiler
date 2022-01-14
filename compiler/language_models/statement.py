@@ -134,13 +134,17 @@ class Block(Statement):
         statements: list[Statement] = []
         while True:
             cursor = cursor.parse_one_symbol([
+                parser_module.EndFile,
+                parser_module.EndLine,
                 parser_module.EndBlock,
                 Statement,
             ])
 
             if isinstance(cursor.last_symbol, Statement):
                 statements.append(cursor.last_symbol)
-            else:  # EndBlock
+            elif isinstance(cursor.last_symbol, parser_module.EndLine):
+                continue
+            else:  # EndBlock/EndFile
                 break
 
         return cursor.new_from_symbol(cls(
