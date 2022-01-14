@@ -129,11 +129,12 @@ class ArgumentList(parser_module.Symbol):
             elif isinstance(cursor.last_symbol, parser_module.Characters['/']):
                 if saw_end_position_only_marker:
                     raise parser_module.ParseError('multiple "end position-only" markers found', cursor)
-                if saw_begin_keyword_only_marker:
-                    raise parser_module.ParseError(
-                        '"end position-only" marker found after "begin keyword-only" marker',
-                        cursor,
-                    )
+                # This logic wasn't quite right because ``def print(*args, /, file=None)`` should be valid.
+                # if saw_begin_keyword_only_marker:
+                #     raise parser_module.ParseError(
+                #         '"end position-only" marker found after "begin keyword-only" marker',
+                #         cursor,
+                #     )
                 saw_end_position_only_marker = True
 
                 # Rewrite all the previous arguments to position-only.

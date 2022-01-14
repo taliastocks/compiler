@@ -54,11 +54,11 @@ class FunctionTestCase(unittest.TestCase):
 
         self.assertEqual(
             '\n'.join([
-                '0, 20: def test_function():',
+                '1, 21: def test_function():',
                 '                           ^',
-                '1, 21:     test_function_2()',
+                '2, 22:     test_function_2()',
                 '                            ^',
-                '1, 37:     raise RuntimeError("hello world")',
+                '2, 38:     raise RuntimeError("hello world")',
                 '                                            ^',
                 "RuntimeError('hello world')",
             ]),
@@ -138,9 +138,9 @@ class FunctionTestCase(unittest.TestCase):
 
         self.assertEqual(
             '\n'.join([
-                '2, 21: def test_function(a):',
+                '3, 22: def test_function(a):',
                 '                            ^',
-                '1, 16: @inner_decorator',
+                '2, 17: @inner_decorator',
                 '                       ^',
                 "RuntimeError('runtime error')",
             ]),

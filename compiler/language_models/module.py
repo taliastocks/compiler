@@ -64,10 +64,13 @@ class Module(parser_module.Symbol):
         while not isinstance(cursor.last_symbol, parser_module.EndFile):
             cursor = cursor.parse_one_symbol([
                 parser_module.EndFile,
+                parser_module.EndLine,
                 statement_module.Statement,
             ])
             if isinstance(cursor.last_symbol, statement_module.Statement):
                 statements.append(cursor.last_symbol)
+            elif isinstance(cursor.last_symbol, parser_module.EndLine):
+                continue
             else:  # EndFile
                 break
 

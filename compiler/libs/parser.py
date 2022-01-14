@@ -99,7 +99,7 @@ class Cursor:
         )
 
     def __str__(self):
-        heading = f'{self.line}, {self.column}: '
+        heading = f'{self.line + 1}, {self.column + 1}: '
         line_text = self.line_text()
         pointer_indent = ' ' * (len(heading) + self.column)
         return f'{heading}{line_text}\n{pointer_indent}^'
@@ -511,7 +511,7 @@ class MultilineString(Token):
 def _measure_block_depth(cursor):
     """Measure the block depth for the current line number.
 
-    Indentation must be a multiple of four spaces. If
+    Indentation must be a multiple of four spaces.
 
     :raises IndentationError: on bad indentation
     """
@@ -547,6 +547,6 @@ def _measure_block_depth(cursor):
     return block_depth
 
 
-_END_LINE_REGEX = regex.compile(r'^ *$')
+_END_LINE_REGEX = regex.compile(r'^ *(#.*)?$')
 _INDENT_REGEX = regex.compile(r'^( *)(\s*)')
 _WHITESPACE_REGEX = regex.compile(r'^\s+')

@@ -241,12 +241,13 @@ class ArgumentListTestCase(unittest.TestCase):
                 parser_module.Cursor(['/, /'])
             )
 
-    def test_end_position_only_after_begin_keyword_only(self):
-        with self.assertRaisesRegex(parser_module.ParseError,
-                                    '"end position-only" marker found after "begin keyword-only" marker'):
-            argument_list.ArgumentList.parse(
-                parser_module.Cursor(['*, /'])
-            )
+    # This logic wasn't quite right because ``def print(*args, /, file=None)`` should be valid.
+    # def test_end_position_only_after_begin_keyword_only(self):
+    #     with self.assertRaisesRegex(parser_module.ParseError,
+    #                                 '"end position-only" marker found after "begin keyword-only" marker'):
+    #         argument_list.ArgumentList.parse(
+    #             parser_module.Cursor(['*, /'])
+    #         )
 
     def test_parse_variable_initializer(self):
         self.assertEqual(

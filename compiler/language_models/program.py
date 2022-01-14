@@ -29,6 +29,7 @@ class Program:
             if file_path.is_file():
                 if file_path.suffix == '.sib':
                     sib_path = path + file_path.relative_to(root_path).with_suffix('').parts
+                    print(f'Compiling "{file_path.absolute()}"')
                     self.register_module_from_string(sib_path, file_path.read_text())
 
                 self.modules[
