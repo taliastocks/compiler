@@ -887,12 +887,12 @@ class Try(Statement):
         finally_body = None
 
         cursor = cursor.parse_one_symbol([
-            parser_module.Characters['except'],
+            parser_module.Characters['catch'],
             parser_module.Characters['else'],
             parser_module.Characters['finally'],
         ], fail=True)
 
-        while isinstance(cursor.last_symbol, parser_module.Characters['except']):
+        while isinstance(cursor.last_symbol, parser_module.Characters['catch']):
             cursor = expression_module.ExpressionParser.parse(cursor, stop_symbols=[
                 parser_module.Characters['as'],
                 parser_module.Characters[':'],
@@ -935,7 +935,7 @@ class Try(Statement):
             ))
 
             cursor = cursor.parse_one_symbol([
-                parser_module.Characters['except'],
+                parser_module.Characters['catch'],
                 parser_module.Characters['else'],
                 parser_module.Characters['finally'],
                 parser_module.Always,
