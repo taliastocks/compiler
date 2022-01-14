@@ -1965,7 +1965,7 @@ class IfElseTestCase(unittest.TestCase):
 class LambdaTestCase(unittest.TestCase):
     def test_execute(self):
         add_one: expression_module.Lambda = expression_module.ExpressionParser.parse(  # noqa
-            parser_module.Cursor(['lambda a, b = a + 1, c = my_global: [a, b, c]'])
+            parser_module.Cursor(['(a, b = a + 1, c = my_global) -> [a, b, c]'])
         ).last_symbol
 
         namespace = namespace_module.Namespace()
@@ -1984,7 +1984,7 @@ class LambdaTestCase(unittest.TestCase):
     def test_parse_no_arguments(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
-                parser_module.Cursor(['lambda: foo'])
+                parser_module.Cursor(['() -> foo'])
             ).last_symbol,
             expression_module.Lambda(
                 arguments=argument_list.ArgumentList([]),
@@ -1995,7 +1995,7 @@ class LambdaTestCase(unittest.TestCase):
     def test_parse_arguments(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
-                parser_module.Cursor(['lambda a, b: foo'])
+                parser_module.Cursor(['(a, b) -> foo'])
             ).last_symbol,
             expression_module.Lambda(
                 arguments=argument_list.ArgumentList([
@@ -2017,7 +2017,7 @@ class LambdaTestCase(unittest.TestCase):
     def test_parse_argument_defaults(self):
         self.assertEqual(
             expression_module.ExpressionParser.parse(
-                parser_module.Cursor(['lambda a=b: foo'])
+                parser_module.Cursor(['(a=b) -> foo'])
             ).last_symbol,
             expression_module.Lambda(
                 arguments=argument_list.ArgumentList([
@@ -2375,7 +2375,7 @@ class ExpressionParserTestCase(unittest.TestCase):
             expression_module.Lambda(
                 expression=expression_module.Variable('foo'),
             ),
-            self.parse_expression('lambda: foo')
+            self.parse_expression('() -> foo')
         )
         self.assertEqual(
             expression_module.StarStar(

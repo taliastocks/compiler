@@ -72,7 +72,7 @@ class ArgumentList(parser_module.Symbol):
         return iter(self.arguments)
 
     @classmethod
-    def parse(cls, cursor, parse_annotations: bool = True):
+    def parse(cls, cursor):
         # pylint: disable=too-many-branches, arguments-differ
         arguments: list[Argument] = []
         saw_end_position_only_marker = False
@@ -90,7 +90,7 @@ class ArgumentList(parser_module.Symbol):
 
             new_cursor = expression.Variable.parse(
                 cursor=cursor,
-                parse_annotation=parse_annotations,
+                parse_annotation=True,
                 parse_initializer=True,
             )
 

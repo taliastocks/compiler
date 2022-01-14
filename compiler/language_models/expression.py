@@ -1206,21 +1206,26 @@ class Lambda(Operator):
     @classmethod
     def parse(cls, cursor):
         cursor = cursor.parse_one_symbol([
-            parser_module.Characters['lambda']
+            parser_module.Characters['(']
         ])
 
-        # We can't have annotations in a Lambda because annotations are
-        # denoted by ":", which also denotes the body of the Lambda.
-        cursor = argument_list.ArgumentList.parse(cursor, parse_annotations=False)
+        try:
+            cursor = argument_list.ArgumentList.parse(cursor)
+        except parser_module.ParseError:
+            return None  # It's not a lambda.
 
         if not isinstance(cursor.last_symbol, argument_list.ArgumentList):
             raise RuntimeError('this should be unreachable')
 
         arguments = cursor.last_symbol
 
-        return cursor.parse_one_symbol([
-            parser_module.Characters[':']
-        ], fail=True).new_from_symbol(cls(
+        cursor = cursor.parse_one_symbol([
+            parser_module.Characters[')']
+        ]).parse_one_symbol([
+            parser_module.Characters['->']
+        ])
+
+        return cursor.new_from_symbol(cls(
             arguments=arguments,
             cursor=cursor,
         ))
