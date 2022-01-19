@@ -25,8 +25,17 @@ class Expression(Node):
 
 
 @immutable
+class Import:
+    name: String
+    path: FrozenList[String]
+
+
+@immutable
 class Statement(Node):
-    pass
+    expression: Expression|None
+    import: Import|None
+    class_definition: ClassDefinition|None
+    function_definition: FunctionDefinition|None
 
 
 @immutable
@@ -36,26 +45,19 @@ class ArgumentsDefinition(Node):
 
 
 @immutable
-class Function(Node):
+class FunctionDefinition(Node):
     bindings: ArgumentsDefinition
     arguments: ArgumentsDefinition
     statements: FrozenList[Statement]
 
 
 @immutable
-class Class(Node):
+class ClassDefinition(Node):
     bindings: ArgumentsDefinition
     bases: FrozenList[Expression]
     statements: FrozenList[Statement]
 
 
 @immutable
-class Import(Node):
-    name: String
-    path: FrozenList[String]
-
-
-@immutable
 class Module(Node):
-    imports: FrozenList[Import]
     statements: FrozenList[Statement]
