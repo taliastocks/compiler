@@ -1,10 +1,6 @@
 import .parsing.ast
 
 
-def tokenize(code: String) -> Sequence[tokens.Token]:
-    pass
-
-
 def parse_expression(code: String) -> ast.Expression:
     pass
 

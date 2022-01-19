@@ -41,6 +41,7 @@ builtin_namespace.declare('FrozenSet', frozenset)
 builtin_namespace.declare('Map', dict)
 builtin_namespace.declare('FrozenMap', immutabledict.immutabledict)
 builtin_namespace.declare('type', type)
+builtin_namespace.declare('range', range)
 builtin_namespace.declare('issubclass', issubclass)
 builtin_namespace.declare('isinstance', isinstance)
 builtin_namespace.declare('immutable', lambda x: x)  # don't bother implementing yet

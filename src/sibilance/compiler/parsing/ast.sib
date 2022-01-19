@@ -1,21 +1,61 @@
-class Expression:
+import .re
+
+
+@abstract
+class Node:
+    begin: re.Cursor
+    end: re.Cursor
+
+
+@immutable
+class VariableReference(Node):
+    name: String
+
+
+@immutable
+class VariableDefinition(Node):
+    name: String
+    annotations: FrozenList[Expression]
+    initialization: Expression|None
+
+
+@immutable
+class Expression(Node):
     pass
 
 
-class Statement:
+@immutable
+class Statement(Node):
     pass
 
 
-class Function:
-    pass
+@immutable
+class ArgumentsDefinition(Node):
+    positional_arguments: FrozenList[VariableDefinition]
+    keyword_arguments: FrozenMap[String, VariableDefinition]
 
 
-class Class:
-    pass
+@immutable
+class Function(Node):
+    bindings: ArgumentsDefinition
+    arguments: ArgumentsDefinition
+    statements: FrozenList[Statement]
 
 
-class Module:
-    pass
+@immutable
+class Class(Node):
+    bindings: ArgumentsDefinition
+    bases: FrozenList[Expression]
+    statements: FrozenList[Statement]
 
 
-# todo: implement AST nodes
+@immutable
+class Import(Node):
+    name: String
+    path: FrozenList[String]
+
+
+@immutable
+class Module(Node):
+    imports: FrozenList[Import]
+    statements: FrozenList[Statement]
