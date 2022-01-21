@@ -1,63 +1,127 @@
-import .re
+class Cursor:
+    line: Integer = 1
+    column: Integer = 1
+    offset: Integer = 0
+
+    def advance(self, text: String):
+        """
+        Advance the cursor by reading in some text.
+        """
+        line = self.line + text.count("\n")
+
+        if line == self.line:
+            column = self.column + text.length()
+        else:
+            column = text.rsplit("\n")[-1].length() + 1
+
+        offset = self.offset + text.length()
+
+        return Cursor(
+            line=line,
+            column=column,
+            offset=offset,
+        )
+
+
+class ParseError:
+    position: Cursor
+    parsing: Class[Node]
+    expected: FrozenList[Node]
+    message: String
 
 
 @abstract
 class Node:
-    begin: re.Cursor
-    end: re.Cursor
+    start: Cursor
+    end: Cursor
+    errors: FrozenList[ParseError]
+
+    @abstract
+    @classmethod
+    def parse(cls, text: String, start: Cursor) -> cls|None:
+        pass
 
 
-@immutable
+class Or[*NodeTypes: Class[Node]](Node):
+    value: Union[*NodeTypes]
+
+    @classmethod
+    def parse(cls, text, start):
+        for NodeType in NodeTypes:
+            node = NodeType.parse(text, start)
+            if node is not None:
+                return cls(
+                    start=node.start,
+                    end=node.end,
+                    errors=node.errors,
+                    value=node,
+                )
+
+
 class VariableReference(Node):
     name: String
 
 
-@immutable
 class VariableDefinition(Node):
     name: String
     annotations: FrozenList[Expression]
     initialization: Expression|None
 
 
-@immutable
 class Expression(Node):
     pass
 
 
-@immutable
-class Import:
+class Import(Node):
     name: String
     path: FrozenList[String]
 
 
-@immutable
-class Statement(Node):
-    expression: Expression|None
-    import: Import|None
-    class_definition: ClassDefinition|None
-    function_definition: FunctionDefinition|None
+class Statement(Or[
+    Import,
+    ClassDefinition,
+    FunctionDefinition,
+    Expression,
+]):
+    pass
 
 
-@immutable
 class ArgumentsDefinition(Node):
     positional_arguments: FrozenList[VariableDefinition]
     keyword_arguments: FrozenMap[String, VariableDefinition]
 
 
-@immutable
 class FunctionDefinition(Node):
     bindings: ArgumentsDefinition
     arguments: ArgumentsDefinition
     statements: FrozenList[Statement]
 
 
-@immutable
 class ClassDefinition(Node):
     bindings: ArgumentsDefinition
     bases: FrozenList[Expression]
     statements: FrozenList[Statement]
 
 
-@immutable
 class Module(Node):
     statements: FrozenList[Statement]
+
+    @classmethod
+    def parse(cls, text, start):
+        statements: List = []
+        errors: List = []
+        end = start
+
+        while True:
+            statement = Statement.parse(text, end)
+
+            if statement is None:
+                return cls(
+                    start=start,
+                    end=end,
+                    errors=errors,
+                )
+
+            end = statement.end
+            errors.extend(statement.errors)
+            statements.append(statement)
