@@ -42,9 +42,12 @@ builtin_namespace.declare('Map', dict)
 builtin_namespace.declare('FrozenMap', immutabledict.immutabledict)
 builtin_namespace.declare('type', type)
 builtin_namespace.declare('range', range)
+builtin_namespace.declare('Class', typing.Type)
+builtin_namespace.declare('Union', typing.Union)
 builtin_namespace.declare('issubclass', issubclass)
 builtin_namespace.declare('isinstance', isinstance)
-builtin_namespace.declare('immutable', lambda x: x)  # don't bother implementing yet
+builtin_namespace.declare('staticmethod', staticmethod)
+builtin_namespace.declare('classmethod', classmethod)
 builtin_namespace.declare('abstract', lambda x: x)  # don't bother implementing yet
 
 

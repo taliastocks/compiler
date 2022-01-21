@@ -1,4 +1,3 @@
-@immutable
 class Cursor:
     """
     A cursor represents a particular position within some text.
@@ -120,7 +119,6 @@ class _EndLine(Pattern):
             return cursor
 
 
-@immutable
 class _CharacterPattern:
     """
     Patterns matching one character in a sequence.
