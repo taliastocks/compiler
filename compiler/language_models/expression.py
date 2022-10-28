@@ -7,7 +7,7 @@ import typing
 import attr
 import immutabledict
 
-from . import declarable, argument_list, namespace as namespace_module
+from . import declarable, argument_list, namespace as namespace_module, string
 from ..libs import parser as parser_module
 
 # pylint: disable=fixme
@@ -130,7 +130,7 @@ class String(Literal):
         # TODO: local variable formatting
         if self.is_binary:
             return b''.join(bytes(value.value) for value in self.values)
-        return ''.join(str(value.value) for value in self.values)
+        return string.String(''.join(str(value.value) for value in self.values))
 
     @classmethod
     def from_string(cls, value):
@@ -287,6 +287,11 @@ class Variable(declarable.Declarable, LValue):
         try:
             return namespace.lookup(self.name)
         except KeyError as exc:
+            if self.annotation is not None:
+                # If there's an annotation, this is a type declaration.
+                # Put None as the value as a placeholder for now.
+                self.assign(namespace, None)
+                return None
             raise NameError(f'name {self.name!r} is not defined') from exc
 
     @classmethod
@@ -677,7 +682,10 @@ class Call(CallBase):
             key: arg.execute(namespace)
             for key, arg in self.keyword_arguments.items()
         }
-        return callable_value(*positional_arguments, **keyword_arguments)  # noqa
+        try:
+            return callable_value(*positional_arguments, **keyword_arguments)  # noqa
+        except TypeError as exc:
+            raise TypeError(f'problem with {callable_value!r}(*{positional_arguments!r}, **{keyword_arguments!r})') from exc
 
     @property
     def expressions(self):

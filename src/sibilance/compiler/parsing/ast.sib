@@ -77,15 +77,6 @@ class Import(Node):
     path: FrozenList[String]
 
 
-class Statement(Or[
-    Import,
-    ClassDefinition,
-    FunctionDefinition,
-    Expression,
-]):
-    pass
-
-
 class ArgumentsDefinition(Node):
     positional_arguments: FrozenList[VariableDefinition]
     keyword_arguments: FrozenMap[String, VariableDefinition]
@@ -101,6 +92,15 @@ class ClassDefinition(Node):
     bindings: ArgumentsDefinition
     bases: FrozenList[Expression]
     statements: FrozenList[Statement]
+
+
+class Statement(Or[
+    Import,
+    ClassDefinition,
+    FunctionDefinition,
+    Expression,
+]):
+    pass
 
 
 class Module(Node):

@@ -3,6 +3,17 @@ import unicodedata
 import regex
 
 
+class String(str):
+    is_alpha = str.isalpha
+    is_digit = str.isdigit
+    is_numeric = str.isnumeric
+    is_decimal = str.isdecimal
+    is_alphanumeric = str.isalnum
+    is_space = str.isspace
+
+    length = str.__len__
+
+
 def unescape_text(escaped: str) -> str:
     return _ESCAPE_TEXT_REGEX.sub(
         _unescape_text,
