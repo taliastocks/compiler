@@ -28,6 +28,7 @@ class Cursor:
     column: int = attr.ib(default=0)
     last_symbol: typing.Optional[Symbol] = attr.ib(default=None)
     block_depth: int = attr.ib(default=0)
+    path: str = attr.ib(default=('?',))
 
     def line_text(self, line=None):
         line = self.line if line is None else line
@@ -62,6 +63,7 @@ class Cursor:
             column=column,
             last_symbol=symbol,
             block_depth=block_depth,
+            path=self.path,
         )
 
     def parse_one_symbol(self, one_of: typing.Sequence[typing.Type[Symbol]], fail=False) -> Cursor:
@@ -99,7 +101,7 @@ class Cursor:
         )
 
     def __str__(self):
-        heading = f'{self.line + 1}, {self.column + 1}: '
+        heading = f'{".".join(self.path)}:{self.line + 1}:{self.column + 1}: '
         line_text = self.line_text()
         pointer_indent = ' ' * (len(heading) + self.column)
         return f'{heading}{line_text}\n{pointer_indent}^'

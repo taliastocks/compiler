@@ -20,7 +20,7 @@ class Program:
     def register_module_from_string(self, path: typing.Sequence[str], module_string: str):
         self.register_module(
             path,
-            module_module.Module.from_string(module_string),
+            module_module.Module.from_string(path, module_string),
         )
 
     def register_package(self, path: typing.Sequence[str], root_path: str):
@@ -36,6 +36,10 @@ class Program:
                     path + file_path.relative_to(root_path).parts
                 ] = file_path.read_bytes()
 
+        # Initialize all the modules.
+        for module_path in self.modules:
+            self.get_module(module_path)
+
     def get_module(self, path: typing.Sequence[str]):
         path = tuple(path)
 
@@ -43,7 +47,12 @@ class Program:
             if path not in self.modules:
                 raise ImportError(f'no such module {path}')
 
-            self.initialized_modules[path] = self.modules[path].execute(self, path)
+            module = self.modules[path]
+
+            if isinstance(module, module_module.Module):
+                module = module.execute(self, path)
+
+            self.initialized_modules[path] = module
 
         return self.initialized_modules[path]
 

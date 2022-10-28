@@ -1,0 +1,29 @@
+import .ast
+
+
+@test
+class CursorTest:
+    def test_advance_line(self):
+        cursor = ast.Cursor()
+        assert cursor.line == 1
+
+        cursor = cursor.advance("hello\nworld")
+        assert cursor.line == 2
+        cursor = cursor.advance("\n\n")
+        assert cursor.line == 4
+
+    def test_advance_column(self):
+        cursor = ast.Cursor()
+        assert cursor.column == 1
+
+        cursor = cursor.advance("he")
+        assert cursor.column == 3
+
+        cursor = cursor.advance("llo")
+        assert cursor.column == 6
+
+        cursor = cursor.advance("\nwo")
+        assert cursor.column == 3
+
+        cursor = cursor.advance("rld\n!")
+        assert cursor.column == 2
